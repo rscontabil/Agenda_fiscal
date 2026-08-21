@@ -389,10 +389,11 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   flex:1; padding:.3rem .5rem; border:1px solid var(--accent); border-radius:6px; font-size:.82rem;
   font-family:'Public Sans',sans-serif;
 }
-.oblig-add{display:flex; gap:.4rem; border-top:1px dashed var(--line); padding-top:.45rem;}
+.oblig-add{display:flex; gap:.4rem; border-top:1px dashed var(--line); padding-top:.45rem; flex-wrap:wrap; align-items:center;}
+.oblig-add .btn{flex-shrink:0; white-space:nowrap;}
 .oblig-new-input{
-  flex:1; padding:.35rem .55rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
-  font-family:'Public Sans',sans-serif;
+  flex:1 1 140px; min-width:0; padding:.35rem .55rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; box-sizing:border-box;
 }
 
 @media (max-width:640px){
@@ -1416,6 +1417,31 @@ function companyCardHtml(tabId, company){
   </div>`;
 }
 
+async function copyTextToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(e){ /* fall through to legacy fallback below */ }
+  }
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){
+    return false;
+  }
+}
+
 function attachPillHandlers(container, tabId){
   const period = TAB_DEFS[tabId].period;
   container.querySelectorAll('.item-pill').forEach(pill=>{
@@ -1431,15 +1457,9 @@ function attachPillHandlers(container, tabId){
     btn.addEventListener('click', async ()=>{
       const cnpj = btn.dataset.copyCnpj;
       const original = btn.textContent;
-      try{
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          await navigator.clipboard.writeText(cnpj.replace(/\D/g,''));
-        }
-        btn.textContent = 'Copiado!';
-      }catch(e){
-        btn.textContent = cnpj;
-      }
-      setTimeout(()=>{ btn.textContent = original; }, 1500);
+      const ok = await copyTextToClipboard(cnpj.replace(/\D/g,''));
+      btn.textContent = ok ? 'Copiado!' : 'Não deu — copie manual';
+      setTimeout(()=>{ btn.textContent = original; }, ok ? 1500 : 2500);
     });
   });
 }
