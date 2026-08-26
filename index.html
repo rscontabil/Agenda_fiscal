@@ -209,6 +209,7 @@ main{padding:1.4rem;max-width:1180px;margin:0 auto;}
 .empty-note{color:var(--muted); font-size:.85rem; padding:1.5rem 0; text-align:center;}
 
 /* ===== Painel ===== */
+.painel-header-row{display:flex; justify-content:space-between; align-items:flex-start; gap:.8rem; flex-wrap:wrap; margin-bottom:1rem;}
 .painel-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem; margin-bottom:1.4rem;}
 .painel-card{
   border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
@@ -396,6 +397,15 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .drive-note{font-size:.74rem; color:var(--muted); line-height:1.5; margin-top:.4rem;}
 .oblig-items{display:flex; flex-direction:column; gap:.3rem; margin-bottom:.45rem;}
 .oblig-check-row{display:flex; align-items:center; justify-content:space-between; gap:.5rem;}
+.oblig-step-num{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:18px; height:18px; border-radius:50%; background:var(--ink); color:#F2F0E6;
+  font-size:.65rem; font-weight:700; font-family:'IBM Plex Mono',monospace;
+}
+.oblig-row-label-group{display:flex; align-items:center; gap:.45rem; min-width:0; flex:1;}
+.oblig-row-label-group .oblig-edit-input{flex:1; min-width:0;}
+.item-pill .oblig-step-num{background:var(--muted); opacity:.55;}
+.item-pill.checked .oblig-step-num{background:var(--good); opacity:1;}
 .oblig-check{display:flex; align-items:center; gap:.45rem; font-size:.82rem; color:var(--ink); cursor:pointer;}
 .oblig-check input{accent-color:var(--good); width:14px; height:14px; cursor:pointer;}
 .oblig-row-actions{display:flex; gap:.15rem; flex-shrink:0;}
@@ -1239,6 +1249,22 @@ function obligationCategory(id){
 function catalogByCategory(category){
   return state.obligations.filter(o=>o.category===category);
 }
+function moveObligationInCategory(id, direction){
+  const cat = obligationCategory(id);
+  if(!cat) return false;
+  const indices = [];
+  state.obligations.forEach((o,i)=>{ if(o.category===cat) indices.push(i); });
+  const posInList = indices.findIndex(i=>state.obligations[i].id===id);
+  const targetPos = posInList + direction;
+  if(posInList===-1 || targetPos<0 || targetPos>=indices.length) return false;
+  const idxA = indices[posInList];
+  const idxB = indices[targetPos];
+  const tmp = state.obligations[idxA];
+  state.obligations[idxA] = state.obligations[idxB];
+  state.obligations[idxB] = tmp;
+  persist();
+  return true;
+}
 function companyItemsForCategory(company, category, periodKey){
   const assignedIds = company.obligations || [];
   return catalogByCategory(category)
@@ -1405,10 +1431,11 @@ function renderPeriodControl(){
   }
 }
 
-function pillHtml(period, company, item){
+function pillHtml(period, company, item, stepNum){
   const checked = isChecked(period, company.id, item.id);
   return `<label class="item-pill ${checked?'checked':''}" data-cid="${company.id}" data-key="${item.id}">
     <input type="checkbox" ${checked?'checked':''}>
+    <span class="oblig-step-num">${stepNum}</span>
     <span>${item.label}</span>
   </label>`;
 }
@@ -1439,7 +1466,7 @@ function companyCardHtml(tabId, company){
       <a href="https://www8.receita.fazenda.gov.br/simplesnacional/aplicacoes/atspo/pgmei.app/identificacao" target="_blank" rel="noopener" class="btn ghost small">Emitir DAS-MEI no PGMEI ↗</a>
       <button type="button" class="btn ghost small" data-copy-cnpj="${company.cnpj}">Copiar CNPJ</button>
     </div>` : ''}
-    ${items.length? `<div class="items-row">${items.map(it=>pillHtml(period, company, it)).join('')}</div>` : `<div style="font-size:.76rem;color:var(--muted);margin-top:.5rem;">Nenhuma obrigação aplicável nesta categoria.</div>`}
+    ${items.length? `<div class="items-row">${items.map((it,idx)=>pillHtml(period, company, it, idx+1)).join('')}</div>` : `<div style="font-size:.76rem;color:var(--muted);margin-top:.5rem;">Nenhuma obrigação aplicável nesta categoria.</div>`}
   </div>`;
 }
 
@@ -1540,8 +1567,13 @@ function renderPainel(){
 
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
-    <div class="sheet-title">Painel — ${fmtMonthLabel(selectedMonth)}</div>
-    <div class="sheet-sub">Visão geral das obrigações fiscais do mês selecionado.</div>
+    <div class="painel-header-row">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Painel — ${fmtMonthLabel(selectedMonth)}</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Visão geral das obrigações fiscais do mês selecionado.</div>
+      </div>
+      <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="btn ghost small">💬 Abrir WhatsApp Web ↗</a>
+    </div>
     <div class="painel-grid">
       <div class="painel-card"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
       <div class="painel-card"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
@@ -1689,10 +1721,13 @@ function renderManageCategoryBlock(category, editingId){
   const items = catalogByCategory(category);
   return `<div class="oblig-group">
     <div class="oblig-items">
-      ${items.length ? items.map(o=>{
+      ${items.length ? items.map((o,idx)=>{
         if(o.id===editingId){
           return `<div class="oblig-check-row oblig-editing">
-            <input type="text" class="oblig-edit-input" data-edit-input="${o.id}" value="${o.label.replace(/"/g,'&quot;')}">
+            <div class="oblig-row-label-group">
+              <span class="oblig-step-num">${idx+1}</span>
+              <input type="text" class="oblig-edit-input" data-edit-input="${o.id}" value="${o.label.replace(/"/g,'&quot;')}">
+            </div>
             <div class="oblig-row-actions">
               <button type="button" class="oblig-icon-btn oblig-save-btn" data-save-oblig="${o.id}" title="Salvar">✓</button>
               <button type="button" class="oblig-icon-btn" data-cancel-oblig="${o.id}" title="Cancelar">×</button>
@@ -1700,8 +1735,13 @@ function renderManageCategoryBlock(category, editingId){
           </div>`;
         }
         return `<div class="oblig-check-row">
-          <span class="oblig-manage-label">${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</span>
+          <div class="oblig-row-label-group">
+            <span class="oblig-step-num">${idx+1}</span>
+            <span class="oblig-manage-label">${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</span>
+          </div>
           <div class="oblig-row-actions">
+            <button type="button" class="oblig-icon-btn" data-move-oblig="${o.id}" data-move-dir="-1" title="Mover para cima" ${idx===0?'disabled':''}>▲</button>
+            <button type="button" class="oblig-icon-btn" data-move-oblig="${o.id}" data-move-dir="1" title="Mover para baixo" ${idx===items.length-1?'disabled':''}>▼</button>
             <button type="button" class="oblig-icon-btn" data-edit-oblig="${o.id}" title="Editar esta tarefa">✎</button>
             <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-oblig="${o.id}" title="Excluir esta tarefa do catálogo">×</button>
           </div>
@@ -1735,6 +1775,12 @@ function mountManageCategoryBlock(containerEl, category, editingId){
     btn.addEventListener('click', async ()=>{
       const removed = await deleteObligationFromCatalog(btn.dataset.delOblig);
       if(removed) mountManageCategoryBlock(containerEl, category);
+    });
+  });
+  containerEl.querySelectorAll('[data-move-oblig]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const moved = moveObligationInCategory(btn.dataset.moveOblig, parseInt(btn.dataset.moveDir,10));
+      if(moved) mountManageCategoryBlock(containerEl, category);
     });
   });
   containerEl.querySelectorAll('[data-edit-oblig]').forEach(btn=>{
@@ -1771,8 +1817,8 @@ function renderSelectCategoryBlock(category, selectedSet){
   const items = catalogByCategory(category);
   return `<div class="oblig-group">
     <div class="oblig-items">
-      ${items.length ? items.map(o=>`
-        <label class="oblig-check"><input type="checkbox" data-oblig="${o.id}" ${selectedSet.has(o.id)?'checked':''}> ${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</label>
+      ${items.length ? items.map((o,idx)=>`
+        <label class="oblig-check"><input type="checkbox" data-oblig="${o.id}" ${selectedSet.has(o.id)?'checked':''}> <span class="oblig-step-num">${idx+1}</span> ${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</label>
       `).join('') : `<div style="font-size:.78rem;color:var(--muted);">Nenhuma tarefa cadastrada ainda. <a href="#" data-goto-config style="color:var(--accent);font-weight:600;">Adicionar em Configurações →</a></div>`}
     </div>
   </div>`;
