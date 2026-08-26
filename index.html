@@ -346,6 +346,29 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .doctype-card-name{font-family:'Fraunces',serif; font-weight:600; font-size:.95rem;}
 .doctype-card-kw{font-size:.78rem; color:var(--muted); margin-bottom:.2rem;}
 .doctype-card-subject{font-size:.78rem; color:var(--ink); margin-top:.3rem;}
+
+.demanda-toolbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:.7rem; flex-wrap:wrap;}
+.demanda-filters{display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;}
+.demanda-filter-chip{
+  background:#FFFFFF; border:1px solid var(--line-strong); color:var(--muted);
+  padding:.35rem .75rem; border-radius:20px; font-size:.78rem; font-weight:600; cursor:pointer;
+}
+.demanda-filter-chip:hover{background:#F2F0E6;}
+.demanda-filter-chip.active{background:var(--ink); color:#F2F0E6; border-color:var(--ink);}
+.demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
+.demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
+.demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
+.demanda-card-title{font-weight:600; font-size:.9rem; margin-bottom:.2rem;}
+.demanda-card-meta{font-size:.74rem; color:var(--muted);}
+.demanda-status-select{
+  padding:.3rem .55rem; border-radius:20px; font-size:.74rem; font-weight:600; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif;
+}
+.demanda-status-select.status-aberta{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
+.demanda-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
+.demanda-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.demanda-message{font-size:.83rem; color:var(--ink); line-height:1.5; margin-top:.55rem; white-space:pre-wrap; word-break:break-word;}
+.demanda-card-actions{display:flex; justify-content:flex-end; gap:.2rem; margin-top:.5rem; border-top:1px dashed var(--line); padding-top:.4rem;}
 .config-category{border:1px solid var(--line-strong); border-radius:10px; padding:1rem; background:#FCFCFA;}
 .config-category-title{font-family:'Fraunces',serif; font-weight:600; font-size:1rem; margin-bottom:.6rem; color:var(--ink-2);}
 .oblig-manage-label{font-size:.82rem; color:var(--ink);}
@@ -455,6 +478,7 @@ const SEED_COMPANIES = [{"id": "c1", "cnpj": "52.537.227/0001-74", "nome": "AGRO
 
 const TABS = [
   {id:'painel', label:'Painel'},
+  {id:'demandas', label:'Demandas'},
   {id:'simples', label:'Simples Nacional'},
   {id:'mei', label:'MEI'},
   {id:'presumido_real', label:'Presumido e Real'},
@@ -498,6 +522,7 @@ function migrateState(){
   state.annual = state.annual || {};
   state.obligations = state.obligations || [];
   state.docTypes = state.docTypes || [];
+  state.demandas = state.demandas || [];
   DEFAULT_OBLIGATIONS.forEach(d=>{
     if(!state.obligations.find(o=>o.id===d.id)){ state.obligations.push({...d}); changed = true; }
   });
@@ -554,6 +579,7 @@ async function loadState(){
     obligations: DEFAULT_OBLIGATIONS.map(o=>({...o})),
     docTypes: DEFAULT_DOC_TYPES.map(d=>({...d})),
     docTypesInitialized: true,
+    demandas: [],
   };
   state.companies.forEach(c=>{ c.obligations = computeDefaultObligations(c); c.anual = true; c.parcelamentos = false; });
   persist();
@@ -1357,7 +1383,7 @@ function renderTabs(){
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
   const yearInput = document.getElementById('yearInput');
-  if(activeTab==='empresas' || activeTab==='config' || activeTab==='envio'){
+  if(activeTab==='empresas' || activeTab==='config' || activeTab==='envio' || activeTab==='demandas'){
     monthInput.style.display='none'; yearInput.style.display='none';
     return;
   }
@@ -1504,6 +1530,14 @@ function renderPainel(){
 
   const tabLabel = {simples:'Simples Nacional', presumido_real:'Presumido e Real', folha:'Folha', suframa:'SUFRAMA', contabil:'Contábil', parcelamentos:'Parcelamentos'};
 
+  const demandasAbertas = state.demandas.filter(d=>d.status==='aberta').length;
+  const demandasAndamento = state.demandas.filter(d=>d.status==='andamento').length;
+  const demandasConcluidas = state.demandas.filter(d=>d.status==='concluida').length;
+  const demandasAtivas = state.demandas
+    .filter(d=>d.status!=='concluida')
+    .sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm))
+    .slice(0,5);
+
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="sheet-title">Painel — ${fmtMonthLabel(selectedMonth)}</div>
@@ -1514,6 +1548,27 @@ function renderPainel(){
       <div class="painel-card"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
       <div class="painel-card"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
     </div>
+
+    <div class="sheet-title" style="font-size:1rem;">Demandas</div>
+    <div class="painel-grid" style="margin-bottom:1rem;">
+      <div class="painel-card"><div class="num" style="color:#7A5F1F;">${demandasAbertas}</div><div class="lbl">Abertas</div></div>
+      <div class="painel-card"><div class="num" style="color:#2A5F79;">${demandasAndamento}</div><div class="lbl">Em andamento</div></div>
+      <div class="painel-card"><div class="num" style="color:var(--good);">${demandasConcluidas}</div><div class="lbl">Concluídas</div></div>
+    </div>
+    <div class="pending-list" style="margin-bottom:1.4rem;">
+      ${demandasAtivas.length? demandasAtivas.map(d=>{
+        const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+        return `<div class="pending-row">
+          <div>
+            <div class="name">${escapeHtml(d.titulo) || '(sem título)'}</div>
+            <div class="cnpj mono" style="font-size:.7rem;">${company? escapeHtml(company.nome) : 'Cliente não vinculado'} · <span class="demanda-status-select status-${d.status}" style="padding:.05rem .5rem;">${d.status==='aberta'?'Aberta':'Em andamento'}</span></div>
+          </div>
+          <span class="go" data-jump="demandas">Ver →</span>
+        </div>`;
+      }).join('') : '<div class="empty-note">Nenhuma demanda em aberto — tudo em dia! 🎉</div>'}
+    </div>
+    ${state.demandas.length ? `<div style="text-align:right;margin-top:-.8rem;margin-bottom:1.2rem;"><span class="go" data-jump="demandas" style="font-size:.78rem;">Ver todas as demandas →</span></div>` : ''}
+
     <div class="sheet-title" style="font-size:1rem;">Empresas com pendências</div>
     <div class="pending-list" style="margin-top:.6rem;">
       ${pendingList.length? pendingList.map(x=>`
@@ -1974,6 +2029,185 @@ async function sendEnvioSelected(){
   renderEnvioResults();
 }
 
+/* ---- Demandas tab ---- */
+let demandaFilter = 'todas'; // todas | aberta | andamento | concluida
+
+function escapeHtml(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderDemandas(){
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="demanda-toolbar">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Demandas</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Cole a mensagem do cliente (WhatsApp, e-mail, etc.) e transforme em uma demanda a resolver.</div>
+      </div>
+      <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
+    </div>
+    <div class="demanda-filters" id="demandaFilters"></div>
+    <div id="demandaList"></div>
+  `;
+  document.getElementById('btnNewDemanda').addEventListener('click', ()=>openDemandaModal(null));
+  renderDemandaFilters();
+  renderDemandaList();
+}
+
+function renderDemandaFilters(){
+  const el = document.getElementById('demandaFilters');
+  if(!el) return;
+  const counts = {
+    todas: state.demandas.length,
+    aberta: state.demandas.filter(d=>d.status==='aberta').length,
+    andamento: state.demandas.filter(d=>d.status==='andamento').length,
+    concluida: state.demandas.filter(d=>d.status==='concluida').length,
+  };
+  const labels = {todas:'Todas', aberta:'Abertas', andamento:'Em andamento', concluida:'Concluídas'};
+  el.innerHTML = Object.keys(labels).map(key=>`
+    <button type="button" class="demanda-filter-chip ${demandaFilter===key?'active':''}" data-demanda-filter="${key}">${labels[key]} (${counts[key]})</button>
+  `).join('');
+  el.querySelectorAll('[data-demanda-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      demandaFilter = btn.dataset.demandaFilter;
+      renderDemandaFilters();
+      renderDemandaList();
+    });
+  });
+}
+
+function demandaCardHtml(d){
+  const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+  const dt = new Date(d.criadoEm);
+  const dataFmt = isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
+  return `<div class="demanda-card" data-demanda-id="${d.id}">
+    <div class="demanda-card-top">
+      <div>
+        <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'}</div>
+        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}</div>
+      </div>
+      <select class="demanda-status-select status-${d.status}" data-demanda-status="${d.id}">
+        <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
+        <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
+        <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
+      </select>
+    </div>
+    <div class="demanda-message">${escapeHtml(d.mensagem).replace(/\n/g,'<br>')}</div>
+    <div class="demanda-card-actions">
+      <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
+      <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-demanda="${d.id}" title="Excluir">×</button>
+    </div>
+  </div>`;
+}
+
+function renderDemandaList(){
+  const el = document.getElementById('demandaList');
+  if(!el) return;
+  let list = state.demandas.slice();
+  if(demandaFilter!=='todas') list = list.filter(d=>d.status===demandaFilter);
+  if(searchQuery){
+    const q = searchQuery.toLowerCase();
+    list = list.filter(d=>{
+      const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+      return (company && matchesSearch(company)) || (d.titulo||'').toLowerCase().includes(q) || (d.mensagem||'').toLowerCase().includes(q);
+    });
+  }
+  list.sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm));
+  if(list.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhuma demanda encontrada.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
+  wireDemandaCardHandlers(el);
+}
+
+function wireDemandaCardHandlers(container){
+  container.querySelectorAll('[data-demanda-status]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const d = state.demandas.find(x=>x.id===sel.dataset.demandaStatus);
+      if(d){ d.status = sel.value; d.atualizadoEm = new Date().toISOString(); persist(); }
+      sel.className = 'demanda-status-select status-' + sel.value;
+      renderDemandaFilters();
+    });
+  });
+  container.querySelectorAll('[data-edit-demanda]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDemandaModal(btn.dataset.editDemanda));
+  });
+  container.querySelectorAll('[data-del-demanda]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const d = state.demandas.find(x=>x.id===btn.dataset.delDemanda);
+      if(!d) return;
+      const ok = await showConfirm(`Excluir a demanda "${d.titulo||'sem título'}"? Essa ação não pode ser desfeita.`);
+      if(!ok) return;
+      state.demandas = state.demandas.filter(x=>x.id!==d.id);
+      persist();
+      renderDemandaFilters();
+      renderDemandaList();
+    });
+  });
+}
+
+function openDemandaModal(demandaId){
+  const editing = !!demandaId;
+  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta'};
+  const root = document.getElementById('modalRoot');
+  const companyOptions = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(c=>`<option value="${c.id}" ${c.id===d.companyId?'selected':''}>${c.nome}</option>`).join('');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar demanda' : 'Nova demanda'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Cliente</label>
+            <select id="demCompany"><option value="">— não vinculado —</option>${companyOptions}</select>
+          </div>
+          <div class="form-row"><label>Título curto (opcional)</label><input id="demTitulo" type="text" value="${(d.titulo||'').replace(/"/g,'&quot;')}" placeholder="Ex: Pedido de segunda via de nota"></div>
+          <div class="form-row"><label>Mensagem do cliente (cole aqui)</label><textarea id="demMensagem" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${(d.mensagem||'').replace(/</g,'&lt;')}</textarea><div id="demMensagemError" style="color:var(--bad);font-size:.74rem;display:none;">Cole ou digite a mensagem.</div></div>
+          <div class="form-row"><label>Status</label>
+            <select id="demStatus">
+              <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
+              <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
+              <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const mensagem = document.getElementById('demMensagem').value.trim();
+    if(!mensagem){
+      document.getElementById('demMensagemError').style.display = 'block';
+      document.getElementById('demMensagem').focus();
+      return;
+    }
+    const companyId = document.getElementById('demCompany').value || null;
+    let titulo = document.getElementById('demTitulo').value.trim();
+    if(!titulo) titulo = mensagem.split('\n')[0].slice(0,60);
+    const status = document.getElementById('demStatus').value;
+    const nowIso = new Date().toISOString();
+    if(editing){
+      Object.assign(d, {companyId, titulo, mensagem, status, atualizadoEm: nowIso});
+    } else {
+      state.demandas.push({
+        id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        companyId, titulo, mensagem, status,
+        criadoEm: nowIso, atualizadoEm: nowIso,
+      });
+    }
+    persist();
+    root.innerHTML = '';
+    renderDemandaFilters();
+    renderDemandaList();
+  };
+}
+
 /* ---- Configurações tab ---- */
 function renderDriveActions(){
   const clientId = getDriveClientId();
@@ -2339,6 +2573,7 @@ function renderAll(){
   else if(activeTab==='parcelamentos') renderRegimeLikeTab('parcelamentos','Parcelamentos', `Parcelamentos em andamento — ${fmtMonthLabel(selectedMonth)}`);
   else if(activeTab==='anual') renderRegimeLikeTab('anual','Obrigações Anuais', `Ano-base ${selectedYear}`);
   else if(activeTab==='envio') renderEnvioDocumentos();
+  else if(activeTab==='demandas') renderDemandas();
   else if(activeTab==='config') renderConfiguracoes();
 }
 
