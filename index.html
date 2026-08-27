@@ -741,6 +741,17 @@ function migrateState(){
       if(!state.docTypes.find(dt=>dt.id===d.id)){ state.docTypes.push({...d}); changed = true; }
     });
   }
+  // Correção pontual: a primeira versão do tipo "GFD - Guia do FGTS Digital" não excluía as guias
+  // de Empréstimo Consignado, então quem já tinha configurado esse tipo antes de existir o tipo
+  // separado de Consignado precisa dessa exclusão adicionada manualmente uma vez.
+  if(!state.fgtsExcludeFixed){
+    const fgtsType = state.docTypes.find(d=>d.id==='doctype__fgts');
+    if(fgtsType && !(fgtsType.excludeKeywords||[]).includes('EMPRESTIMO TRABALHADOR')){
+      fgtsType.excludeKeywords = [...(fgtsType.excludeKeywords||[]), 'EMPRESTIMO TRABALHADOR'];
+    }
+    state.fgtsExcludeFixed = true;
+    changed = true;
+  }
   state.companies.forEach(c=>{
     if(!c.obligations){ c.obligations = computeDefaultObligations(c); changed = true; }
     if(c.anual===undefined){ c.anual = true; changed = true; }
@@ -998,6 +1009,14 @@ function findCompanyInText(text){
     const found = state.companies.find(co=> normalizeDigits(co.cnpj)===c && co.ativa!==false);
     if(found) return found;
   }
+  // Fallback: alguns documentos (ex: Guia do FGTS Digital) mostram só a raiz do CNPJ,
+  // os 8 primeiros dígitos, sem filial nem dígito verificador (ex: "58.725.453").
+  const rootCandidates = new Set();
+  (text.match(/\b\d{2}\.\d{3}\.\d{3}\b/g) || []).forEach(m=>rootCandidates.add(normalizeDigits(m)));
+  for(const root of rootCandidates){
+    const found = state.companies.find(co=> normalizeDigits(co.cnpj).slice(0,8)===root && co.ativa!==false);
+    if(found) return found;
+  }
   // Fallback for documents without CNPJ (e.g. municipal DAM/ISSQN from prefeituras):
   // try matching by Inscrição Municipal number.
   const imCandidates = new Set();
@@ -1061,6 +1080,30 @@ function extractCompetenciaVencimento(text){
     return best;
   }
 
+  // Mesma lógica de "mais próximo do rótulo", mas para valores no formato MM/AAAA (sem dia) —
+  // usado por guias que trazem a competência como cabeçalho de tabela (ex: GFD - Guia do FGTS Digital).
+  function nearestMonthYearNearLabel(labelRegex, window){
+    const flags = labelRegex.flags.includes('g') ? labelRegex.flags : labelRegex.flags + 'g';
+    const re = new RegExp(labelRegex.source, flags);
+    let m, best = null, bestDist = Infinity;
+    while((m = re.exec(text))){
+      const start = Math.max(0, m.index - window);
+      const end = Math.min(text.length, m.index + m[0].length + window);
+      const segment = text.slice(start, end);
+      const labelStart = m.index - start, labelEnd = labelStart + m[0].length;
+      const dateRe = /\b\d{2}\/\d{4}\b/g;
+      let dm;
+      while((dm = dateRe.exec(segment))){
+        let dist;
+        if(dm.index >= labelEnd) dist = dm.index - labelEnd;
+        else if(dm.index + dm[0].length <= labelStart) dist = labelStart - (dm.index + dm[0].length);
+        else dist = 0;
+        if(dist < bestDist){ bestDist = dist; best = dm[0]; }
+      }
+    }
+    return best;
+  }
+
   // "Período de Apuração" is the authoritative field whenever present (DAS, DARF, PGDAS-D).
   // We scan a generous window after the label and read período + vencimento together, in the
   // order their values actually appear — this stays correct whether the real PDF text extraction
@@ -1083,6 +1126,11 @@ function extractCompetenciaVencimento(text){
     }
   }
 
+  // Guias tipo "GFD - Guia do FGTS Digital" (Caixa) usam esta frase específica em vez de "Vencimento".
+  if(!vencimento){
+    const pagarMatch = text.match(/Pagar\s+este\s+documento\s+at[ée][^0-9]{0,100}?(\d{2}\/\d{2}\/\d{4})/i);
+    if(pagarMatch) vencimento = pagarMatch[1];
+  }
   if(!vencimento){
     const vencMatch = text.match(/Venc(?:imento)?[^0-9]{0,40}?(\d{2}\/\d{2}\/\d{4})/i);
     if(vencMatch) vencimento = vencMatch[1];
@@ -1139,6 +1187,11 @@ function extractCompetenciaVencimento(text){
       if(dates && dates.length>=2) competencia = dates[0] + ' a ' + dates[1];
       else if(dates && dates.length===1) competencia = dates[0];
     }
+  }
+  // Fallback: guias com "Competência" como cabeçalho de tabela e valor em MM/AAAA
+  // (ex: GFD - Guia do FGTS Digital).
+  if(!competencia){
+    competencia = nearestMonthYearNearLabel(/Compet[êe]ncia/i, 120) || '';
   }
   // If we still have no vencimento but do have a competência, fall back to the closest
   // date overall found anywhere near "Referência" (covers documents like the Alvará/TVF where
@@ -1416,6 +1469,22 @@ const DEFAULT_DOC_TYPES = [
     excludeKeywords: ['ISSQN Retenção', 'ISSQN Próprio'],
     emailSubject: 'DAM Alvará de Funcionamento (TVF) - {empresa}',
     emailBody: 'Olá,\n\nSegue em anexo o DAM referente à Taxa de Verificação de Funcionamento (TVF/Alvará) de {empresa}, referência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__fgts',
+    name: 'GFD - Guia do FGTS Digital',
+    keywords: ['Guia do FGTS Digital'],
+    excludeKeywords: ['EMPRESTIMO TRABALHADOR'],
+    emailSubject: 'Guia do FGTS (GFD) - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo a Guia do FGTS Digital (GFD) referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__fgts_consignado',
+    name: 'GFD - Empréstimo Consignado (FGTS Digital)',
+    keywords: ['Guia do FGTS Digital', 'EMPRESTIMO TRABALHADOR'],
+    excludeKeywords: [],
+    emailSubject: 'Guia do Empréstimo Consignado - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo a guia do FGTS Digital (GFD) referente ao empréstimo consignado de {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
   },
 ];
 
