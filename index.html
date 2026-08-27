@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agenda de Obrigações Fiscais</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#132A3A">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agenda Fiscal">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
@@ -129,6 +137,11 @@ header.app{
   font-size:.74rem; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Public Sans',sans-serif;
 }
 .header-user button:hover{background:#F2F0E6;}
+.header-install-btn{
+  background:none; border:1px solid var(--line-strong); border-radius:20px; padding:.25rem .8rem;
+  font-size:.74rem; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Public Sans',sans-serif;
+}
+.header-install-btn:hover{background:#F2F0E6;}
 .stat .num{font-family:'Fraunces',serif; font-size:1.5rem; font-weight:600; color:#F2F0E6;}
 .stat .lbl{font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:#9FB2AB;}
 .stat .num.accent{color:var(--accent);}
@@ -556,6 +569,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
       </div>
     </div>
     <div class="controls">
+      <button type="button" id="btnInstallApp" class="header-install-btn" style="display:none;">📲 Instalar app</button>
       <div class="header-user" id="headerUser" style="display:none;">
         <span id="headerUserEmail"></span>
         <button type="button" id="btnLogout">Sair</button>
@@ -631,6 +645,45 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Persistência offline: guarda uma cópia local dos dados (Firestore) para o app continuar
+// funcionando (ler e editar) mesmo sem internet, sincronizando sozinho quando a conexão voltar.
+db.enablePersistence({synchronizeTabs: true}).catch((err)=>{
+  console.warn('Persistência offline do Firestore não disponível:', err.code);
+});
+
+// PWA: registra o service worker que guarda uma cópia do app para abrir mesmo offline,
+// e permite "Instalar" / "Adicionar à tela inicial" no celular.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch((err)=>{
+      console.warn('Não foi possível registrar o service worker (PWA):', err);
+    });
+  });
+}
+
+// Botão "Instalar app": o navegador avisa quando o app pode ser instalado (PWA); guardamos
+// esse aviso e mostramos um botão simples no cabeçalho em vez de depender do usuário achar
+// a opção escondida no menu do navegador.
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('btnInstallApp');
+  if(btn) btn.style.display = '';
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('btnInstallApp');
+  if(btn) btn.style.display = 'none';
+});
+document.getElementById('btnInstallApp').addEventListener('click', async ()=>{
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('btnInstallApp').style.display = 'none';
+});
 
 // Lista de e-mails autorizados (checagem no cliente, só por UX — a segurança de verdade
 // está nas regras do Firestore, que precisam ter a mesma lista).
