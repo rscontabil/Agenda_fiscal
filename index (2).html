@@ -1,0 +1,3229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda de Obrigações Fiscais</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --ink:#132A3A;
+  --ink-2:#0B4A45;
+  --paper:#E9EEE6;
+  --surface:#FFFFFF;
+  --line:#D7DCD1;
+  --line-strong:#B9C1B4;
+  --accent:#C1692B;
+  --accent-2:#9C5322;
+  --good:#2E7D5B;
+  --good-bg:#E3F1E9;
+  --bad:#B23A34;
+  --bad-bg:#FBEAE9;
+  --muted:#5C6B67;
+  --gold:#9C7A2E;
+  --gold-bg:#F3ECD9;
+  --radius:10px;
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 100% 2.1em;
+  background-position: 0 7.2em;
+}
+.mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+.display{font-family:'Fraunces', Georgia, serif;}
+
+/* ===== Header ===== */
+header.app{
+  background:var(--ink);
+  color:#F2F0E6;
+  padding:1.1rem 1.4rem 1.3rem;
+  position:sticky;
+  top:0;
+  z-index:30;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
+}
+.header-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+  flex-wrap:wrap;
+}
+.brand{display:flex; align-items:center; gap:.7rem;}
+.brand-mark{
+  width:38px;height:38px;border-radius:8px;
+  background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif; font-weight:700; font-size:1.1rem; color:#1A140D;
+  flex-shrink:0;
+  transform:rotate(-3deg);
+}
+.brand h1{
+  font-family:'Fraunces',serif;
+  font-size:1.35rem;
+  margin:0;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.brand p{margin:.15rem 0 0; font-size:.78rem; color:#B9C4BE; letter-spacing:.3px;}
+
+.controls{display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;}
+.controls input[type=month], .controls select, .controls input[type=number]{
+  background:#0E3B47;
+  border:1px solid #2C5A5C;
+  color:#F2F0E6;
+  padding:.5rem .7rem;
+  border-radius:8px;
+  font-family:'Public Sans',sans-serif;
+  font-size:.85rem;
+}
+.search-box{position:relative;}
+.drive-status{display:flex; align-items:center; cursor:pointer;}
+.search-box input{
+  background:#0E3B47;
+  border:1px solid #2C5A5C;
+  color:#F2F0E6;
+  padding:.5rem .7rem .5rem 2rem;
+  border-radius:8px;
+  font-size:.85rem;
+  width:200px;
+}
+.search-box input::placeholder{color:#8FA39D;}
+.search-box svg{position:absolute; left:.55rem; top:50%; transform:translateY(-50%); opacity:.6;}
+
+.stats-strip{
+  display:flex; gap:1.6rem; margin-top:.9rem; flex-wrap:wrap;
+}
+.stat{display:flex; flex-direction:column; gap:.1rem;}
+.stat.clickable{cursor:pointer; transition:opacity .12s;}
+.stat.clickable:hover{opacity:.65;}
+
+.auth-gate{
+  position:fixed; inset:0; background:var(--bg,#F5F3EC); display:flex; align-items:center; justify-content:center;
+  z-index:300; padding:1rem;
+}
+.auth-gate-card{
+  background:#fff; border-radius:16px; padding:2.2rem 2rem; max-width:360px; width:100%;
+  text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.12);
+}
+.auth-gate-card h2{font-family:'Fraunces',serif; font-size:1.25rem; margin:.2rem 0 .5rem;}
+.auth-gate-card p{font-size:.86rem; color:var(--muted); line-height:1.5; margin:0 0 1.2rem;}
+.auth-gate-error{color:var(--bad); font-size:.8rem; margin-top:.9rem; min-height:1em;}
+.header-user{display:flex; align-items:center; gap:.5rem; font-size:.78rem; color:var(--muted);}
+.header-user button{
+  background:none; border:1px solid var(--line-strong); border-radius:20px; padding:.25rem .7rem;
+  font-size:.74rem; font-weight:600; color:var(--muted); cursor:pointer; font-family:'Public Sans',sans-serif;
+}
+.header-user button:hover{background:#F2F0E6;}
+.stat .num{font-family:'Fraunces',serif; font-size:1.5rem; font-weight:600; color:#F2F0E6;}
+.stat .lbl{font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:#9FB2AB;}
+.stat .num.accent{color:var(--accent);}
+
+/* ===== Tabs (sheet-tab signature) ===== */
+.tabbar{
+  display:flex;
+  gap:2px;
+  padding:0 1.1rem;
+  background:var(--ink);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.tabbar::-webkit-scrollbar{display:none;}
+.tab{
+  position:relative;
+  padding:.6rem 1.15rem .55rem;
+  font-size:.82rem;
+  font-weight:600;
+  white-space:nowrap;
+  cursor:pointer;
+  color:#B9C4BE;
+  background:#0E2836;
+  clip-path: polygon(10% 0, 90% 0, 100% 100%, 0% 100%);
+  transition:background .15s, color .15s;
+  user-select:none;
+}
+.tab:hover{color:#F2F0E6;}
+.tab.active{
+  background:var(--paper);
+  color:var(--ink);
+}
+
+/* ===== Main ===== */
+main{padding:1.4rem;max-width:1180px;margin:0 auto;}
+.sheet{
+  background:var(--surface);
+  border:1px solid var(--line-strong);
+  border-radius:0 8px 8px 8px;
+  padding:1.3rem;
+  box-shadow:0 1px 3px rgba(20,40,35,.06);
+}
+.sheet-title{
+  font-family:'Fraunces',serif;
+  font-size:1.15rem;
+  font-weight:600;
+  margin:0 0 .2rem;
+}
+.sheet-sub{font-size:.82rem; color:var(--muted); margin:0 0 1.1rem;}
+
+/* ===== Company cards ===== */
+.company-list{display:flex; flex-direction:column; gap:.7rem;}
+.card{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:.85rem 1rem;
+  background:#FCFCFA;
+  transition:box-shadow .15s;
+}
+.card:hover{box-shadow:0 2px 8px rgba(20,40,35,.07);}
+.card-top{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;
+}
+.card-name{font-weight:600; font-size:.95rem; line-height:1.3;}
+.card-meta{display:flex; gap:.4rem; align-items:center; margin-top:.25rem; flex-wrap:wrap;}
+.cnpj{font-size:.72rem; color:var(--muted);}
+.badge{
+  font-size:.65rem; font-weight:600; padding:.15rem .5rem; border-radius:20px;
+  text-transform:uppercase; letter-spacing:.04em;
+}
+.badge.trib-SIMPLES, .badge.trib-SIMEI{background:var(--gold-bg); color:var(--gold);}
+.badge.trib-PRESUMIDO{background:#E5EEF3; color:#2A5F79;}
+.badge.trib-REAL{background:#EFE3F0; color:#7A3E7D;}
+.badge.ativ{background:#EEF0E9; color:var(--muted);}
+
+.progress-wrap{display:flex; align-items:center; gap:.55rem; min-width:150px;}
+.progress-bar{
+  width:110px; height:7px; border-radius:6px; background:var(--line); overflow:hidden;
+}
+.progress-fill{height:100%; background:var(--accent); border-radius:6px; transition:width .25s;}
+.progress-fill.done{background:var(--good);}
+.progress-pct{font-size:.76rem; font-weight:600; color:var(--muted); font-family:'IBM Plex Mono',monospace; min-width:34px; text-align:right;}
+
+.stamp{
+  font-family:'Fraunces',serif; font-weight:700; font-size:.62rem; letter-spacing:.06em;
+  color:var(--good); border:1.5px dashed var(--good); border-radius:6px;
+  padding:.15rem .4rem; transform:rotate(-4deg); text-transform:uppercase;
+}
+
+.items-row{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.7rem;}
+.mei-actions{display:flex; gap:.5rem; margin-top:.6rem; flex-wrap:wrap;}
+.item-pill{
+  display:flex; align-items:center; gap:.4rem;
+  border:1px solid var(--line); border-radius:20px;
+  padding:.32rem .65rem .32rem .5rem;
+  font-size:.78rem; cursor:pointer; background:#fff;
+  transition:background .12s, border-color .12s;
+}
+.item-pill:hover{border-color:var(--line-strong);}
+.item-pill input{accent-color:var(--good); width:14px; height:14px; cursor:pointer;}
+.item-pill.checked{background:var(--good-bg); border-color:#BFE0CD; color:var(--good); font-weight:600;}
+.item-pill.checked span.tick{color:var(--good);}
+
+.empty-note{color:var(--muted); font-size:.85rem; padding:1.5rem 0; text-align:center;}
+
+/* ===== Painel ===== */
+.painel-header-row{display:flex; justify-content:space-between; align-items:flex-start; gap:.8rem; flex-wrap:wrap; margin-bottom:1rem;}
+.painel-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem; margin-bottom:1.4rem;}
+.painel-card{
+  border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
+}
+.painel-card.clickable{cursor:pointer; transition:border-color .12s, background .12s;}
+.painel-card.clickable:hover{border-color:var(--accent); background:#F8F7F2;}
+.painel-card .num{font-family:'Fraunces',serif; font-size:1.9rem; font-weight:600;}
+.painel-card .lbl{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.15rem;}
+.painel-card .sub{font-size:.72rem; color:var(--muted); margin-top:.5rem; display:flex; flex-direction:column; gap:.15rem;}
+
+.pending-list{display:flex; flex-direction:column; gap:.5rem;}
+.pending-row{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  border:1px solid var(--line); border-radius:8px; padding:.55rem .8rem; background:#FCFCFA;
+}
+.pending-row .name{font-size:.85rem; font-weight:600;}
+.pending-row .go{
+  font-size:.72rem; font-weight:600; color:var(--accent); cursor:pointer; white-space:nowrap;
+}
+.pending-row .go:hover{text-decoration:underline;}
+
+/* ===== Empresas (CRUD) ===== */
+.emp-toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:.7rem; flex-wrap:wrap;}
+.btn{
+  background:var(--ink); color:#F2F0E6; border:none; padding:.55rem 1rem;
+  border-radius:8px; font-size:.82rem; font-weight:600; cursor:pointer;
+  font-family:'Public Sans',sans-serif;
+}
+.btn:hover{background:#0E3B47;}
+.btn.accent{background:var(--accent);}
+.btn.accent:hover{background:var(--accent-2);}
+.btn.ghost{background:transparent; color:var(--muted); border:1px solid var(--line-strong);}
+.btn.ghost:hover{background:#F2F0E6;}
+.btn.small{padding:.35rem .65rem; font-size:.74rem;}
+.btn.danger{background:transparent; color:var(--bad); border:1px solid #E8C6C4;}
+.btn.danger:hover{background:var(--bad-bg);}
+.btn.solid-danger{background:var(--bad); color:#fff;}
+.btn.solid-danger:hover{background:#8F2E29;}
+
+table.emp-table{width:100%; border-collapse:collapse; font-size:.83rem;}
+table.emp-table th{
+  text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--muted); padding:.5rem .5rem; border-bottom:2px solid var(--line-strong);
+}
+table.emp-table td{padding:.55rem .5rem; border-bottom:1px solid var(--line); vertical-align:middle;}
+table.emp-table tr:hover td{background:#FBFAF6;}
+.flags{display:flex; gap:.3rem;}
+.flag-dot{
+  width:20px;height:20px;border-radius:50%; display:flex;align-items:center;justify-content:center;
+  font-size:.62rem; font-weight:700; color:#fff; opacity:.25;
+}
+.flag-dot.on{opacity:1;}
+.flag-dot.folha{background:#2A5F79;}
+.flag-dot.contab{background:var(--good);}
+.flag-dot.suframa{background:var(--gold);}
+
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(19,42,58,.45); display:flex; align-items:center; justify-content:center;
+  z-index:50; padding:1rem;
+}
+.modal{
+  background:#fff; border-radius:12px; padding:1.4rem; width:100%; max-width:560px;
+  box-shadow:0 10px 40px rgba(0,0,0,.25);
+  max-height:88vh; overflow-y:auto;
+}
+.modal h3{font-family:'Fraunces',serif; margin:0 0 1rem; font-size:1.1rem;}
+.form-grid{display:flex; flex-direction:column; gap:.7rem;}
+.form-row{display:flex; flex-direction:column; gap:.3rem;}
+.form-row label{font-size:.72rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;}
+.form-row input, .form-row select{
+  padding:.5rem .6rem; border:1px solid var(--line-strong); border-radius:7px; font-size:.85rem;
+  font-family:'Public Sans',sans-serif;
+}
+.form-cols{display:flex; gap:.7rem;}
+.form-cols .form-row{flex:1;}
+.modal-actions{display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.2rem;}
+
+.oblig-section-title{font-family:'Fraunces',serif; font-size:1rem; font-weight:600; margin:.4rem 0 0;}
+.oblig-section-sub{font-size:.76rem; color:var(--muted); margin:.1rem 0 .3rem;}
+.oblig-regime-label{font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--accent-2); margin:.2rem 0 .35rem;}
+.oblig-toggles{display:flex; gap:1.2rem; flex-wrap:wrap; margin:.9rem 0 .2rem; padding-top:.7rem; border-top:1px dashed var(--line-strong);}
+.oblig-toggle{display:flex; align-items:center; gap:.4rem; font-size:.83rem; font-weight:600; color:var(--ink); cursor:pointer; text-transform:none;}
+.oblig-toggle input{width:15px; height:15px; accent-color:var(--accent); cursor:pointer;}
+.oblig-toggle-block{margin-top:.2rem; margin-bottom:.2rem;}
+.oblig-group{border:1px solid var(--line); border-radius:8px; padding:.65rem .75rem; margin-bottom:.55rem; background:#FCFCFA;}
+
+.config-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;}
+
+.envio-warn{
+  background:var(--gold-bg); color:#7A5F1F; border:1px solid #E3D3A0; border-radius:8px;
+  padding:.7rem .9rem; font-size:.82rem; margin-bottom:1rem;
+}
+.envio-warn a{color:var(--accent-2); font-weight:600;}
+.envio-dropzone{
+  border:2px dashed var(--line-strong); border-radius:12px; padding:2rem 1rem; text-align:center;
+  margin-bottom:1.2rem; transition:background .12s, border-color .12s;
+}
+.envio-dropzone.dragover{background:var(--gold-bg); border-color:var(--accent);}
+.envio-dropzone-inner{font-size:.9rem; color:var(--muted);}
+.envio-list{display:flex; flex-direction:column; gap:.6rem; margin-bottom:1rem;}
+.envio-row{
+  display:flex; gap:.6rem; align-items:flex-start; border:1px solid var(--line); border-radius:10px;
+  padding:.7rem .8rem; background:#FCFCFA;
+}
+.envio-row-check{padding-top:.2rem;}
+.envio-row-check input{width:15px; height:15px; cursor:pointer;}
+.envio-row-main{flex:1; min-width:0;}
+.envio-row-name{font-size:.83rem; font-weight:600; margin-bottom:.4rem; word-break:break-word;}
+.envio-row-selects{display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.4rem;}
+.envio-row-selects select{
+  padding:.35rem .5rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; max-width:220px;
+}
+.envio-meta-input{
+  padding:.35rem .5rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; max-width:140px;
+}
+.envio-badge{
+  display:inline-block; font-size:.72rem; font-weight:600; padding:.15rem .55rem; border-radius:20px;
+  margin-bottom:.3rem;
+}
+.envio-badge-processing{background:#EEF0E9; color:var(--muted);}
+.envio-badge-warn{background:var(--gold-bg); color:#7A5F1F;}
+.envio-badge-error{background:var(--bad-bg); color:var(--bad);}
+.envio-badge-sent{background:var(--good-bg); color:var(--good);}
+.envio-preview{
+  font-size:.76rem; color:var(--muted); background:#F5F4EF; border-radius:6px; padding:.5rem .6rem;
+  margin-top:.3rem; line-height:1.5;
+}
+.envio-remove-btn{flex-shrink:0; font-size:1.1rem;}
+.envio-footer{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem;}
+.envio-footer-info{font-size:.8rem; color:var(--muted);}
+
+.modal-wide{max-width:760px;}
+.imp-summary{font-size:.84rem; color:var(--muted); margin-bottom:.9rem; line-height:1.5;}
+.imp-summary strong{color:var(--ink);}
+.imp-list{display:flex; flex-direction:column; gap:.6rem; margin-bottom:1rem; max-height:52vh; overflow-y:auto; padding-right:.2rem;}
+.imp-row{
+  display:flex; gap:.6rem; align-items:flex-start; border:1px solid var(--line); border-radius:10px;
+  padding:.7rem .8rem; background:#FCFCFA;
+}
+.imp-row.is-dup{background:var(--gold-bg); border-color:#E3D3A0;}
+.imp-row-check{padding-top:.2rem;}
+.imp-row-check input{width:15px; height:15px; cursor:pointer;}
+.imp-row-main{flex:1; min-width:0;}
+.imp-row-name{font-size:.85rem; font-weight:700; margin-bottom:.15rem; word-break:break-word;}
+.imp-row-meta{font-size:.72rem; color:var(--muted); line-height:1.5; margin-bottom:.45rem;}
+.imp-row-meta .mono{font-family:'JetBrains Mono',monospace;}
+.imp-row-selects{display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.35rem;}
+.imp-row-selects select{
+  padding:.35rem .5rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif;
+}
+.imp-badge{
+  display:inline-block; font-size:.7rem; font-weight:700; padding:.15rem .55rem; border-radius:20px;
+  margin-bottom:.35rem;
+}
+.imp-badge-dup{background:#E3D3A0; color:#7A5F1F;}
+.imp-badge-new{background:var(--good-bg); color:var(--good);}
+.imp-dropzone{
+  border:2px dashed var(--line-strong); border-radius:12px; padding:1.8rem 1rem; text-align:center;
+  margin-bottom:.2rem;
+}
+.imp-dropzone-inner{font-size:.86rem; color:var(--muted); line-height:1.6;}
+
+.doctype-list{display:flex; flex-direction:column; gap:.6rem; margin-bottom:.8rem;}
+.doctype-card{border:1px solid var(--line-strong); border-radius:10px; padding:.8rem 1rem; background:#FCFCFA;}
+.doctype-card-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;}
+.doctype-card-name{font-family:'Fraunces',serif; font-weight:600; font-size:.95rem;}
+.doctype-card-kw{font-size:.78rem; color:var(--muted); margin-bottom:.2rem;}
+.doctype-card-subject{font-size:.78rem; color:var(--ink); margin-top:.3rem;}
+
+.demanda-toolbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; gap:.7rem; flex-wrap:wrap;}
+.demanda-filters{display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;}
+.demanda-filter-chip{
+  background:#FFFFFF; border:1px solid var(--line-strong); color:var(--muted);
+  padding:.35rem .75rem; border-radius:20px; font-size:.78rem; font-weight:600; cursor:pointer;
+}
+.demanda-filter-chip:hover{background:#F2F0E6;}
+.demanda-filter-chip.active{background:var(--ink); color:#F2F0E6; border-color:var(--ink);}
+.demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
+.demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
+.demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
+.demanda-card-title{font-weight:600; font-size:.9rem; margin-bottom:.2rem;}
+.demanda-card-meta{font-size:.74rem; color:var(--muted);}
+.demanda-status-select{
+  padding:.3rem .55rem; border-radius:20px; font-size:.74rem; font-weight:600; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif;
+}
+.demanda-status-select.status-aberta{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
+.demanda-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
+.demanda-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.demanda-message{font-size:.83rem; color:var(--ink); line-height:1.5; margin-top:.55rem; white-space:pre-wrap; word-break:break-word;}
+.demanda-card-actions{display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-top:.5rem; border-top:1px dashed var(--line); padding-top:.4rem; flex-wrap:wrap;}
+.demanda-resp-select{
+  padding:.3rem .55rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif; color:var(--muted); max-width:200px;
+}
+.config-category{border:1px solid var(--line-strong); border-radius:10px; padding:1rem; background:#FCFCFA;}
+.config-category-title{font-family:'Fraunces',serif; font-weight:600; font-size:1rem; margin-bottom:.6rem; color:var(--ink-2);}
+.oblig-manage-label{font-size:.82rem; color:var(--ink);}
+
+.drive-panel{
+  border:1px solid var(--line-strong); border-radius:10px; padding:1.1rem; background:#FCFCFA;
+  margin-bottom:1.3rem;
+}
+.drive-panel-title{font-family:'Fraunces',serif; font-weight:600; font-size:1.05rem; margin-bottom:.3rem; color:var(--ink-2);}
+.drive-panel-sub{font-size:.78rem; color:var(--muted); margin-bottom:.8rem;}
+.drive-row{display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; margin-bottom:.7rem;}
+.drive-row input[type=text]{
+  flex:1; min-width:220px; padding:.5rem .65rem; border:1px solid var(--line-strong); border-radius:7px;
+  font-size:.82rem; font-family:'IBM Plex Mono',monospace;
+}
+.drive-status-badge{
+  display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; font-weight:600;
+  padding:.3rem .7rem; border-radius:20px;
+}
+.drive-status-badge::before{content:'●'; font-size:.6rem;}
+.drive-status-badge.drive-off{background:#EEF0E9; color:var(--muted);}
+.drive-status-badge.drive-connecting{background:var(--gold-bg); color:var(--gold);}
+.drive-status-badge.drive-on{background:var(--good-bg); color:var(--good);}
+.drive-status-badge.drive-error{background:var(--bad-bg); color:var(--bad);}
+.drive-note{font-size:.74rem; color:var(--muted); line-height:1.5; margin-top:.4rem;}
+.oblig-items{display:flex; flex-direction:column; gap:.3rem; margin-bottom:.45rem;}
+.oblig-check-row{display:flex; align-items:center; justify-content:space-between; gap:.5rem;}
+.oblig-step-num{
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:18px; height:18px; border-radius:50%; background:var(--ink); color:#F2F0E6;
+  font-size:.65rem; font-weight:700; font-family:'IBM Plex Mono',monospace;
+}
+.oblig-row-label-group{display:flex; align-items:center; gap:.45rem; min-width:0; flex:1;}
+.oblig-row-label-group .oblig-edit-input{flex:1; min-width:0;}
+.item-pill .oblig-step-num{background:var(--muted); opacity:.55;}
+.item-pill.checked .oblig-step-num{background:var(--good); opacity:1;}
+.oblig-check{display:flex; align-items:center; gap:.45rem; font-size:.82rem; color:var(--ink); cursor:pointer;}
+.oblig-check input{accent-color:var(--good); width:14px; height:14px; cursor:pointer;}
+.oblig-row-actions{display:flex; gap:.15rem; flex-shrink:0;}
+.oblig-icon-btn{
+  background:transparent; border:none; color:var(--muted); font-size:1rem; line-height:1;
+  cursor:pointer; padding:.1rem .4rem; border-radius:5px; flex-shrink:0;
+}
+.oblig-icon-btn:hover{background:#EEF0E9; color:var(--ink);}
+.oblig-del-btn:hover{background:var(--bad-bg); color:var(--bad);}
+.oblig-save-btn{color:var(--good);}
+.oblig-save-btn:hover{background:var(--good-bg); color:var(--good);}
+.oblig-editing{gap:.4rem;}
+.oblig-edit-input{
+  flex:1; padding:.3rem .5rem; border:1px solid var(--accent); border-radius:6px; font-size:.82rem;
+  font-family:'Public Sans',sans-serif;
+}
+.oblig-add{display:flex; gap:.4rem; border-top:1px dashed var(--line); padding-top:.45rem; flex-wrap:wrap; align-items:center;}
+.oblig-add .btn{flex-shrink:0; white-space:nowrap;}
+.oblig-new-input{
+  flex:1 1 140px; min-width:0; padding:.35rem .55rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; box-sizing:border-box;
+}
+
+@media (max-width:640px){
+  .header-row{flex-direction:column;}
+  .controls{width:100%;}
+  .search-box input{width:100%;}
+  main{padding:.8rem;}
+  .sheet{padding:1rem;}
+  .progress-bar{width:70px;}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;}
+}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="authGate" class="auth-gate">
+  <div class="auth-gate-card">
+    <div class="brand-mark" style="margin:0 auto .8rem;">RS</div>
+    <h2>Agenda de Obrigações Fiscais</h2>
+    <p>Entre com a conta Google autorizada da equipe para continuar.</p>
+    <button id="btnGoogleLogin" class="btn accent" type="button">Entrar com Google</button>
+    <div id="authGateError" class="auth-gate-error"></div>
+  </div>
+</div>
+
+<header class="app">
+  <div class="header-row">
+    <div class="brand">
+      <div class="brand-mark">RS</div>
+      <div>
+        <h1>Agenda de Obrigações Fiscais</h1>
+        <p>Checklist mensal &amp; anual por empresa</p>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="header-user" id="headerUser" style="display:none;">
+        <span id="headerUserEmail"></span>
+        <button type="button" id="btnLogout">Sair</button>
+      </div>
+      <div class="drive-status" id="headerDriveStatus" title="Ir para Configurações › Gmail">
+        <span class="drive-status-badge drive-off" id="headerDriveBadge">✉️ Gmail não conectado</span>
+      </div>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B9C4BE" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar empresa ou CNPJ…">
+      </div>
+      <input id="monthInput" type="month">
+      <select id="yearInput" style="display:none;"></select>
+    </div>
+  </div>
+  <div class="stats-strip" id="statsStrip"></div>
+</header>
+
+<nav class="tabbar" id="tabbar"></nav>
+
+<main>
+  <div class="sheet" id="sheetContent"></div>
+</main>
+
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+
+<script>
+(function(){
+
+/* ---------- Seed data (extraído da planilha anexada) ---------- */
+const SEED_COMPANIES = [{"id": "c1", "cnpj": "52.537.227/0001-74", "nome": "AGROCAMPOS COMERCIO ATACADISTA DE MAQUINAS, EQUIPAMENTOS AGROPECUARIOS, MATERIAL DECONSTRUCAO LTDA.", "trib": "PRESUMIDO", "ativ": "COMÉRCIO", "folha": false, "contab": true, "suframa": false, "ativa": true}, {"id": "c2", "cnpj": "04.475.299/0001-91", "nome": "AMAZONAS KENEL CLUBE", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c3", "cnpj": "26.155.022/0001-14", "nome": "AXPEM COM E SERV DE CALIBRAÇÃO E MANUT DE INST DE MEDIÇÃO LTDA.", "trib": "PRESUMIDO", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c4", "cnpj": "13.180.736/0001-30", "nome": "C M W CONSTRUCOES DE EDIFICIOS LTDA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c5", "cnpj": "24.200.803/0001-58", "nome": "DAVID PINHEIRO DA SILVA", "trib": "PRESUMIDO", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c6", "cnpj": "35.977.071/0001-23", "nome": "D F COMERCIO DE HORTIFRUTI LTDA", "trib": "PRESUMIDO", "ativ": "COMÉRCIO", "folha": false, "contab": true, "suframa": false, "ativa": true}, {"id": "c7", "cnpj": "48.889.866/0001-21", "nome": "DISTRIBUIDORA GOIAS REPRESENTACAO E COMERCIO ATACADISTA DE MATERIAIS ELETRICOS LTDA.", "trib": "PRESUMIDO", "ativ": "COMÉRCIO", "folha": false, "contab": false, "suframa": true, "ativa": true}, {"id": "c8", "cnpj": "04.355.608/0001-90", "nome": "J A LEITE NAVEGACAO LTDA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c9", "cnpj": "40.153.500/0001-88", "nome": "JB REPRESENTACAO COMERCIO E SERVICO ELETROELETRONICOS LTDA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c10", "cnpj": "35.777.647/0001-09", "nome": "JOSE FELIPE VASQUES PICANÇO", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c11", "cnpj": "36.309.422/0001-90", "nome": "JULIANA BERNARDES SANTOS EIRELI", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c12", "cnpj": "66.812.527/0001-29", "nome": "K D CONSTRUCOES E INCORPORADORA LTDA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c13", "cnpj": "40.499.994/0001-57", "nome": "LUISAGNIS VIRGINIA BARRADA CARABALLO", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c14", "cnpj": "26.719.271/0001-95", "nome": "MARCIO ROBERTO DA SILVA JORGE - ME", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c15", "cnpj": "51.568.921/0002-77", "nome": "OXIMIG INDUSTRIA E COMERCIO LTDA", "trib": "PRESUMIDO", "ativ": "INDÚSTRIA", "folha": false, "contab": false, "suframa": true, "ativa": true}, {"id": "c16", "cnpj": "40.899.721/0001-08", "nome": "ROBERTO CARLOS LEANDRO SOARES SOCIEDADE INDIVIDUAL DE ADVOCACIA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c17", "cnpj": "11.570.525/0001-89", "nome": "RS CONTABILIDADE E CONSULTORIA EMPRERSARIAL LTDA.", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c18", "cnpj": "64.738.209/0001-30", "nome": "ZACA EMPREENDIMENTOS E ACESSORIA CONTABIL LTDA", "trib": "PRESUMIDO", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c19", "cnpj": "07.976.315/0001-18", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c20", "cnpj": "07.976.315/0002-07", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c21", "cnpj": "07.976.315/0004-60", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c22", "cnpj": "07.976.315/0005-41", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c23", "cnpj": "07.976.315/0006-22", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c24", "cnpj": "07.976.315/0007-03", "nome": "ARTESA FARMACIA DE MANIPULACAO LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c25", "cnpj": "00.377.079/0001-74", "nome": "POLE- TEC SERVICOS ELETRICOS E MECANICOS LTDA", "trib": "REAL", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c26", "cnpj": "59.115.513/0001-90", "nome": "59.115.513 MAISA COSTA DE SOUZA", "trib": "SIMEI", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c27", "cnpj": "30.048.321/0001-27", "nome": "CATIA MARIA PAIVA SILVA", "trib": "SIMEI", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c28", "cnpj": "53.970.047/0001-44", "nome": "IZI CATERINI PAIVA ALVES MARTINELLI DOS SANTOS", "trib": "SIMEI", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c29", "cnpj": "43.233.653/0001-23", "nome": "AL3 C VAR E ATA DE ART REL E ARM LTDA.", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c30", "cnpj": "13.523.257/0001-70", "nome": "AMAZON CONTABILIDADE E CONSULTORIA LTDA.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c31", "cnpj": "35.706.683/0001-81", "nome": "ANDREA PAMELLA SOUZA DOS ANJOS", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c32", "cnpj": "34.939.582/0001-98", "nome": "C L COMERCIO E REPRESENTACAO DE PRODUTOS ALIMENTICIOS EIRELI.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c33", "cnpj": "44.762.582/0001-19", "nome": "C L REPRESENTAÇÃO DE PRODUTOS ALIMENTICIOS LTDA.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c34", "cnpj": "02.300.845/0001-28", "nome": "CONSERE CONSTRUCAO DE EDIFICIOS, SERVICOS DE ENGENHARIA E EVENTOS LTDA.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c35", "cnpj": "55.858.078/0001-33", "nome": "E. F. BARBOSA JUNIOR LTDA.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c36", "cnpj": "60.953.909/0001-96", "nome": "EF LAVANDERIA E HIGIENIZACAO LTDA", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c37", "cnpj": "05.778.405/0002-50", "nome": "GARRA COMERCIO E LOGISTICA LTDA", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c38", "cnpj": "43.921.453/0001-63", "nome": "J R CONSULTORIA E APOIO ADMINISTRATIVO LTDA.", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c39", "cnpj": "24.696.490/0001-70", "nome": "JOHN KLEITON AQUINO PEREIRA", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c40", "cnpj": "37.781.891/0001-70", "nome": "JOHNIFER SOUZA LACERDA", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c41", "cnpj": "44.342.738/0001-02", "nome": "L D NOGUEIRA", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c42", "cnpj": "36.610.375/0001-10", "nome": "LIDIANE NASCIMENTO CARVALHO", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c43", "cnpj": "30.798.749/0001-97", "nome": "M. F. AGUIAR JUNIOR ME", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c44", "cnpj": "07.982.831/0001-55", "nome": "M. L. S. SOUZA INDUSTRIA E COMERCIO ATACADISTA DE CALCADOS E BOLSAS LTDA.", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c45", "cnpj": "58.725.453/0001-65", "nome": "POLE F TEC SERVICOS MECANICOS LTDA", "trib": "SIMPLES", "ativ": "COMÉRCIO/SERVIÇO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c46", "cnpj": "41.298.584/0001-00", "nome": "RC APOIO ADMINISTRATIVO LTDA", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c47", "cnpj": "09.505.056/0001-72", "nome": "RODRIGO S. DE PINHEIRO ME", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": true, "ativa": true}, {"id": "c48", "cnpj": "65.766.390/0001-50", "nome": "VENDAS FACIL AM, COMERCIOVAREJISTA DE PRODUTOS ALIMENTICIOS LTDA", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c49", "cnpj": "38.144.080/0001-21", "nome": "W. F. AZEVEDO", "trib": "SIMPLES", "ativ": "SERVIÇO", "folha": true, "contab": true, "suframa": false, "ativa": true}, {"id": "c50", "cnpj": "32.320.676/0001-59", "nome": "WANGELA FERNANDA LACERDA OLIVEIRA", "trib": "SIMPLES", "ativ": "COMÉRCIO", "folha": true, "contab": true, "suframa": false, "ativa": true}];
+
+const TABS = [
+  {id:'painel', label:'Painel'},
+  {id:'demandas', label:'Demandas'},
+  {id:'simples', label:'Simples Nacional'},
+  {id:'mei', label:'MEI'},
+  {id:'presumido_real', label:'Presumido e Real'},
+  {id:'folha', label:'Folha'},
+  {id:'suframa', label:'SUFRAMA'},
+  {id:'contabil', label:'Contábil'},
+  {id:'parcelamentos', label:'Parcelamentos'},
+  {id:'anual', label:'Anual'},
+  {id:'envio', label:'Envio de Documentos'},
+  {id:'empresas', label:'Empresas'},
+  {id:'config', label:'Configurações'},
+];
+
+const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+let state = null;
+let activeTab = 'painel';
+let searchQuery = '';
+let now = new Date();
+let selectedMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+let selectedYear = String(now.getFullYear());
+let saveTimer = null;
+let envioItems = [];
+let envioSending = false;
+let importItems = [];
+
+/* ---------- Firebase (login por pessoa + banco de dados em tempo real) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyAMOXM022qK86jICyJ0fbVsFaMLG2seXdo",
+  authDomain: "agenda-fiscal-4f3af.firebaseapp.com",
+  projectId: "agenda-fiscal-4f3af",
+  storageBucket: "agenda-fiscal-4f3af.firebasestorage.app",
+  messagingSenderId: "1052084312197",
+  appId: "1:1052084312197:web:829e42e57d4340c4f231ec"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Lista de e-mails autorizados (checagem no cliente, só por UX — a segurança de verdade
+// está nas regras do Firestore, que precisam ter a mesma lista).
+const ALLOWED_EMAILS = ['rscontabilidade79@gmail.com', 'jt.pimentel26@gmail.com'];
+
+let currentUser = null;
+let firestoreUnsub = null;
+
+function showAuthGate(message){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('headerUser').style.display = 'none';
+  const err = document.getElementById('authGateError');
+  err.textContent = message || '';
+}
+function hideAuthGate(){
+  document.getElementById('authGate').style.display = 'none';
+}
+
+document.getElementById('btnGoogleLogin').addEventListener('click', async ()=>{
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try{
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    console.error('Erro no login', e);
+    showAuthGate('Não foi possível entrar (' + (e.code || e.message) + '). Tente novamente.');
+  }
+});
+document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  if(firestoreUnsub){ firestoreUnsub(); firestoreUnsub = null; }
+  await auth.signOut();
+});
+
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    const email = (user.email || '').toLowerCase();
+    if(!ALLOWED_EMAILS.includes(email)){
+      showAuthGate('Esse e-mail (' + user.email + ') não tem acesso a este aplicativo. Fale com o administrador.');
+      await auth.signOut();
+      return;
+    }
+    currentUser = user;
+    hideAuthGate();
+    document.getElementById('headerUser').style.display = 'flex';
+    document.getElementById('headerUserEmail').textContent = user.email;
+    await loadState();
+    renderAll();
+    tryAutoReconnectDrive();
+  } else {
+    currentUser = null;
+    showAuthGate();
+  }
+});
+
+/* ---------- Storage (dados salvos no Firestore, em tempo real para toda a equipe) ---------- */
+const STORAGE_KEY = 'agenda-obrigacoes-fiscais-v1'; // usado só como cache local de apoio, não é mais a fonte principal
+
+function storageGet(key){
+  try{ return window.localStorage.getItem(key); }
+  catch(e){ console.warn('localStorage indisponível, os dados não serão salvos entre sessões.', e); return null; }
+}
+function storageSet(key, value){
+  try{ window.localStorage.setItem(key, value); return true; }
+  catch(e){ console.warn('localStorage indisponível, os dados não serão salvos entre sessões.', e); return false; }
+}
+
+function migrateState(){
+  let changed = false;
+  state.monthly = state.monthly || {};
+  state.annual = state.annual || {};
+  state.obligations = state.obligations || [];
+  state.docTypes = state.docTypes || [];
+  state.demandas = state.demandas || [];
+  state.users = state.users || [];
+  DEFAULT_OBLIGATIONS.forEach(d=>{
+    if(!state.obligations.find(o=>o.id===d.id)){ state.obligations.push({...d}); changed = true; }
+  });
+  if(state.docTypes.length===0 && !state.docTypesInitialized){
+    DEFAULT_DOC_TYPES.forEach(d=>state.docTypes.push({...d}));
+    state.docTypesInitialized = true;
+    changed = true;
+  } else {
+    DEFAULT_DOC_TYPES.forEach(d=>{
+      if(!state.docTypes.find(dt=>dt.id===d.id)){ state.docTypes.push({...d}); changed = true; }
+    });
+  }
+  state.companies.forEach(c=>{
+    if(!c.obligations){ c.obligations = computeDefaultObligations(c); changed = true; }
+    if(c.anual===undefined){ c.anual = true; changed = true; }
+    if(c.parcelamentos===undefined){ c.parcelamentos = false; changed = true; }
+  });
+  if(!state.meiMigrated){
+    state.companies.forEach(c=>{
+      if(c.trib==='SIMEI' && Array.isArray(c.obligations)){
+        if(c.obligations.some(id=>id.startsWith('simples__'))){
+          c.obligations = c.obligations.filter(id=>!id.startsWith('simples__'));
+          if(!c.obligations.includes('mei__das')) c.obligations.push('mei__das');
+          if(!c.obligations.includes('mei__nfe')) c.obligations.push('mei__nfe');
+          changed = true;
+        }
+        if(c.obligations.includes('anual__defis')){
+          c.obligations = c.obligations.filter(id=>id!=='anual__defis');
+          if(!c.obligations.includes('anual__dasn')) c.obligations.push('anual__dasn');
+          changed = true;
+        }
+      }
+    });
+    state.meiMigrated = true;
+    changed = true;
+  }
+  return changed;
+}
+
+function firestoreDocRef(){
+  return db.collection('appData').doc('main');
+}
+
+async function loadState(){
+  if(firestoreUnsub){ firestoreUnsub(); firestoreUnsub = null; }
+  let firstLoadResolved = false;
+  return new Promise((resolve)=>{
+    firestoreUnsub = firestoreDocRef().onSnapshot(async (snap)=>{
+      try{
+        if(!snap.exists){
+          const cachedRaw = storageGet(STORAGE_KEY);
+          let seeded = null;
+          if(cachedRaw){
+            try{ seeded = JSON.parse(cachedRaw); }catch(e){ seeded = null; }
+          }
+          if(seeded && Array.isArray(seeded.companies) && seeded.companies.length){
+            state = seeded;
+            migrateState();
+          } else {
+            state = {
+              companies: SEED_COMPANIES.map(c=>({...c})),
+              monthly:{},
+              annual:{},
+              obligations: DEFAULT_OBLIGATIONS.map(o=>({...o})),
+              docTypes: DEFAULT_DOC_TYPES.map(d=>({...d})),
+              docTypesInitialized: true,
+              demandas: [],
+              users: [],
+            };
+            state.companies.forEach(c=>{ c.obligations = computeDefaultObligations(c); c.anual = true; c.parcelamentos = false; });
+          }
+          await firestoreDocRef().set(state);
+        } else {
+          state = snap.data() || {};
+          const changed = migrateState();
+          if(changed) persist();
+        }
+        storageSet(STORAGE_KEY, JSON.stringify(state)); // cache local de apoio (não autoritativo)
+      }catch(e){
+        console.error('Erro carregando dados do Firestore', e);
+      }
+      if(!firstLoadResolved){
+        firstLoadResolved = true;
+        resolve();
+      } else {
+        renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe)
+      }
+    }, (err)=>{
+      console.error('Erro de conexão com o Firestore', err);
+      if(!firstLoadResolved){ firstLoadResolved = true; resolve(); }
+    });
+  });
+}
+
+function persist(){
+  clearTimeout(saveTimer);
+  return new Promise(resolve=>{
+    saveTimer = setTimeout(async ()=>{
+      state.lastEditedBy = currentUser ? currentUser.email : null;
+      state.lastEditedAt = new Date().toISOString();
+      try{
+        await firestoreDocRef().set(state);
+      }catch(e){
+        console.error('Erro ao salvar no Firestore', e);
+      }
+      resolve();
+    }, 250);
+  });
+}
+
+/* ---------- Conexão Google para envio de e-mail (Gmail) ---------- */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+const DRIVE_CLIENT_ID_KEY = 'agenda-drive-client-id';
+const DRIVE_CONNECTED_KEY = 'agenda-drive-connected';
+
+let driveTokenClient = null;
+let driveAccessToken = null;
+let driveStatus = 'disconnected'; // disconnected | connecting | connected | error
+let driveLastSync = null;
+let driveErrorMsg = '';
+
+function getDriveClientId(){ return storageGet(DRIVE_CLIENT_ID_KEY) || ''; }
+function setDriveClientId(id){ storageSet(DRIVE_CLIENT_ID_KEY, id); }
+
+function loadGsiScript(){
+  return new Promise((resolve, reject)=>{
+    if(window.google && window.google.accounts && window.google.accounts.oauth2){ resolve(); return; }
+    let attempts = 0;
+    const check = setInterval(()=>{
+      attempts++;
+      if(window.google && window.google.accounts && window.google.accounts.oauth2){
+        clearInterval(check); resolve();
+      } else if(attempts > 40){
+        clearInterval(check); reject(new Error('Não foi possível carregar o serviço de login do Google. Verifique sua conexão com a internet.'));
+      }
+    }, 250);
+  });
+}
+
+async function initDriveTokenClient(){
+  const clientId = getDriveClientId();
+  if(!clientId) throw new Error('Cole o Client ID do Google antes de conectar.');
+  await loadGsiScript();
+  if(!driveTokenClient || driveTokenClient.__clientId !== clientId){
+    driveTokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: ()=>{},
+    });
+    driveTokenClient.__clientId = clientId;
+  }
+  return driveTokenClient;
+}
+
+function requestDriveToken(promptMode){
+  return new Promise((resolve, reject)=>{
+    initDriveTokenClient().then(client=>{
+      client.callback = (resp)=>{
+        if(resp && resp.access_token){
+          driveAccessToken = resp.access_token;
+          resolve(resp.access_token);
+        } else {
+          reject(new Error((resp && resp.error) || 'Não foi possível obter permissão de acesso ao Drive.'));
+        }
+      };
+      client.error_callback = (err)=>{ reject(new Error((err && err.type) || 'Login cancelado ou não autorizado.')); };
+      client.requestAccessToken({ prompt: promptMode });
+    }).catch(reject);
+  });
+}
+
+async function driveFetch(url, options){
+  options = options || {};
+  options.headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + driveAccessToken });
+  let res = await fetch(url, options);
+  if(res.status===401){
+    await requestDriveToken('');
+    options.headers.Authorization = 'Bearer ' + driveAccessToken;
+    res = await fetch(url, options);
+  }
+  return res;
+}
+
+async function connectDrive(){
+  driveStatus = 'connecting';
+  driveErrorMsg = '';
+  updateDriveStatusUI();
+  try{
+    await requestDriveToken('consent');
+    driveStatus = 'connected';
+    driveLastSync = new Date();
+    storageSet(DRIVE_CONNECTED_KEY, '1');
+  }catch(e){
+    console.error('Erro ao conectar ao Gmail', e);
+    driveStatus = 'error';
+    driveErrorMsg = e.message || 'Erro desconhecido.';
+  }
+  updateDriveStatusUI();
+}
+
+function disconnectDrive(){
+  driveAccessToken = null;
+  driveStatus = 'disconnected';
+  driveErrorMsg = '';
+  storageSet(DRIVE_CONNECTED_KEY, '');
+  updateDriveStatusUI();
+}
+
+async function tryAutoReconnectDrive(){
+  if(storageGet(DRIVE_CONNECTED_KEY)!=='1') return;
+  if(!getDriveClientId()) return;
+  driveStatus = 'connecting';
+  updateDriveStatusUI();
+  try{
+    await requestDriveToken('');
+    driveStatus = 'connected';
+    driveLastSync = new Date();
+  }catch(e){
+    console.warn('Reconexão automática ao Gmail não foi possível (normal se a sessão expirou):', e.message);
+    driveStatus = 'disconnected';
+  }
+  updateDriveStatusUI();
+}
+
+/* ---------- Document automation: PDF reading, recognition, Gmail sending ---------- */
+function ensurePdfJs(){
+  return new Promise((resolve, reject)=>{
+    if(window.pdfjsLib){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+      resolve();
+      return;
+    }
+    let attempts = 0;
+    const check = setInterval(()=>{
+      attempts++;
+      if(window.pdfjsLib){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        clearInterval(check); resolve();
+      } else if(attempts > 40){
+        clearInterval(check); reject(new Error('Não foi possível carregar o leitor de PDF. Verifique sua conexão com a internet.'));
+      }
+    }, 250);
+  });
+}
+
+async function extractPdfText(file){
+  await ensurePdfJs();
+  const buffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({data: buffer}).promise;
+  let text = '';
+  for(let i=1; i<=pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+function normalizeDigits(str){ return (str||'').replace(/\D/g,''); }
+
+function findCompanyInText(text){
+  const candidates = new Set();
+  (text.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g) || []).forEach(m=>candidates.add(normalizeDigits(m)));
+  (text.match(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/g) || []).forEach(m=>candidates.add(normalizeDigits(m)));
+  for(const c of candidates){
+    const found = state.companies.find(co=> normalizeDigits(co.cnpj)===c && co.ativa!==false);
+    if(found) return found;
+  }
+  // Fallback for documents without CNPJ (e.g. municipal DAM/ISSQN from prefeituras):
+  // try matching by Inscrição Municipal number.
+  const imCandidates = new Set();
+  (text.match(/\b\d{5,10}\b/g) || []).forEach(m=>imCandidates.add(m));
+  for(const c of imCandidates){
+    const found = state.companies.find(co=> co.im && normalizeDigits(co.im)===c && co.ativa!==false);
+    if(found) return found;
+  }
+  // Last resort: match by the company's registered name appearing verbatim in the text.
+  const upperText = text.toUpperCase();
+  const byName = state.companies.find(co=> co.ativa!==false && co.nome && co.nome.trim().length>4 && upperText.includes(co.nome.toUpperCase()));
+  if(byName) return byName;
+  return null;
+}
+
+function findDocTypeInText(text){
+  const lower = text.toLowerCase();
+  for(const dt of state.docTypes){
+    const kws = dt.keywords || [];
+    if(kws.length===0) continue;
+    const allPresent = kws.every(k=> lower.includes(String(k).toLowerCase()));
+    if(!allPresent) continue;
+    const excl = dt.excludeKeywords || [];
+    const anyExcluded = excl.some(k=> lower.includes(String(k).toLowerCase()));
+    if(anyExcluded) continue;
+    return dt;
+  }
+  return null;
+}
+
+function extractCompetenciaVencimento(text){
+  let competencia = '';
+  let vencimento = '';
+
+  const MESES = 'janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro';
+  const tokenRegex = new RegExp(`(\\d{2}\\/\\d{2}\\/\\d{4})|((?:${MESES})\\/\\d{4})`, 'gi');
+
+  // Finds the date value closest to a label, searching BOTH before and after every occurrence
+  // of the label — some PDF generators emit "label then value", others emit "value then label",
+  // and this varies even between documents from the same source, so distance-based matching in
+  // either direction is the only reliable general strategy.
+  function nearestDateNearLabel(labelRegex, window){
+    const flags = labelRegex.flags.includes('g') ? labelRegex.flags : labelRegex.flags + 'g';
+    const re = new RegExp(labelRegex.source, flags);
+    let m, best = null, bestDist = Infinity;
+    while((m = re.exec(text))){
+      const start = Math.max(0, m.index - window);
+      const end = Math.min(text.length, m.index + m[0].length + window);
+      const segment = text.slice(start, end);
+      const labelStart = m.index - start, labelEnd = labelStart + m[0].length;
+      const dateRe = /\d{2}\/\d{2}\/\d{4}/g;
+      let dm;
+      while((dm = dateRe.exec(segment))){
+        let dist;
+        if(dm.index >= labelEnd) dist = dm.index - labelEnd;
+        else if(dm.index + dm[0].length <= labelStart) dist = labelStart - (dm.index + dm[0].length);
+        else dist = 0;
+        if(dist < bestDist){ bestDist = dist; best = dm[0]; }
+      }
+    }
+    return best;
+  }
+
+  // "Período de Apuração" is the authoritative field whenever present (DAS, DARF, PGDAS-D).
+  // We scan a generous window after the label and read período + vencimento together, in the
+  // order their values actually appear — this stays correct whether the real PDF text extraction
+  // keeps "label value label value" order or bunches all labels first, then all values (both are
+  // common depending on the PDF generator), since either way the dates keep their column order.
+  const paMatch = text.match(/Per[íi]odo de Apura[çc][ãa]o/i);
+  if(paMatch){
+    const win = text.slice(paMatch.index + paMatch[0].length, paMatch.index + paMatch[0].length + 200);
+    const rangeMatch = win.match(/(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i);
+    if(rangeMatch && rangeMatch.index < 5){
+      // Range sits right after the label (e.g. PGDAS-D declaration) — no separate vencimento here.
+      competencia = rangeMatch[1] + ' a ' + rangeMatch[2];
+    } else {
+      const tokens = [...win.matchAll(tokenRegex)].map(m=>m[0]);
+      if(tokens.length>=1) competencia = tokens[0];
+      if(tokens.length>=2){
+        const nextDate = tokens.slice(1).find(t=>/^\d{2}\/\d{2}\/\d{4}$/.test(t));
+        if(nextDate) vencimento = nextDate;
+      }
+    }
+  }
+
+  if(!vencimento){
+    const vencMatch = text.match(/Venc(?:imento)?[^0-9]{0,40}?(\d{2}\/\d{2}\/\d{4})/i);
+    if(vencMatch) vencimento = vencMatch[1];
+  }
+  if(!vencimento){
+    vencimento = nearestDateNearLabel(/Venc(?:imento)?/i, 80) || '';
+  }
+
+  // Fallback: DARF-style inline "PA 01/2026" or "PA:2º Trimestre/2026" reference near the tax code
+  if(!competencia){
+    let m = text.match(/\bPA[:\s]*(\d+[ºo]?\s*Trimestre\/\d{4}|\d{1,2}\/\d{4})/i);
+    if(m) competencia = m[1].trim();
+  }
+  // Fallback: "Referência" field (e.g. Alvará/TVF municipal fee: "Cota Única" or "N/N" parcela)
+  if(!competencia){
+    const idx = text.search(/Refer[êe]ncia/i);
+    if(idx !== -1){
+      const win = text.slice(Math.max(0, idx-150), idx+60);
+      const refMatch = win.match(/(Cota\s*[ÚU]nica|\b\d\/\d{1,2}\b(?!\d))/i);
+      if(refMatch) competencia = refMatch[1];
+    }
+  }
+  // Fallback: municipal DAM style "EXERC. MÊS" — only fires when both labels are actually present
+  // near each other (avoids misreading stray 1-12 digits from unrelated money amounts elsewhere
+  // in the document). Real PDF extraction often bunches "EXERC. MÊS PROCESSAMENTO" labels
+  // together, with the actual year/month values appearing only afterward, so once confirmed we're
+  // in the right field we pick whichever nearby number is closest to the "MÊS" label itself.
+  if(!competencia){
+    const exercIdx = text.search(/EXERC/i);
+    const mesIdx = text.search(/\bM[ÊE]S\b/i);
+    if(exercIdx !== -1 && mesIdx !== -1 && Math.abs(mesIdx - exercIdx) < 60){
+      const winStart = Math.min(exercIdx, mesIdx);
+      const win = text.slice(winStart, winStart + 150);
+      const yearMatch = win.match(/\b(20\d{2})\b/);
+      if(yearMatch){
+        const mesLabelPos = mesIdx - winStart;
+        const numRe = /\b(0?[1-9]|1[0-2])\b/g;
+        let nm, best = null, bestDist = Infinity;
+        while((nm = numRe.exec(win))){
+          if(nm.index === yearMatch.index) continue;
+          const dist = Math.abs(nm.index - mesLabelPos);
+          if(dist < bestDist){ bestDist = dist; best = nm[1]; }
+        }
+        if(best) competencia = String(best).padStart(2,'0') + '/' + yearMatch[1];
+      }
+    }
+  }
+  // Fallback: generic "Período: DD/MM/YYYY a DD/MM/YYYY" (e.g. Retenções a Recolher report)
+  if(!competencia){
+    const idx = text.search(/Per[íi]odo/i);
+    if(idx !== -1){
+      const windowText = text.slice(idx, idx+80);
+      const dates = windowText.match(/\d{2}\/\d{2}\/\d{4}/g);
+      if(dates && dates.length>=2) competencia = dates[0] + ' a ' + dates[1];
+      else if(dates && dates.length===1) competencia = dates[0];
+    }
+  }
+  // If we still have no vencimento but do have a competência, fall back to the closest
+  // date overall found anywhere near "Referência" (covers documents like the Alvará/TVF where
+  // values are emitted before their labels).
+  if(!vencimento){
+    vencimento = nearestDateNearLabel(/Refer[êe]ncia/i, 60) || '';
+  }
+  return { competencia, vencimento };
+}
+
+function fillTemplate(tpl, vars){
+  return (tpl||'').replace(/\{(\w+)\}/g, (m,k)=> (vars[k]!==undefined ? vars[k] : m));
+}
+
+function arrayBufferToBase64(buffer){
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for(let i=0; i<bytes.length; i+=chunkSize){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64UrlEncodeUnicode(str){
+  const utf8 = unescape(encodeURIComponent(str));
+  const b64 = btoa(utf8);
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function buildMimeMessage({to, subject, body, attachmentName, attachmentBase64}){
+  const boundary = 'agendaobrig_' + Date.now();
+  const encodedSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
+  const parts = [
+    `To: ${to}`,
+    `Subject: ${encodedSubject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'Content-Transfer-Encoding: 8bit',
+    '',
+    body,
+    '',
+    `--${boundary}`,
+    `Content-Type: application/pdf; name="${attachmentName}"`,
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${attachmentName}"`,
+    '',
+    attachmentBase64,
+    '',
+    `--${boundary}--`,
+  ];
+  return parts.join('\r\n');
+}
+
+async function sendGmailWithAttachment({to, subject, body, attachmentName, attachmentBase64}){
+  const raw = buildMimeMessage({to, subject, body, attachmentName, attachmentBase64});
+  const encoded = base64UrlEncodeUnicode(raw);
+  const res = await driveFetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw: encoded }),
+  });
+  if(!res.ok){
+    let msg = 'Erro ao enviar e-mail.';
+    try{ const errData = await res.json(); if(errData.error && errData.error.message) msg = errData.error.message; }catch(e){}
+    throw new Error(msg);
+  }
+  return true;
+}
+
+async function processDocumentFile(file){
+  // Note: kept as a reusable helper; the Envio tab currently inlines this logic in handleEnvioFiles.
+  const item = { file, name: file.name, status:'processing', company:null, docType:null, text:'' };
+  try{
+    item.text = await extractPdfText(file);
+    item.company = findCompanyInText(item.text);
+    item.docType = findDocTypeInText(item.text);
+    item.status = 'ready';
+  }catch(e){
+    item.status = 'error';
+    item.error = e.message || 'Erro ao ler o PDF.';
+  }
+  return item;
+}
+function updateDriveStatusUI(){
+  const map = {
+    disconnected: {text:'✉️ Gmail não conectado', cls:'drive-off'},
+    connecting: {text:'✉️ Conectando…', cls:'drive-connecting'},
+    connected: {text:'✉️ Gmail conectado'+(driveLastSync? ' · '+driveLastSync.toLocaleTimeString('pt-BR').slice(0,5) : ''), cls:'drive-on'},
+    error: {text:'✉️ Erro na conexão com o Gmail', cls:'drive-error'},
+  };
+  const info = map[driveStatus] || map.disconnected;
+  const el = document.getElementById('driveStatusBadge');
+  if(el){
+    el.textContent = info.text.replace('✉️ ','');
+    el.className = 'drive-status-badge ' + info.cls;
+  }
+  const headerBadge = document.getElementById('headerDriveBadge');
+  if(headerBadge){
+    headerBadge.textContent = info.text;
+    headerBadge.className = 'drive-status-badge ' + info.cls;
+  }
+  const actionsEl = document.getElementById('driveActions');
+  if(actionsEl) actionsEl.innerHTML = renderDriveActions();
+  wireDriveActions();
+  const errEl = document.getElementById('driveErrorMsg');
+  if(errEl) errEl.textContent = driveStatus==='error' ? driveErrorMsg : '';
+}
+
+/* ---------- Obligations catalog ---------- */
+const CATEGORY_ORDER = ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos','anual'];
+const CATEGORY_LABELS = {
+  simples:'Simples Nacional',
+  mei:'MEI',
+  presumido_real:'Presumido e Real',
+  folha:'Folha de Pagamento',
+  suframa:'SUFRAMA',
+  contabil:'Contábil',
+  parcelamentos:'Parcelamentos',
+  anual:'Obrigações Anuais',
+};
+const DEFAULT_OBLIGATIONS = [
+  {id:'simples__pgdas', category:'simples', label:'PGDAS-D / DAS'},
+  {id:'simples__sefaz', category:'simples', label:'SEFAZ (XML)'},
+  {id:'simples__semef', category:'simples', label:'SEMEF (XML)'},
+  {id:'mei__das', category:'mei', label:'DAS-MEI (mensal)'},
+  {id:'mei__nfe', category:'mei', label:'Emissão de Nota Fiscal'},
+  {id:'pr__apuracao', category:'presumido_real', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
+  {id:'pr__dctf', category:'presumido_real', label:'DCTFWeb'},
+  {id:'pr__sefaz', category:'presumido_real', label:'SEFAZ (XML)'},
+  {id:'pr__semef', category:'presumido_real', label:'SEMEF (XML)'},
+  {id:'folha__semef', category:'folha', label:'SEMEF (XML)'},
+  {id:'folha__ativa', category:'folha', label:'Ativa'},
+  {id:'folha__ponto', category:'folha', label:'Ponto'},
+  {id:'folha__consignado', category:'folha', label:'Empréstimo Consignado'},
+  {id:'folha__adto', category:'folha', label:'Adiantamento'},
+  {id:'folha__fechamento', category:'folha', label:'Fechamento Fopag'},
+  {id:'folha__adto13', category:'folha', label:'Adiantamento 13º', seasonalMonth:11},
+  {id:'folha__sal13', category:'folha', label:'13º Salário', seasonalMonth:12},
+  {id:'suframa__insc', category:'suframa', label:'Insc. Suframa'},
+  {id:'suframa__venc', category:'suframa', label:'Vencimento Insc.'},
+  {id:'suframa__gru', category:'suframa', label:'Gerar GRU'},
+  {id:'suframa__pin', category:'suframa', label:'Conf. Registro PIN'},
+  {id:'suframa__receb', category:'suframa', label:'Conf. Recebimento Mercadoria'},
+  {id:'contabil__caixa', category:'contabil', label:'Mov. Caixa'},
+  {id:'contabil__banco', category:'contabil', label:'Mov. Banco'},
+  {id:'contabil__extratos', category:'contabil', label:'Extratos OFX/PDF'},
+  {id:'contabil__impfiscal', category:'contabil', label:'Imposto Fiscal'},
+  {id:'anual__ecd', category:'anual', label:'ECD'},
+  {id:'anual__dasn', category:'anual', label:'DASN-SIMEI (Declaração Anual MEI)'},
+  {id:'anual__efd', category:'anual', label:'EFD Contribuições'},
+  {id:'anual__defis', category:'anual', label:'DEFIS'},
+  {id:'anual__dirf', category:'anual', label:'DIRF'},
+  {id:'anual__rais', category:'anual', label:'RAIS'},
+];
+
+/* ---------- Document automation: recognition rules + email templates ---------- */
+const DEFAULT_DOC_TYPES = [
+  {
+    id: 'doctype__das',
+    name: 'DAS - Simples Nacional',
+    keywords: ['Documento de Arrecadação', 'Simples Nacional'],
+    excludeKeywords: ['PARCSN', 'Parcelamento', 'Declaratório', 'RECIBO DE ENTREGA'],
+    emailSubject: 'Guia DAS - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo a guia DAS (Documento de Arrecadação do Simples Nacional) referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__recibo_pgdas',
+    name: 'Declaração + Recibo PGDAS-D',
+    keywords: ['PGDAS-D', 'RECIBO DE ENTREGA'],
+    excludeKeywords: [],
+    emailSubject: 'Declaração Mensal (PGDAS-D) - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o recibo de entrega da declaração mensal (PGDAS-D) referente a {empresa}, competência {competencia}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__parcelamento',
+    name: 'DAS de Parcelamento',
+    keywords: ['PARCSN'],
+    excludeKeywords: [],
+    emailSubject: 'Guia de Parcelamento - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo a guia da parcela do parcelamento referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__darf_irpj_presumido',
+    name: 'DARF IRPJ - Lucro Presumido',
+    keywords: ['Receitas Federais', 'IRPJ - LUCRO PRESUMIDO'],
+    excludeKeywords: [],
+    emailSubject: 'DARF IRPJ - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DARF de IRPJ (Lucro Presumido) referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__darf_irpj_real',
+    name: 'DARF IRPJ - Lucro Real',
+    keywords: ['Receitas Federais', 'IRPJ', 'LUCRO REAL'],
+    excludeKeywords: [],
+    emailSubject: 'DARF IRPJ - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DARF de IRPJ (Lucro Real) referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__darf_csll_presumido',
+    name: 'DARF CSLL - Lucro Presumido',
+    keywords: ['Receitas Federais', 'CSLL', 'LUCRO PRESUMIDO'],
+    excludeKeywords: [],
+    emailSubject: 'DARF CSLL - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DARF de CSLL (Lucro Presumido) referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__darf_csrf',
+    name: 'DARF CSRF - Retenção PJ x PJ',
+    keywords: ['RETENÇÃO DE CONTRIBUIÇÕES', 'PJ A PJ'],
+    excludeKeywords: [],
+    emailSubject: 'DARF de Retenção (CSRF) - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DARF referente à retenção de contribuições sobre pagamentos de PJ a PJ de {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__retencoes_recolher',
+    name: 'Relatório de Retenções a Recolher',
+    keywords: ['RETENÇÕES A RECOLHER'],
+    excludeKeywords: [],
+    emailSubject: 'Relatório de Retenções a Recolher - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o relatório de retenções a recolher referente a {empresa}, período {competencia}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__dam_issqn_retido',
+    name: 'DAM ISSQN Retenção (SEMEF Manaus)',
+    keywords: ['DOCUMENTO DE ARRECADAÇÃO MUNICIPAL', 'ISSQN Retenção'],
+    excludeKeywords: [],
+    emailSubject: 'DAM ISSQN Retenção - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DAM (Documento de Arrecadação Municipal) referente ao ISSQN Retenção de {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__dam_issqn_proprio',
+    name: 'DAM ISSQN Próprio (SEMEF Manaus)',
+    keywords: ['DOCUMENTO DE ARRECADAÇÃO MUNICIPAL', 'ISSQN Próprio'],
+    excludeKeywords: [],
+    emailSubject: 'DAM ISSQN Próprio - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DAM (Documento de Arrecadação Municipal) referente ao ISSQN Próprio de {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__dam_alvara_tvf',
+    name: 'Alvará de Funcionamento - TVF (SEMEF Manaus)',
+    keywords: ['DOCUMENTO DE ARRECADAÇÃO MUNICIPAL', 'ALVARA'],
+    excludeKeywords: ['ISSQN Retenção', 'ISSQN Próprio'],
+    emailSubject: 'DAM Alvará de Funcionamento (TVF) - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DAM referente à Taxa de Verificação de Funcionamento (TVF/Alvará) de {empresa}, referência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+];
+
+function monthNumFromKey(key){ return parseInt(key.split('-')[1],10); }
+
+function obligationCategory(id){
+  const o = state.obligations.find(x=>x.id===id);
+  return o ? o.category : null;
+}
+function catalogByCategory(category){
+  return state.obligations.filter(o=>o.category===category);
+}
+function moveObligationInCategory(id, direction){
+  const cat = obligationCategory(id);
+  if(!cat) return false;
+  const indices = [];
+  state.obligations.forEach((o,i)=>{ if(o.category===cat) indices.push(i); });
+  const posInList = indices.findIndex(i=>state.obligations[i].id===id);
+  const targetPos = posInList + direction;
+  if(posInList===-1 || targetPos<0 || targetPos>=indices.length) return false;
+  const idxA = indices[posInList];
+  const idxB = indices[targetPos];
+  const tmp = state.obligations[idxA];
+  state.obligations[idxA] = state.obligations[idxB];
+  state.obligations[idxB] = tmp;
+  persist();
+  return true;
+}
+function companyItemsForCategory(company, category, periodKey){
+  const assignedIds = company.obligations || [];
+  return catalogByCategory(category)
+    .filter(o=>assignedIds.includes(o.id))
+    .filter(o=>{
+      if(o.seasonalMonth && periodKey && String(periodKey).includes('-')){
+        return monthNumFromKey(periodKey) === o.seasonalMonth;
+      }
+      return true;
+    })
+    .map(o=>({id:o.id, label:o.label}));
+}
+function computeDefaultObligations(c){
+  const ids = [];
+  if(c.trib==='SIMEI'){
+    ids.push('mei__das', 'mei__nfe');
+  } else if(c.trib==='SIMPLES'){
+    ids.push('simples__pgdas');
+    if(c.ativ.includes('COMÉRCIO')) ids.push('simples__sefaz');
+    if(c.ativ.includes('SERVIÇO')) ids.push('simples__semef');
+  } else {
+    ids.push('pr__apuracao','pr__dctf');
+    if(c.ativ.includes('COMÉRCIO')) ids.push('pr__sefaz');
+    if(c.ativ.includes('SERVIÇO')) ids.push('pr__semef');
+  }
+  if(c.folha){
+    ids.push('folha__ativa','folha__ponto','folha__consignado','folha__adto','folha__fechamento','folha__adto13','folha__sal13');
+    if(c.ativ.includes('SERVIÇO')) ids.push('folha__semef');
+  }
+  if(c.suframa){
+    ids.push('suframa__insc','suframa__venc','suframa__gru','suframa__pin','suframa__receb');
+  }
+  if(c.contab){
+    ids.push('contabil__caixa','contabil__banco','contabil__extratos','contabil__impfiscal');
+  }
+  if(c.trib==='PRESUMIDO' || c.trib==='REAL') ids.push('anual__ecd');
+  ids.push('anual__efd');
+  if(c.trib==='SIMPLES') ids.push('anual__defis');
+  if(c.trib==='SIMEI') ids.push('anual__dasn');
+  ids.push('anual__dirf');
+  if(c.folha) ids.push('anual__rais');
+  return ids;
+}
+
+const TAB_DEFS = {};
+CATEGORY_ORDER.forEach(cat=>{
+  TAB_DEFS[cat] = {
+    category: cat,
+    period: cat==='anual' ? 'year' : 'month',
+    filter: c => (c.obligations||[]).some(id=>obligationCategory(id)===cat),
+    items: (c,pk) => companyItemsForCategory(c, cat, pk),
+  };
+});
+
+/* ---------- Data helpers ---------- */
+function activeCompanies(){
+  return state.companies.filter(c=>c.ativa!==false);
+}
+function periodBucket(period){
+  const pk = period==='year' ? selectedYear : selectedMonth;
+  const store = period==='year' ? state.annual : state.monthly;
+  if(!store[pk]) store[pk] = {};
+  return {pk, obj:store[pk]};
+}
+function isChecked(period, companyId, itemKey){
+  const {obj} = periodBucket(period);
+  return !!(obj[companyId] && obj[companyId][itemKey]);
+}
+function toggleItem(period, companyId, itemKey){
+  const {obj} = periodBucket(period);
+  if(!obj[companyId]) obj[companyId] = {};
+  obj[companyId][itemKey] = !obj[companyId][itemKey];
+  persist();
+}
+function companyProgress(tabId, company){
+  const def = TAB_DEFS[tabId];
+  const period = def.period;
+  const pk = period==='year' ? selectedYear : selectedMonth;
+  const items = def.items(company, pk);
+  if(items.length===0) return {total:0, done:0, items};
+  let done = 0;
+  items.forEach(it=>{ if(isChecked(period, company.id, it.id)) done++; });
+  return {total:items.length, done, items};
+}
+
+function matchesSearch(c){
+  if(!searchQuery) return true;
+  const q = searchQuery.toLowerCase().trim();
+  const qDigits = q.replace(/\D/g,'');
+  const nomeMatch = c.nome.toLowerCase().includes(q);
+  const cnpjMatch = qDigits.length>0 && c.cnpj.replace(/\D/g,'').includes(qDigits);
+  return nomeMatch || cnpjMatch;
+}
+
+function tribBadgeLabel(trib){
+  return trib;
+}
+
+/* ---------- Rendering ---------- */
+function fmtMonthLabel(key){
+  const [y,m] = key.split('-').map(Number);
+  return `${MONTH_NAMES[m-1]} de ${y}`;
+}
+
+function renderStats(){
+  const companies = activeCompanies();
+  const byTrib = {};
+  companies.forEach(c=>{ byTrib[c.trib] = (byTrib[c.trib]||0)+1; });
+
+  // overall progress across monthly obligation tabs for current month
+  let total=0, done=0;
+  ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos'].forEach(tid=>{
+    const def = TAB_DEFS[tid];
+    companies.filter(def.filter).forEach(c=>{
+      const p = companyProgress(tid, c);
+      total += p.total; done += p.done;
+    });
+  });
+  const pct = total? Math.round(done/total*100) : 0;
+
+  const el = document.getElementById('statsStrip');
+  el.innerHTML = `
+    <div class="stat clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
+    <div class="stat clickable" data-jump="painel"><div class="num accent">${pct}%</div><div class="lbl">Concluído no mês</div></div>
+    <div class="stat clickable" data-jump="simples"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
+    <div class="stat clickable" data-jump="presumido_real"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
+  `;
+  el.querySelectorAll('[data-jump]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      activeTab = card.dataset.jump;
+      renderAll();
+    });
+  });
+}
+
+function renderTabs(){
+  const bar = document.getElementById('tabbar');
+  bar.innerHTML = '';
+  TABS.forEach(t=>{
+    const d = document.createElement('div');
+    d.className = 'tab' + (activeTab===t.id ? ' active':'');
+    d.textContent = t.label;
+    d.onclick = ()=>{ activeTab = t.id; renderAll(); };
+    bar.appendChild(d);
+  });
+}
+
+function renderPeriodControl(){
+  const monthInput = document.getElementById('monthInput');
+  const yearInput = document.getElementById('yearInput');
+  if(activeTab==='empresas' || activeTab==='config' || activeTab==='envio' || activeTab==='demandas'){
+    monthInput.style.display='none'; yearInput.style.display='none';
+    return;
+  }
+  if(activeTab==='anual'){
+    monthInput.style.display='none';
+    yearInput.style.display='inline-block';
+    if(!yearInput.dataset.filled){
+      const y0 = now.getFullYear()-3;
+      let opts='';
+      for(let y=y0; y<=now.getFullYear()+1; y++) opts += `<option value="${y}">${y}</option>`;
+      yearInput.innerHTML = opts;
+      yearInput.dataset.filled = '1';
+    }
+    yearInput.value = selectedYear;
+  } else {
+    yearInput.style.display='none';
+    monthInput.style.display='inline-block';
+    monthInput.value = selectedMonth;
+  }
+}
+
+function pillHtml(period, company, item, stepNum){
+  const checked = isChecked(period, company.id, item.id);
+  return `<label class="item-pill ${checked?'checked':''}" data-cid="${company.id}" data-key="${item.id}">
+    <input type="checkbox" ${checked?'checked':''}>
+    <span class="oblig-step-num">${stepNum}</span>
+    <span>${item.label}</span>
+  </label>`;
+}
+
+function companyCardHtml(tabId, company){
+  const {total, done, items} = companyProgress(tabId, company);
+  const period = TAB_DEFS[tabId].period;
+  const pct = total? Math.round(done/total*100) : 100;
+  const isDone = total>0 && done===total;
+  return `
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-name">${company.nome}</div>
+        <div class="card-meta">
+          <span class="cnpj mono">${company.cnpj}</span>
+          <span class="badge trib-${company.trib}">${company.trib}</span>
+          <span class="badge ativ">${company.ativ}</span>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        ${isDone ? '<span class="stamp">✓ concluído</span>' : ''}
+        <div class="progress-bar"><div class="progress-fill ${isDone?'done':''}" style="width:${pct}%"></div></div>
+        <span class="progress-pct">${total? pct+'%':'—'}</span>
+      </div>
+    </div>
+    ${tabId==='mei' ? `<div class="mei-actions">
+      <a href="https://www8.receita.fazenda.gov.br/simplesnacional/aplicacoes/atspo/pgmei.app/identificacao" target="_blank" rel="noopener" class="btn ghost small">Emitir DAS-MEI no PGMEI ↗</a>
+      <button type="button" class="btn ghost small" data-copy-cnpj="${company.cnpj}">Copiar CNPJ</button>
+    </div>` : ''}
+    ${items.length? `<div class="items-row">${items.map((it,idx)=>pillHtml(period, company, it, idx+1)).join('')}</div>` : `<div style="font-size:.76rem;color:var(--muted);margin-top:.5rem;">Nenhuma obrigação aplicável nesta categoria.</div>`}
+  </div>`;
+}
+
+async function copyTextToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(e){ /* fall through to legacy fallback below */ }
+  }
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){
+    return false;
+  }
+}
+
+function attachPillHandlers(container, tabId){
+  const period = TAB_DEFS[tabId].period;
+  container.querySelectorAll('.item-pill').forEach(pill=>{
+    pill.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const cid = pill.dataset.cid;
+      const key = pill.dataset.key;
+      toggleItem(period, cid, key);
+      renderAll();
+    });
+  });
+  container.querySelectorAll('[data-copy-cnpj]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const cnpj = btn.dataset.copyCnpj;
+      const original = btn.textContent;
+      const ok = await copyTextToClipboard(cnpj.replace(/\D/g,''));
+      btn.textContent = ok ? 'Copiado!' : 'Não deu — copie manual';
+      setTimeout(()=>{ btn.textContent = original; }, ok ? 1500 : 2500);
+    });
+  });
+}
+
+function renderRegimeLikeTab(tabId, title, sub){
+  const def = TAB_DEFS[tabId];
+  const companies = activeCompanies().filter(def.filter).filter(matchesSearch)
+    .sort((a,b)=>a.nome.localeCompare(b.nome));
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="sheet-title">${title}</div>
+    <div class="sheet-sub">${sub}</div>
+    <div class="company-list" id="companyList">
+      ${companies.length? companies.map(c=>companyCardHtml(tabId,c)).join('') : '<div class="empty-note">Nenhuma empresa encontrada para esta categoria.</div>'}
+    </div>
+  `;
+  attachPillHandlers(document.getElementById('companyList'), tabId);
+}
+
+function renderPainel(){
+  const companies = activeCompanies();
+  const rows = [];
+  ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos'].forEach(tid=>{
+    const def = TAB_DEFS[tid];
+    companies.filter(def.filter).forEach(c=>{
+      const p = companyProgress(tid, c);
+      if(p.total>0) rows.push({c, tid, ...p});
+    });
+  });
+  // aggregate per company across tabs
+  const perCompany = {};
+  rows.forEach(r=>{
+    if(!perCompany[r.c.id]) perCompany[r.c.id] = {c:r.c, total:0, done:0, tabs:new Set()};
+    perCompany[r.c.id].total += r.total;
+    perCompany[r.c.id].done += r.done;
+    if(r.done<r.total) perCompany[r.c.id].tabs.add(r.tid);
+  });
+  const pendingList = Object.values(perCompany)
+    .filter(x=>x.done<x.total)
+    .sort((a,b)=> (a.done/a.total) - (b.done/b.total))
+    .slice(0,10);
+
+  const tabLabel = {simples:'Simples Nacional', presumido_real:'Presumido e Real', folha:'Folha', suframa:'SUFRAMA', contabil:'Contábil', parcelamentos:'Parcelamentos'};
+
+  const demandasAbertas = state.demandas.filter(d=>d.status==='aberta').length;
+  const demandasAndamento = state.demandas.filter(d=>d.status==='andamento').length;
+  const demandasConcluidas = state.demandas.filter(d=>d.status==='concluida').length;
+  const demandasAtivas = state.demandas
+    .filter(d=>d.status!=='concluida')
+    .sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm))
+    .slice(0,5);
+
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="painel-header-row">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Painel — ${fmtMonthLabel(selectedMonth)}</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Visão geral das obrigações fiscais do mês selecionado.</div>
+      </div>
+      <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="btn ghost small">💬 Abrir WhatsApp Web ↗</a>
+    </div>
+    <div class="painel-grid">
+      <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
+      <div class="painel-card clickable" data-scroll="pendingSection"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
+      <div class="painel-card clickable" data-jump="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
+      <div class="painel-card clickable" data-jump="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
+    </div>
+
+    <div class="sheet-title" style="font-size:1rem;">Demandas</div>
+    <div class="painel-grid" style="margin-bottom:1rem;">
+      <div class="painel-card clickable" data-jump-demandas="aberta"><div class="num" style="color:#7A5F1F;">${demandasAbertas}</div><div class="lbl">Abertas</div></div>
+      <div class="painel-card clickable" data-jump-demandas="andamento"><div class="num" style="color:#2A5F79;">${demandasAndamento}</div><div class="lbl">Em andamento</div></div>
+      <div class="painel-card clickable" data-jump-demandas="concluida"><div class="num" style="color:var(--good);">${demandasConcluidas}</div><div class="lbl">Concluídas</div></div>
+    </div>
+    <div class="pending-list" style="margin-bottom:1.4rem;">
+      ${demandasAtivas.length? demandasAtivas.map(d=>{
+        const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+        return `<div class="pending-row">
+          <div>
+            <div class="name">${escapeHtml(d.titulo) || '(sem título)'}</div>
+            <div class="cnpj mono" style="font-size:.7rem;">${company? escapeHtml(company.nome) : 'Cliente não vinculado'} · <span class="demanda-status-select status-${d.status}" style="padding:.05rem .5rem;">${d.status==='aberta'?'Aberta':'Em andamento'}</span></div>
+          </div>
+          <span class="go" data-jump="demandas">Ver →</span>
+        </div>`;
+      }).join('') : '<div class="empty-note">Nenhuma demanda em aberto — tudo em dia! 🎉</div>'}
+    </div>
+    ${state.demandas.length ? `<div style="text-align:right;margin-top:-.8rem;margin-bottom:1.2rem;"><span class="go" data-jump="demandas" style="font-size:.78rem;">Ver todas as demandas →</span></div>` : ''}
+
+    <div class="sheet-title" style="font-size:1rem;">Empresas com pendências</div>
+    <div class="pending-list" id="pendingSection" style="margin-top:.6rem;">
+      ${pendingList.length? pendingList.map(x=>`
+        <div class="pending-row">
+          <div>
+            <div class="name">${x.c.nome}</div>
+            <div class="cnpj mono" style="font-size:.7rem;">${x.c.cnpj} · ${x.done}/${x.total} itens concluídos</div>
+          </div>
+          <span class="go" data-jump="${[...x.tabs][0]}">Ver detalhes →</span>
+        </div>
+      `).join('') : '<div class="empty-note">Nenhuma pendência — tudo em dia! 🎉</div>'}
+    </div>
+  `;
+  container.querySelectorAll('[data-jump]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      activeTab = el.dataset.jump;
+      renderAll();
+    });
+  });
+  container.querySelectorAll('[data-jump-demandas]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      demandaFilter = el.dataset.jumpDemandas;
+      activeTab = 'demandas';
+      renderAll();
+    });
+  });
+  container.querySelectorAll('[data-scroll]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const target = document.getElementById(el.dataset.scroll);
+      if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+/* ---------- Custom confirm dialog (native confirm() can be blocked in sandboxed previews) ---------- */
+function showConfirm(message, confirmLabel){
+  return new Promise((resolve)=>{
+    const root = document.getElementById('confirmRoot');
+    root.innerHTML = `
+      <div class="modal-overlay" id="confirmOverlay" style="z-index:60;">
+        <div class="modal" style="max-width:400px;">
+          <h3>Confirmar</h3>
+          <p style="font-size:.86rem;color:var(--ink);line-height:1.5;margin:0 0 .3rem;">${message}</p>
+          <div class="modal-actions">
+            <button class="btn ghost" id="confirmCancelBtn">Cancelar</button>
+            <button class="btn solid-danger" id="confirmOkBtn">${confirmLabel||'Excluir'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const cleanup = (result)=>{ root.innerHTML=''; resolve(result); };
+    document.getElementById('confirmCancelBtn').onclick = ()=>cleanup(false);
+    document.getElementById('confirmOkBtn').onclick = ()=>cleanup(true);
+    document.getElementById('confirmOverlay').addEventListener('click', (e)=>{
+      if(e.target.id==='confirmOverlay') cleanup(false);
+    });
+  });
+}
+
+/* ---------- Empresas (CRUD) ---------- */
+function renderEmpresas(){
+  const companies = state.companies.filter(matchesSearch).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="emp-toolbar">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Empresas</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists.</div>
+      </div>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn ghost" id="btnImportCompanies">Importar planilha (Domínio)</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn accent" id="btnNewCompany">+ Nova empresa</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="emp-table">
+      <thead><tr>
+        <th>Empresa</th><th>CNPJ / Inscrições</th><th>Contato</th><th>Tributação</th><th>Atividade</th><th>Folha</th><th>Contáb.</th><th>Suframa</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${companies.map(c=>`
+          <tr data-id="${c.id}">
+            <td>${c.nome}</td>
+            <td class="mono" style="font-size:.76rem;">
+              ${c.cnpj}
+              ${(c.ie||c.im||c.inscSuframa) ? `<div style="color:var(--muted);font-size:.68rem;margin-top:.2rem;line-height:1.5;">
+                ${c.ie? `IE: ${c.ie}<br>`:''}${c.im? `IM: ${c.im}<br>`:''}${c.inscSuframa? `Suframa: ${c.inscSuframa}`:''}
+              </div>` : ''}
+            </td>
+            <td style="font-size:.74rem;color:var(--muted);">
+              ${c.email? `<div>${c.email}</div>`:''}${c.telefone? `<div>${c.telefone}</div>`:''}${(!c.email && !c.telefone)? '—':''}
+            </td>
+            <td><span class="badge trib-${c.trib}">${c.trib}</span></td>
+            <td style="font-size:.78rem;color:var(--muted);">${c.ativ}</td>
+            <td><div class="flag-dot folha ${c.folha?'on':''}">F</div></td>
+            <td><div class="flag-dot contab ${c.contab?'on':''}">C</div></td>
+            <td><div class="flag-dot suframa ${c.suframa?'on':''}">S</div></td>
+            <td>${c.ativa!==false ? '<span style="color:var(--good);font-size:.76rem;font-weight:600;">Ativa</span>' : '<span style="color:var(--muted);font-size:.76rem;">Inativa</span>'}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn ghost small" data-edit="${c.id}">Editar</button>
+              <button class="btn danger small" data-del="${c.id}">Excluir</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${companies.length===0 ? '<div class="empty-note">Nenhuma empresa cadastrada.</div>' : ''}
+  `;
+  document.getElementById('btnNewCompany').addEventListener('click', ()=>openCompanyModal(null));
+  container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openCompanyModal(b.dataset.edit)));
+  container.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteCompany(b.dataset.del)));
+  const importInput = document.getElementById('importFileInput');
+  document.getElementById('btnImportCompanies').addEventListener('click', ()=> importInput.click());
+  importInput.addEventListener('change', ()=>{
+    if(importInput.files && importInput.files[0]) handleImportFile(importInput.files[0]);
+    importInput.value = '';
+  });
+}
+
+async function deleteObligationFromCatalog(id){
+  const o = state.obligations.find(x=>x.id===id);
+  if(!o) return false;
+  const ok = await showConfirm(`Excluir "${o.label}" do catálogo? Ela será removida de TODAS as empresas que a tinham marcada, e o histórico de check já feito para ela será apagado.`);
+  if(!ok) return false;
+  state.obligations = state.obligations.filter(x=>x.id!==id);
+  state.companies.forEach(comp=>{ if(comp.obligations) comp.obligations = comp.obligations.filter(oid=>oid!==id); });
+  Object.values(state.monthly).forEach(bucket=>{
+    Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
+  });
+  Object.values(state.annual).forEach(bucket=>{
+    Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
+  });
+  persist();
+  return true;
+}
+
+/* ---- Manage variant (Configurações tab): define which tasks exist per category ---- */
+function renderManageCategoryBlock(category, editingId){
+  const items = catalogByCategory(category);
+  return `<div class="oblig-group">
+    <div class="oblig-items">
+      ${items.length ? items.map((o,idx)=>{
+        if(o.id===editingId){
+          return `<div class="oblig-check-row oblig-editing">
+            <div class="oblig-row-label-group">
+              <span class="oblig-step-num">${idx+1}</span>
+              <input type="text" class="oblig-edit-input" data-edit-input="${o.id}" value="${o.label.replace(/"/g,'&quot;')}">
+            </div>
+            <div class="oblig-row-actions">
+              <button type="button" class="oblig-icon-btn oblig-save-btn" data-save-oblig="${o.id}" title="Salvar">✓</button>
+              <button type="button" class="oblig-icon-btn" data-cancel-oblig="${o.id}" title="Cancelar">×</button>
+            </div>
+          </div>`;
+        }
+        return `<div class="oblig-check-row">
+          <div class="oblig-row-label-group">
+            <span class="oblig-step-num">${idx+1}</span>
+            <span class="oblig-manage-label">${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</span>
+          </div>
+          <div class="oblig-row-actions">
+            <button type="button" class="oblig-icon-btn" data-move-oblig="${o.id}" data-move-dir="-1" title="Mover para cima" ${idx===0?'disabled':''}>▲</button>
+            <button type="button" class="oblig-icon-btn" data-move-oblig="${o.id}" data-move-dir="1" title="Mover para baixo" ${idx===items.length-1?'disabled':''}>▼</button>
+            <button type="button" class="oblig-icon-btn" data-edit-oblig="${o.id}" title="Editar esta tarefa">✎</button>
+            <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-oblig="${o.id}" title="Excluir esta tarefa do catálogo">×</button>
+          </div>
+        </div>`;
+      }).join('') : `<div style="font-size:.78rem;color:var(--muted);">Nenhuma tarefa cadastrada ainda nesta categoria.</div>`}
+    </div>
+    <div class="oblig-add">
+      <input type="text" class="oblig-new-input" placeholder="Nova tarefa em ${CATEGORY_LABELS[category]}…">
+      <button type="button" class="btn ghost small oblig-add-btn">+ Adicionar</button>
+    </div>
+  </div>`;
+}
+function mountManageCategoryBlock(containerEl, category, editingId){
+  containerEl.innerHTML = renderManageCategoryBlock(category, editingId||null);
+  function addFromInput(){
+    const input = containerEl.querySelector('.oblig-new-input');
+    const label = input.value.trim();
+    if(!label) return;
+    const id = category + '__custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    state.obligations.push({id, category, label});
+    persist();
+    mountManageCategoryBlock(containerEl, category);
+  }
+  const addBtn = containerEl.querySelector('.oblig-add-btn');
+  if(addBtn) addBtn.addEventListener('click', addFromInput);
+  const newInput = containerEl.querySelector('.oblig-new-input');
+  if(newInput) newInput.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); addFromInput(); }
+  });
+  containerEl.querySelectorAll('[data-del-oblig]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const removed = await deleteObligationFromCatalog(btn.dataset.delOblig);
+      if(removed) mountManageCategoryBlock(containerEl, category);
+    });
+  });
+  containerEl.querySelectorAll('[data-move-oblig]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const moved = moveObligationInCategory(btn.dataset.moveOblig, parseInt(btn.dataset.moveDir,10));
+      if(moved) mountManageCategoryBlock(containerEl, category);
+    });
+  });
+  containerEl.querySelectorAll('[data-edit-oblig]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      mountManageCategoryBlock(containerEl, category, btn.dataset.editOblig);
+      const inputEl = containerEl.querySelector('[data-edit-input]');
+      if(inputEl){ inputEl.focus(); inputEl.select(); }
+    });
+  });
+  function saveEdit(id){
+    const input = containerEl.querySelector(`[data-edit-input="${id}"]`);
+    const newLabel = input.value.trim();
+    if(!newLabel){ input.focus(); return; }
+    const o = state.obligations.find(x=>x.id===id);
+    if(o){ o.label = newLabel; persist(); }
+    mountManageCategoryBlock(containerEl, category, null);
+  }
+  containerEl.querySelectorAll('[data-save-oblig]').forEach(btn=>{
+    btn.addEventListener('click', ()=> saveEdit(btn.dataset.saveOblig));
+  });
+  containerEl.querySelectorAll('[data-cancel-oblig]').forEach(btn=>{
+    btn.addEventListener('click', ()=> mountManageCategoryBlock(containerEl, category, null));
+  });
+  containerEl.querySelectorAll('[data-edit-input]').forEach(input=>{
+    input.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){ e.preventDefault(); saveEdit(input.dataset.editInput); }
+      if(e.key==='Escape'){ e.preventDefault(); mountManageCategoryBlock(containerEl, category, null); }
+    });
+  });
+}
+
+/* ---- Select variant (company modal): pick which existing tasks apply to this company ---- */
+function renderSelectCategoryBlock(category, selectedSet){
+  const items = catalogByCategory(category);
+  return `<div class="oblig-group">
+    <div class="oblig-items">
+      ${items.length ? items.map((o,idx)=>`
+        <label class="oblig-check"><input type="checkbox" data-oblig="${o.id}" ${selectedSet.has(o.id)?'checked':''}> <span class="oblig-step-num">${idx+1}</span> ${o.label}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.7rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</label>
+      `).join('') : `<div style="font-size:.78rem;color:var(--muted);">Nenhuma tarefa cadastrada ainda. <a href="#" data-goto-config style="color:var(--accent);font-weight:600;">Adicionar em Configurações →</a></div>`}
+    </div>
+  </div>`;
+}
+function mountSelectCategoryBlock(containerEl, category, selectedSet){
+  containerEl.innerHTML = renderSelectCategoryBlock(category, selectedSet);
+  containerEl.querySelectorAll('[data-oblig]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      if(chk.checked) selectedSet.add(chk.dataset.oblig);
+      else selectedSet.delete(chk.dataset.oblig);
+    });
+  });
+  const gotoLink = containerEl.querySelector('[data-goto-config]');
+  if(gotoLink) gotoLink.addEventListener('click', (e)=>{
+    e.preventDefault();
+    document.getElementById('modalRoot').innerHTML = '';
+    activeTab = 'config';
+    renderAll();
+  });
+}
+
+/* ---- Envio de Documentos tab (automation) ---- */
+function renderEnvioDocumentos(){
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="sheet-title">Envio de Documentos</div>
+    <div class="sheet-sub">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
+    ${driveStatus!=='connected' ? `<div class="envio-warn">Conecte o Gmail em <a href="#" id="envioGotoConfig">Configurações</a> antes de enviar (a leitura dos PDFs funciona sem conectar, só o envio precisa).</div>` : ''}
+    <div class="envio-dropzone" id="envioDropzone">
+      <input type="file" id="envioFileInput" multiple accept="application/pdf" style="display:none;">
+      <div class="envio-dropzone-inner">
+        📄 Arraste os PDFs aqui, ou <button class="btn ghost small" id="envioBrowseBtn" type="button">selecionar arquivos</button>
+      </div>
+    </div>
+    <div id="envioResults"></div>
+  `;
+  wireEnvioDropzone();
+  renderEnvioResults();
+}
+
+function wireEnvioDropzone(){
+  const dz = document.getElementById('envioDropzone');
+  const input = document.getElementById('envioFileInput');
+  document.getElementById('envioBrowseBtn').addEventListener('click', ()=> input.click());
+  input.addEventListener('change', ()=>{ handleEnvioFiles(input.files); input.value=''; });
+  dz.addEventListener('dragover', (e)=>{ e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
+  dz.addEventListener('drop', (e)=>{
+    e.preventDefault(); dz.classList.remove('dragover');
+    handleEnvioFiles(e.dataTransfer.files);
+  });
+  const gotoLink = document.getElementById('envioGotoConfig');
+  if(gotoLink) gotoLink.addEventListener('click', (e)=>{ e.preventDefault(); activeTab='config'; renderAll(); });
+}
+
+async function handleEnvioFiles(fileList){
+  const files = Array.from(fileList).filter(f=> f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if(files.length===0) return;
+  const newItems = files.map(f=>({
+    id: 'item_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    file: f, name: f.name, status:'processing', companyId:null, docTypeId:null, include:true,
+  }));
+  envioItems = envioItems.concat(newItems);
+  renderEnvioResults();
+  for(const item of newItems){
+    try{
+      const text = await extractPdfText(item.file);
+      const company = findCompanyInText(text);
+      const docType = findDocTypeInText(text);
+      const { competencia, vencimento } = extractCompetenciaVencimento(text);
+      item.companyId = company ? company.id : null;
+      item.docTypeId = docType ? docType.id : null;
+      item.competencia = competencia;
+      item.vencimento = vencimento;
+      item.status = 'ready';
+    }catch(e){
+      item.status = 'error';
+      item.error = e.message || 'Erro ao ler o PDF.';
+    }
+    renderEnvioResults();
+  }
+}
+
+function companyOptionsHtml(selectedId){
+  const active = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome));
+  return `<option value="">— não identificado —</option>` + active.map(c=>`<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.nome}</option>`).join('');
+}
+function docTypeOptionsHtml(selectedId){
+  return `<option value="">— não identificado —</option>` + state.docTypes.map(d=>`<option value="${d.id}" ${d.id===selectedId?'selected':''}>${d.name}</option>`).join('');
+}
+
+function envioRowHtml(item){
+  const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+  const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+  const hasEmail = company && company.email;
+  const templateVars = {
+    empresa: company ? company.nome : '',
+    competencia: item.competencia || '',
+    vencimento: item.vencimento || '',
+  };
+  let preview = '';
+  if(company && docType){
+    const subject = fillTemplate(docType.emailSubject, templateVars);
+    const body = fillTemplate(docType.emailBody, templateVars);
+    preview = `<div class="envio-preview"><strong>${subject}</strong><br>${body.replace(/\n/g,'<br>')}</div>`;
+  }
+  let statusBadge = '';
+  if(item.status==='processing') statusBadge = `<span class="envio-badge envio-badge-processing">Lendo…</span>`;
+  else if(item.status==='error') statusBadge = `<span class="envio-badge envio-badge-error">${item.error}</span>`;
+  else if(item.status==='sent') statusBadge = `<span class="envio-badge envio-badge-sent">✓ Enviado</span>`;
+  else if(item.status==='send-error') statusBadge = `<span class="envio-badge envio-badge-error">${item.sendError}</span>`;
+  else if(!company) statusBadge = `<span class="envio-badge envio-badge-warn">Cliente não identificado</span>`;
+  else if(!hasEmail) statusBadge = `<span class="envio-badge envio-badge-warn">Empresa sem e-mail cadastrado</span>`;
+  else if(!docType) statusBadge = `<span class="envio-badge envio-badge-warn">Tipo não identificado</span>`;
+
+  return `<div class="envio-row" data-item-id="${item.id}">
+    <div class="envio-row-check">
+      <input type="checkbox" data-envio-include="${item.id}" ${item.include?'checked':''} ${item.status==='sent'?'disabled':''}>
+    </div>
+    <div class="envio-row-main">
+      <div class="envio-row-name">${item.name}</div>
+      <div class="envio-row-selects">
+        <select data-envio-company="${item.id}" ${item.status==='sent'?'disabled':''}>${companyOptionsHtml(item.companyId)}</select>
+        <select data-envio-doctype="${item.id}" ${item.status==='sent'?'disabled':''}>${docTypeOptionsHtml(item.docTypeId)}</select>
+      </div>
+      <div class="envio-row-selects">
+        <input type="text" class="envio-meta-input" data-envio-competencia="${item.id}" value="${(item.competencia||'').replace(/"/g,'&quot;')}" placeholder="Competência" ${item.status==='sent'?'disabled':''}>
+        <input type="text" class="envio-meta-input" data-envio-vencimento="${item.id}" value="${(item.vencimento||'').replace(/"/g,'&quot;')}" placeholder="Vencimento" ${item.status==='sent'?'disabled':''}>
+      </div>
+      ${statusBadge}
+      ${preview}
+    </div>
+    <button type="button" class="oblig-icon-btn envio-remove-btn" data-envio-remove="${item.id}" title="Remover da lista">×</button>
+  </div>`;
+}
+
+function renderEnvioResults(){
+  const el = document.getElementById('envioResults');
+  if(!el) return;
+  if(envioItems.length===0){ el.innerHTML=''; return; }
+  const readyCount = envioItems.filter(i=> i.include && i.status==='ready').length;
+  el.innerHTML = `
+    <div class="envio-list">${envioItems.map(envioRowHtml).join('')}</div>
+    <div class="envio-footer">
+      <div class="envio-footer-info">${readyCount} documento(s) selecionado(s) para envio</div>
+      <div style="display:flex; gap:.6rem;">
+        <button class="btn ghost small" id="envioClearBtn" type="button">Limpar lista</button>
+        <button class="btn accent" id="envioSendBtn" type="button" ${(readyCount===0 || envioSending) ? 'disabled':''}>${envioSending? 'Enviando…' : 'Enviar selecionados'}</button>
+      </div>
+    </div>
+  `;
+  wireEnvioResultHandlers();
+}
+
+function wireEnvioResultHandlers(){
+  const el = document.getElementById('envioResults');
+  el.querySelectorAll('[data-envio-include]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const item = envioItems.find(i=>i.id===chk.dataset.envioInclude);
+      if(item) item.include = chk.checked;
+      renderEnvioResults();
+    });
+  });
+  el.querySelectorAll('[data-envio-company]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = envioItems.find(i=>i.id===sel.dataset.envioCompany);
+      if(item) item.companyId = sel.value || null;
+      renderEnvioResults();
+    });
+  });
+  el.querySelectorAll('[data-envio-doctype]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = envioItems.find(i=>i.id===sel.dataset.envioDoctype);
+      if(item) item.docTypeId = sel.value || null;
+      renderEnvioResults();
+    });
+  });
+  el.querySelectorAll('[data-envio-competencia]').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      const item = envioItems.find(i=>i.id===input.dataset.envioCompetencia);
+      if(item) item.competencia = input.value;
+      const row = input.closest('.envio-row');
+      const preview = row.querySelector('.envio-preview');
+      if(preview && item){
+        const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+        const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+        if(company && docType){
+          const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
+          preview.innerHTML = `<strong>${fillTemplate(docType.emailSubject, vars)}</strong><br>${fillTemplate(docType.emailBody, vars).replace(/\n/g,'<br>')}`;
+        }
+      }
+    });
+  });
+  el.querySelectorAll('[data-envio-vencimento]').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      const item = envioItems.find(i=>i.id===input.dataset.envioVencimento);
+      if(item) item.vencimento = input.value;
+      const row = input.closest('.envio-row');
+      const preview = row.querySelector('.envio-preview');
+      if(preview && item){
+        const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+        const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+        if(company && docType){
+          const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
+          preview.innerHTML = `<strong>${fillTemplate(docType.emailSubject, vars)}</strong><br>${fillTemplate(docType.emailBody, vars).replace(/\n/g,'<br>')}`;
+        }
+      }
+    });
+  });
+  el.querySelectorAll('[data-envio-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      envioItems = envioItems.filter(i=>i.id!==btn.dataset.envioRemove);
+      renderEnvioResults();
+    });
+  });
+  const clearBtn = document.getElementById('envioClearBtn');
+  if(clearBtn) clearBtn.addEventListener('click', ()=>{ envioItems = []; renderEnvioResults(); });
+  const sendBtn = document.getElementById('envioSendBtn');
+  if(sendBtn) sendBtn.addEventListener('click', sendEnvioSelected);
+}
+
+async function sendEnvioSelected(){
+  if(driveStatus!=='connected'){
+    const ok = await showConfirm('Você precisa conectar o Gmail primeiro, em Configurações. Ir para lá agora?', 'Ir para Configurações');
+    if(ok){ activeTab='config'; renderAll(); }
+    return;
+  }
+  envioSending = true;
+  renderEnvioResults();
+  const toSend = envioItems.filter(i=> i.include && i.status==='ready');
+  for(const item of toSend){
+    const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+    const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+    if(!company || !company.email || !docType){
+      item.status = 'send-error';
+      item.sendError = 'Falta cliente, e-mail ou tipo de documento.';
+      continue;
+    }
+    try{
+      const buffer = await item.file.arrayBuffer();
+      const base64 = arrayBufferToBase64(buffer);
+      const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
+      const subject = fillTemplate(docType.emailSubject, vars);
+      const body = fillTemplate(docType.emailBody, vars);
+      await sendGmailWithAttachment({ to: company.email, subject, body, attachmentName: item.name, attachmentBase64: base64 });
+      item.status = 'sent';
+    }catch(e){
+      item.status = 'send-error';
+      item.sendError = e.message || 'Erro ao enviar.';
+    }
+    renderEnvioResults();
+  }
+  envioSending = false;
+  renderEnvioResults();
+}
+
+/* ---- Demandas tab ---- */
+let demandaFilter = 'todas'; // todas | aberta | andamento | concluida
+let demandaResponsavelFilter = 'todos'; // todos | 'none' | userId
+
+function escapeHtml(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderDemandas(){
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="demanda-toolbar">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Demandas</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Cole a mensagem do cliente (WhatsApp, e-mail, etc.) e transforme em uma demanda a resolver.</div>
+      </div>
+      <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
+    </div>
+    <div class="demanda-filters" id="demandaFilters"></div>
+    <div class="demanda-filters" id="demandaRespFilterWrap" style="margin-top:-.5rem;"></div>
+    <div id="demandaList"></div>
+  `;
+  document.getElementById('btnNewDemanda').addEventListener('click', ()=>openDemandaModal(null));
+  renderDemandaFilters();
+  renderDemandaResponsavelFilter();
+  renderDemandaList();
+}
+
+function renderDemandaResponsavelFilter(){
+  const el = document.getElementById('demandaRespFilterWrap');
+  if(!el) return;
+  const users = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome));
+  el.innerHTML = `
+    <select id="demandaRespFilterSelect" style="padding:.35rem .6rem; border:1px solid var(--line-strong); border-radius:20px; font-size:.78rem; font-family:'Public Sans',sans-serif;">
+      <option value="todos" ${demandaResponsavelFilter==='todos'?'selected':''}>Todos os responsáveis</option>
+      <option value="none" ${demandaResponsavelFilter==='none'?'selected':''}>Sem responsável</option>
+      ${users.map(u=>`<option value="${u.id}" ${demandaResponsavelFilter===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('')}
+    </select>
+  `;
+  document.getElementById('demandaRespFilterSelect').addEventListener('change', (e)=>{
+    demandaResponsavelFilter = e.target.value;
+    renderDemandaList();
+  });
+}
+
+function renderDemandaFilters(){
+  const el = document.getElementById('demandaFilters');
+  if(!el) return;
+  const counts = {
+    todas: state.demandas.length,
+    aberta: state.demandas.filter(d=>d.status==='aberta').length,
+    andamento: state.demandas.filter(d=>d.status==='andamento').length,
+    concluida: state.demandas.filter(d=>d.status==='concluida').length,
+  };
+  const labels = {todas:'Todas', aberta:'Abertas', andamento:'Em andamento', concluida:'Concluídas'};
+  el.innerHTML = Object.keys(labels).map(key=>`
+    <button type="button" class="demanda-filter-chip ${demandaFilter===key?'active':''}" data-demanda-filter="${key}">${labels[key]} (${counts[key]})</button>
+  `).join('');
+  el.querySelectorAll('[data-demanda-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      demandaFilter = btn.dataset.demandaFilter;
+      renderDemandaFilters();
+      renderDemandaList();
+    });
+  });
+}
+
+function demandaCardHtml(d){
+  const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+  const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
+  const dt = new Date(d.criadoEm);
+  const dataFmt = isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
+  return `<div class="demanda-card" data-demanda-id="${d.id}">
+    <div class="demanda-card-top">
+      <div>
+        <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'}</div>
+        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}</div>
+      </div>
+      <select class="demanda-status-select status-${d.status}" data-demanda-status="${d.id}">
+        <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
+        <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
+        <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
+      </select>
+    </div>
+    <div class="demanda-message">${escapeHtml(d.mensagem).replace(/\n/g,'<br>')}</div>
+    <div class="demanda-card-actions">
+      <select class="demanda-resp-select" data-demanda-responsavel="${d.id}">
+        <option value="">— sem responsável —</option>
+        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}" ${u.id===d.responsavelId?'selected':''}>${escapeHtml(u.nome)}</option>`).join('')}
+      </select>
+      <div style="display:flex; gap:.2rem;">
+        <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
+        <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-demanda="${d.id}" title="Excluir">×</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDemandaList(){
+  const el = document.getElementById('demandaList');
+  if(!el) return;
+  let list = state.demandas.slice();
+  if(demandaFilter!=='todas') list = list.filter(d=>d.status===demandaFilter);
+  if(demandaResponsavelFilter==='none') list = list.filter(d=>!d.responsavelId);
+  else if(demandaResponsavelFilter!=='todos') list = list.filter(d=>d.responsavelId===demandaResponsavelFilter);
+  if(searchQuery){
+    const q = searchQuery.toLowerCase();
+    list = list.filter(d=>{
+      const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+      return (company && matchesSearch(company)) || (d.titulo||'').toLowerCase().includes(q) || (d.mensagem||'').toLowerCase().includes(q);
+    });
+  }
+  list.sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm));
+  if(list.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhuma demanda encontrada.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
+  wireDemandaCardHandlers(el);
+}
+
+function wireDemandaCardHandlers(container){
+  container.querySelectorAll('[data-demanda-status]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const d = state.demandas.find(x=>x.id===sel.dataset.demandaStatus);
+      if(d){ d.status = sel.value; d.atualizadoEm = new Date().toISOString(); persist(); }
+      sel.className = 'demanda-status-select status-' + sel.value;
+      renderDemandaFilters();
+    });
+  });
+  container.querySelectorAll('[data-demanda-responsavel]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const d = state.demandas.find(x=>x.id===sel.dataset.demandaResponsavel);
+      if(d){ d.responsavelId = sel.value || null; d.atualizadoEm = new Date().toISOString(); persist(); }
+      renderDemandaList();
+    });
+  });
+  container.querySelectorAll('[data-edit-demanda]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDemandaModal(btn.dataset.editDemanda));
+  });
+  container.querySelectorAll('[data-del-demanda]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const d = state.demandas.find(x=>x.id===btn.dataset.delDemanda);
+      if(!d) return;
+      const ok = await showConfirm(`Excluir a demanda "${d.titulo||'sem título'}"? Essa ação não pode ser desfeita.`);
+      if(!ok) return;
+      state.demandas = state.demandas.filter(x=>x.id!==d.id);
+      persist();
+      renderDemandaFilters();
+      renderDemandaList();
+    });
+  });
+}
+
+function openDemandaModal(demandaId){
+  const editing = !!demandaId;
+  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:''};
+  const root = document.getElementById('modalRoot');
+  const companyOptions = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(c=>`<option value="${c.id}" ${c.id===d.companyId?'selected':''}>${c.nome}</option>`).join('');
+  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(u=>`<option value="${u.id}" ${u.id===d.responsavelId?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar demanda' : 'Nova demanda'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Cliente</label>
+            <select id="demCompany"><option value="">— não vinculado —</option>${companyOptions}</select>
+          </div>
+          <div class="form-row"><label>Título curto (opcional)</label><input id="demTitulo" type="text" value="${(d.titulo||'').replace(/"/g,'&quot;')}" placeholder="Ex: Pedido de segunda via de nota"></div>
+          <div class="form-row"><label>Mensagem do cliente (cole aqui)</label><textarea id="demMensagem" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${(d.mensagem||'').replace(/</g,'&lt;')}</textarea><div id="demMensagemError" style="color:var(--bad);font-size:.74rem;display:none;">Cole ou digite a mensagem.</div></div>
+          <div class="form-cols">
+            <div class="form-row"><label>Status</label>
+              <select id="demStatus">
+                <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
+                <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
+                <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Responsável</label>
+              <select id="demResponsavel">
+                <option value="">— não atribuído —</option>
+                ${userOptions}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const mensagem = document.getElementById('demMensagem').value.trim();
+    if(!mensagem){
+      document.getElementById('demMensagemError').style.display = 'block';
+      document.getElementById('demMensagem').focus();
+      return;
+    }
+    const companyId = document.getElementById('demCompany').value || null;
+    let titulo = document.getElementById('demTitulo').value.trim();
+    if(!titulo) titulo = mensagem.split('\n')[0].slice(0,60);
+    const status = document.getElementById('demStatus').value;
+    const responsavelId = document.getElementById('demResponsavel').value || null;
+    const nowIso = new Date().toISOString();
+    if(editing){
+      Object.assign(d, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
+    } else {
+      state.demandas.push({
+        id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        companyId, titulo, mensagem, status, responsavelId,
+        criadoEm: nowIso, atualizadoEm: nowIso,
+      });
+    }
+    persist();
+    root.innerHTML = '';
+    renderDemandaFilters();
+    renderDemandaList();
+  };
+}
+
+/* ---- Configurações tab ---- */
+function renderDriveActions(){
+  const clientId = getDriveClientId();
+  if(driveStatus==='connected'){
+    return `
+      <button class="btn danger small" id="btnDriveDisconnect">Desconectar</button>
+    `;
+  }
+  if(driveStatus==='connecting'){
+    return `<button class="btn ghost small" disabled>Conectando…</button>`;
+  }
+  return `<button class="btn accent small" id="btnDriveConnect" ${clientId? '' : 'disabled'}>Conectar ao Gmail</button>`;
+}
+
+function wireDriveActions(){
+  const connectBtn = document.getElementById('btnDriveConnect');
+  if(connectBtn) connectBtn.addEventListener('click', connectDrive);
+  const discBtn = document.getElementById('btnDriveDisconnect');
+  if(discBtn) discBtn.addEventListener('click', disconnectDrive);
+}
+
+function renderDrivePanel(){
+  const clientId = getDriveClientId();
+  return `
+    <div class="drive-panel">
+      <div class="drive-panel-title">✉️ Conexão com o Gmail (envio de documentos)</div>
+      <div class="drive-panel-sub">Necessário só para enviar e-mails com anexo pela aba "Envio de Documentos". Os dados da agenda em si já ficam salvos automaticamente no banco de dados da equipe (Firestore), não dependem desta conexão.</div>
+      <div class="drive-row">
+        <input type="text" id="driveClientIdInput" placeholder="Cole aqui o Client ID do Google (ex: 123456.apps.googleusercontent.com)" value="${clientId.replace(/"/g,'&quot;')}">
+        <button class="btn ghost small" id="btnSaveClientId">Salvar</button>
+      </div>
+      <div class="drive-row">
+        <span class="drive-status-badge drive-off" id="driveStatusBadge">Não conectado</span>
+        <span id="driveActions">${renderDriveActions()}</span>
+      </div>
+      <div class="drive-note" id="driveErrorMsg" style="color:var(--bad);"></div>
+      <div class="drive-note">Precisa de um Client ID do Google Cloud Console autorizado para o endereço onde este app está hospedado.</div>
+    </div>
+  `;
+}
+
+function renderConfiguracoes(){
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="sheet-title">Configurações</div>
+    <div class="sheet-sub">Defina aqui as tarefas de cada categoria de obrigação. No cadastro da empresa você só marca quais dessas tarefas se aplicam a cada uma.</div>
+    ${renderDrivePanel()}
+    <div class="config-grid" id="configGrid"></div>
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Responsáveis</div>
+    <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda.</div>
+    <div id="usersList"></div>
+    <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
+
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Tipos de documento (envio automático)</div>
+    <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
+    <div id="docTypesList"></div>
+    <button class="btn ghost small" id="btnNewDocType" type="button">+ Novo tipo de documento</button>
+  `;
+  document.getElementById('btnSaveClientId').addEventListener('click', ()=>{
+    const val = document.getElementById('driveClientIdInput').value.trim();
+    setDriveClientId(val);
+    driveTokenClient = null;
+    document.getElementById('driveActions').innerHTML = renderDriveActions();
+    wireDriveActions();
+  });
+  wireDriveActions();
+  updateDriveStatusUI();
+  const grid = document.getElementById('configGrid');
+  CATEGORY_ORDER.forEach(cat=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'config-category';
+    wrap.innerHTML = `<div class="config-category-title">${CATEGORY_LABELS[cat]}</div><div class="config-category-block"></div>`;
+    grid.appendChild(wrap);
+    mountManageCategoryBlock(wrap.querySelector('.config-category-block'), cat);
+  });
+  renderDocTypesList();
+  document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
+  renderUsersList();
+  document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
+}
+
+function renderUsersList(){
+  const el = document.getElementById('usersList');
+  if(!el) return;
+  if(state.users.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhum responsável cadastrado ainda.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="doctype-list">${state.users.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
+    <div class="doctype-card">
+      <div class="doctype-card-top">
+        <div class="doctype-card-name">${escapeHtml(u.nome)} ${u.ativo===false? '<span style="color:var(--muted);font-weight:500;font-size:.76rem;">(inativo)</span>':''}</div>
+        <div class="oblig-row-actions">
+          <button type="button" class="oblig-icon-btn" data-edit-user="${u.id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-user="${u.id}" title="Excluir">×</button>
+        </div>
+      </div>
+      ${u.email? `<div class="doctype-card-kw">${escapeHtml(u.email)}</div>` : ''}
+    </div>
+  `).join('')}</div>`;
+  el.querySelectorAll('[data-edit-user]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openUserModal(btn.dataset.editUser));
+  });
+  el.querySelectorAll('[data-del-user]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const u = state.users.find(x=>x.id===btn.dataset.delUser);
+      if(!u) return;
+      const ok = await showConfirm(`Excluir o responsável "${u.nome}"? As demandas já atribuídas a ${u.nome} ficarão sem responsável.`);
+      if(!ok) return;
+      state.users = state.users.filter(x=>x.id!==u.id);
+      state.demandas.forEach(d=>{ if(d.responsavelId===u.id) d.responsavelId = null; });
+      persist();
+      renderUsersList();
+    });
+  });
+}
+
+function openUserModal(userId){
+  const editing = !!userId;
+  const u = editing ? state.users.find(x=>x.id===userId) : {nome:'', email:'', ativo:true};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar responsável' : 'Novo responsável'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome</label><input id="userNome" type="text" value="${(u.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome do responsável"><div id="userNomeError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
+          <div class="form-row"><label>E-mail (opcional)</label><input id="userEmail" type="email" value="${(u.email||'').replace(/"/g,'&quot;')}" placeholder="nome@empresa.com"></div>
+          <div class="form-row" style="flex-direction:row; align-items:center; gap:.5rem;">
+            <input type="checkbox" id="userAtivo" style="width:14px;height:14px;"> <label style="text-transform:none; font-weight:500; font-size:.85rem;">Responsável ativo</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('userAtivo').checked = u.ativo!==false;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const nome = document.getElementById('userNome').value.trim();
+    if(!nome){
+      document.getElementById('userNomeError').style.display = 'block';
+      document.getElementById('userNome').focus();
+      return;
+    }
+    const data = {
+      nome,
+      email: document.getElementById('userEmail').value.trim(),
+      ativo: document.getElementById('userAtivo').checked,
+    };
+    if(editing){
+      Object.assign(u, data);
+    } else {
+      state.users.push({id:'user_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
+    }
+    persist();
+    root.innerHTML = '';
+    renderUsersList();
+  };
+}
+
+function renderDocTypesList(){
+  const el = document.getElementById('docTypesList');
+  if(!el) return;
+  if(state.docTypes.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhum tipo de documento cadastrado ainda.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="doctype-list">${state.docTypes.map(dt=>`
+    <div class="doctype-card">
+      <div class="doctype-card-top">
+        <div class="doctype-card-name">${dt.name}</div>
+        <div class="oblig-row-actions">
+          <button type="button" class="oblig-icon-btn" data-edit-doctype="${dt.id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-doctype="${dt.id}" title="Excluir">×</button>
+        </div>
+      </div>
+      <div class="doctype-card-kw"><strong>Precisa conter:</strong> ${(dt.keywords||[]).join(', ') || '—'}</div>
+      ${(dt.excludeKeywords||[]).length ? `<div class="doctype-card-kw"><strong>Não pode conter:</strong> ${dt.excludeKeywords.join(', ')}</div>` : ''}
+      <div class="doctype-card-subject"><strong>Assunto:</strong> ${dt.emailSubject}</div>
+    </div>
+  `).join('')}</div>`;
+  el.querySelectorAll('[data-edit-doctype]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDocTypeModal(btn.dataset.editDoctype));
+  });
+  el.querySelectorAll('[data-del-doctype]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const dt = state.docTypes.find(d=>d.id===btn.dataset.delDoctype);
+      if(!dt) return;
+      const ok = await showConfirm(`Excluir o tipo de documento "${dt.name}"? Isso não afeta e-mails já enviados.`);
+      if(!ok) return;
+      state.docTypes = state.docTypes.filter(d=>d.id!==dt.id);
+      persist();
+      renderDocTypesList();
+    });
+  });
+}
+
+function openDocTypeModal(docTypeId){
+  const editing = !!docTypeId;
+  const dt = editing ? state.docTypes.find(d=>d.id===docTypeId) : {
+    name:'', keywords:[], excludeKeywords:[],
+    emailSubject:'Documento - {empresa}',
+    emailBody:'Olá,\n\nSegue em anexo o documento referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nAtenciosamente,\nEquipe Contábil',
+  };
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar tipo de documento' : 'Novo tipo de documento'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome do tipo</label><input id="dtName" type="text" value="${dt.name.replace(/"/g,'&quot;')}" placeholder="Ex: DAS - Simples Nacional"></div>
+          <div class="form-row"><label>O PDF precisa conter estes textos (separe por vírgula)</label><input id="dtKeywords" type="text" value="${(dt.keywords||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="Ex: Documento de Arrecadação, Simples Nacional"></div>
+          <div class="form-row"><label>O PDF NÃO pode conter (opcional, separe por vírgula)</label><input id="dtExclude" type="text" value="${(dt.excludeKeywords||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="Ex: PARCSN, Parcelamento"></div>
+          <div class="form-row"><label>Assunto do e-mail</label><input id="dtSubject" type="text" value="${dt.emailSubject.replace(/"/g,'&quot;')}"></div>
+          <div class="form-row"><label>Corpo do e-mail</label><textarea id="dtBody" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${dt.emailBody}</textarea></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const name = document.getElementById('dtName').value.trim();
+    if(!name) { document.getElementById('dtName').focus(); return; }
+    const keywords = document.getElementById('dtKeywords').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const excludeKeywords = document.getElementById('dtExclude').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const emailSubject = document.getElementById('dtSubject').value.trim() || 'Documento - {empresa}';
+    const emailBody = document.getElementById('dtBody').value;
+    if(editing){
+      Object.assign(dt, {name, keywords, excludeKeywords, emailSubject, emailBody});
+    } else {
+      state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody });
+    }
+    persist();
+    root.innerHTML = '';
+    renderDocTypesList();
+  };
+}
+
+function openCompanyModal(companyId){
+  const editing = !!companyId;
+  const c = editing ? state.companies.find(x=>x.id===companyId) : {cnpj:'',nome:'',trib:'SIMPLES',ativ:'SERVIÇO',ie:'',im:'',inscSuframa:'',email:'',telefone:'',folha:false,contab:true,suframa:false,parcelamentos:false,anual:true,ativa:true};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar empresa' : 'Nova empresa'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome / Razão social</label><input id="fNome" type="text" value="${c.nome.replace(/"/g,'&quot;')}"><div id="fNomeError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome da empresa.</div></div>
+          <div class="form-cols">
+            <div class="form-row"><label>CNPJ</label><input id="fCnpj" type="text" value="${c.cnpj}" placeholder="00.000.000/0000-00"></div>
+            <div class="form-row"><label>Tributação</label>
+              <select id="fTrib">
+                <option value="SIMPLES">Simples Nacional</option>
+                <option value="SIMEI">SIMEI</option>
+                <option value="PRESUMIDO">Lucro Presumido</option>
+                <option value="REAL">Lucro Real</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row"><label>Atividade</label>
+            <select id="fAtiv">
+              <option value="COMÉRCIO">Comércio</option>
+              <option value="SERVIÇO">Serviço</option>
+              <option value="COMÉRCIO/SERVIÇO">Comércio/Serviço</option>
+              <option value="INDÚSTRIA">Indústria</option>
+            </select>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Inscrição Estadual</label><input id="fIe" type="text" value="${(c.ie||'').replace(/"/g,'&quot;')}" placeholder="Nº da IE"></div>
+            <div class="form-row"><label>Inscrição Municipal</label><input id="fIm" type="text" value="${(c.im||'').replace(/"/g,'&quot;')}" placeholder="Nº da IM"></div>
+          </div>
+          <div class="form-row"><label>Inscrição SUFRAMA (nº)</label><input id="fInscSuframa" type="text" value="${(c.inscSuframa||'').replace(/"/g,'&quot;')}" placeholder="Nº da inscrição Suframa"></div>
+          <div class="form-cols">
+            <div class="form-row"><label>E-mail</label><input id="fEmail" type="email" value="${(c.email||'').replace(/"/g,'&quot;')}" placeholder="contato@empresa.com"></div>
+            <div class="form-row"><label>Telefone</label><input id="fTelefone" type="text" value="${(c.telefone||'').replace(/"/g,'&quot;')}" placeholder="(00) 00000-0000"></div>
+          </div>
+          <div class="form-row" style="flex-direction:row; align-items:center; gap:.5rem;">
+            <input type="checkbox" id="fAtiva" style="width:14px;height:14px;"> <label style="text-transform:none; font-weight:500; font-size:.85rem;">Empresa ativa</label>
+          </div>
+
+          <div class="oblig-section-title">Obrigações desta empresa</div>
+          <div class="oblig-section-sub">As tarefas de cada categoria são definidas em <a href="#" id="gotoConfigLink" style="color:var(--accent);font-weight:600;">Configurações</a>. Aqui você só marca quais delas essa empresa tem.</div>
+
+          <div class="oblig-regime-label" id="obligRegimeLabel"></div>
+          <div id="regimeBlock"></div>
+
+          <div class="oblig-toggles">
+            <label class="oblig-toggle"><input type="checkbox" id="flagFolha"> Folha de pagamento</label>
+            <label class="oblig-toggle"><input type="checkbox" id="flagSuframa"> SUFRAMA</label>
+            <label class="oblig-toggle"><input type="checkbox" id="flagContab"> Contábil</label>
+            <label class="oblig-toggle"><input type="checkbox" id="flagParcelamentos"> Parcelamentos</label>
+            <label class="oblig-toggle"><input type="checkbox" id="flagAnual"> Obrigações anuais</label>
+          </div>
+          <div id="folhaBlock" class="oblig-toggle-block"></div>
+          <div id="suframaBlock" class="oblig-toggle-block"></div>
+          <div id="contabilBlock" class="oblig-toggle-block"></div>
+          <div id="parcelamentosBlock" class="oblig-toggle-block"></div>
+          <div id="anualBlock" class="oblig-toggle-block"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('fTrib').value = c.trib;
+  document.getElementById('fAtiv').value = c.ativ;
+  document.getElementById('fAtiva').checked = c.ativa!==false;
+
+  const selectedObligations = new Set(editing ? (c.obligations||[]) : computeDefaultObligations(c));
+
+  function regimeCategoryFor(trib){
+    if(trib==='SIMEI') return 'mei';
+    if(trib==='SIMPLES') return 'simples';
+    return 'presumido_real';
+  }
+
+  const regimeBlockEl = document.getElementById('regimeBlock');
+  const regimeLabelEl = document.getElementById('obligRegimeLabel');
+  function refreshRegimeBlock(){
+    const cat = regimeCategoryFor(document.getElementById('fTrib').value);
+    regimeLabelEl.textContent = CATEGORY_LABELS[cat];
+    mountSelectCategoryBlock(regimeBlockEl, cat, selectedObligations);
+  }
+  refreshRegimeBlock();
+  document.getElementById('fTrib').addEventListener('change', ()=>{
+    const newCat = regimeCategoryFor(document.getElementById('fTrib').value);
+    const regimeCats = ['simples','mei','presumido_real'];
+    [...selectedObligations].forEach(id=>{
+      const cat = obligationCategory(id);
+      if(regimeCats.includes(cat) && cat!==newCat) selectedObligations.delete(id);
+    });
+    refreshRegimeBlock();
+  });
+
+  function setupToggle(checkboxId, blockElId, category, initialOn){
+    const chk = document.getElementById(checkboxId);
+    const blockEl = document.getElementById(blockElId);
+    chk.checked = initialOn;
+    function sync(){
+      if(chk.checked){ blockEl.style.display=''; mountSelectCategoryBlock(blockEl, category, selectedObligations); }
+      else { blockEl.style.display='none'; }
+    }
+    chk.addEventListener('change', sync);
+    sync();
+  }
+  setupToggle('flagFolha','folhaBlock','folha', !!c.folha);
+  setupToggle('flagSuframa','suframaBlock','suframa', !!c.suframa);
+  setupToggle('flagContab','contabilBlock','contabil', c.contab!==false);
+  setupToggle('flagParcelamentos','parcelamentosBlock','parcelamentos', !!c.parcelamentos);
+  setupToggle('flagAnual','anualBlock','anual', c.anual!==false);
+
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('gotoConfigLink').addEventListener('click', (e)=>{
+    e.preventDefault();
+    root.innerHTML = '';
+    activeTab = 'config';
+    renderAll();
+  });
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const nome = document.getElementById('fNome').value.trim();
+    if(!nome){
+      document.getElementById('fNomeError').style.display = 'block';
+      document.getElementById('fNome').focus();
+      return;
+    }
+    const flagsFinal = {
+      folha: document.getElementById('flagFolha').checked,
+      suframa: document.getElementById('flagSuframa').checked,
+      contab: document.getElementById('flagContab').checked,
+      parcelamentos: document.getElementById('flagParcelamentos').checked,
+      anual: document.getElementById('flagAnual').checked,
+    };
+    const finalRegimeCat = regimeCategoryFor(document.getElementById('fTrib').value);
+    const prunedObligations = [...selectedObligations].filter(id=>{
+      const cat = obligationCategory(id);
+      if(cat==='simples' || cat==='mei' || cat==='presumido_real') return cat===finalRegimeCat;
+      if(cat==='folha') return flagsFinal.folha;
+      if(cat==='suframa') return flagsFinal.suframa;
+      if(cat==='contabil') return flagsFinal.contab;
+      if(cat==='parcelamentos') return flagsFinal.parcelamentos;
+      if(cat==='anual') return flagsFinal.anual;
+      return true;
+    });
+    const data = {
+      nome,
+      cnpj: document.getElementById('fCnpj').value.trim() || '—',
+      trib: document.getElementById('fTrib').value,
+      ativ: document.getElementById('fAtiv').value,
+      ie: document.getElementById('fIe').value.trim(),
+      im: document.getElementById('fIm').value.trim(),
+      inscSuframa: document.getElementById('fInscSuframa').value.trim(),
+      email: document.getElementById('fEmail').value.trim(),
+      telefone: document.getElementById('fTelefone').value.trim(),
+      folha: flagsFinal.folha,
+      contab: flagsFinal.contab,
+      suframa: flagsFinal.suframa,
+      parcelamentos: flagsFinal.parcelamentos,
+      anual: flagsFinal.anual,
+      ativa: document.getElementById('fAtiva').checked,
+      obligations: prunedObligations,
+    };
+    if(editing){
+      Object.assign(c, data);
+    } else {
+      state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
+    }
+    persist();
+    root.innerHTML = '';
+    renderAll();
+  };
+}
+
+async function deleteCompany(id){
+  const c = state.companies.find(x=>x.id===id);
+  if(!c) return;
+  const ok = await showConfirm(`Excluir "${c.nome}"? Isso também removerá o histórico de checklist dessa empresa.`);
+  if(!ok) return;
+  state.companies = state.companies.filter(x=>x.id!==id);
+  Object.values(state.monthly).forEach(bucket=>{ delete bucket[id]; });
+  Object.values(state.annual).forEach(bucket=>{ delete bucket[id]; });
+  persist();
+  renderAll();
+}
+
+/* ---------- Importação de cadastro (planilha Domínio Sistemas) ---------- */
+function onlyDigits(s){ return (s||'').toString().replace(/\D/g,''); }
+
+function guessAtividadeFromRamo(ramo){
+  const r = (ramo||'').toLowerCase();
+  const isComercio = /com[eé]rcio|comercial|varejist|atacadist/.test(r);
+  const isServico = /servi[cç]o|consultori|representa[cç][aã]o|apoio administrativo|advocacia|contabil/.test(r);
+  const isIndustria = /ind[uú]stria|fabrica[cç][aã]o|industrial|manufatur/.test(r);
+  if(isIndustria) return 'INDÚSTRIA';
+  if(isComercio && isServico) return 'COMÉRCIO/SERVIÇO';
+  if(isComercio) return 'COMÉRCIO';
+  return 'SERVIÇO';
+}
+
+// Lê uma linha "achatada" de célula (padrão de relatório do Domínio: rótulo:,,,valor,,,rótulo2:,,,valor2)
+// e devolve um mapa {rótulo: valor} para essa linha.
+function scanDominioRow(row){
+  const cells = (row||[]).map(c => (c===undefined||c===null) ? '' : String(c).trim());
+  const out = {};
+  let i = 0;
+  while(i < cells.length){
+    const cell = cells[i];
+    if(cell.endsWith(':') && cell.length>1){
+      const label = cell;
+      let j = i+1;
+      while(j<cells.length && cells[j]==='') j++;
+      const val = (j<cells.length) ? cells[j] : '';
+      if(val.endsWith(':') && val.length < 45 && !/\d/.test(val)){
+        out[label] = '';
+        i = j;
+        continue;
+      }
+      out[label] = val;
+      i = j+1;
+    } else {
+      i++;
+    }
+  }
+  return out;
+}
+
+// A exportação "Cadastro de Empresas" do Domínio vem como uma ficha por empresa (não uma tabela linha-a-linha),
+// com blocos delimitados por "DADOS CADASTRAIS". Não traz o regime tributário — isso é definido na conferência.
+function parseDominioSheetRows(rows){
+  const blockStarts = [];
+  rows.forEach((row, idx)=>{
+    if(String((row && row[0]) || '').trim() === 'DADOS CADASTRAIS') blockStarts.push(idx);
+  });
+  if(blockStarts.length === 0) return [];
+  const parsed = [];
+  blockStarts.forEach((start, bi)=>{
+    const end = blockStarts[bi+1] !== undefined ? blockStarts[bi+1] : rows.length;
+    const fields = {};
+    rows.slice(start, end).forEach(row=> Object.assign(fields, scanDominioRow(row)));
+    const nome = fields['Razão social:'] || fields['Nome:'] || '';
+    if(!nome) return;
+    const cnpj = fields['CNPJ/CPF/CEI/CAEPF:'] || fields['C.N.P.J.:'] || '';
+    const situacao = (fields['Situação:'] || '').trim();
+    const modulos = fields['Módulos:'] || '';
+    const inscSuframa = fields['Insc. Suframa:'] || '';
+    parsed.push({
+      nome,
+      cnpj: cnpj.trim(),
+      ie: (fields['Insc. estadual:']||'').trim(),
+      im: (fields['Insc. municipal:']||'').trim(),
+      inscSuframa: inscSuframa.trim(),
+      email: (fields['E-mail:']||'').trim(),
+      telefone: (fields['Telefone:']||'').trim(),
+      ativa: situacao.toLowerCase()==='ativa',
+      folha: /folha/i.test(modulos),
+      ativGuess: guessAtividadeFromRamo(fields['Ramo de atividade:']||''),
+    });
+  });
+  return parsed;
+}
+
+async function handleImportFile(file){
+  const name = file.name.toLowerCase();
+  if(!window.XLSX){
+    await showConfirm('A biblioteca de leitura de planilhas ainda não carregou. Aguarde alguns segundos e tente novamente.', 'Ok');
+    return;
+  }
+  try{
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, {type:'array'});
+    const sheetName = workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+    const rows = sheet ? XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false}) : [];
+    const parsedList = rows.length ? parseDominioSheetRows(rows) : [];
+    if(parsedList.length === 0){
+      const isXls = name.endsWith('.xls');
+      await showConfirm(
+        isXls
+          ? 'Não consegui ler dados nesse arquivo .xls — esse formato específico do Domínio às vezes não é reconhecido pelo navegador. Abra o arquivo no Excel ou LibreOffice, use "Salvar como" → .xlsx, e importe o arquivo convertido.'
+          : 'Não encontrei nenhuma empresa nesse arquivo. Confirme se é a exportação "Cadastro de Empresas" do Domínio Sistemas (ficha por empresa, com o bloco "DADOS CADASTRAIS").',
+        'Ok'
+      );
+      return;
+    }
+    importItems = parsedList.map(p=>{
+      const digits = onlyDigits(p.cnpj);
+      const existing = digits ? state.companies.find(c=> onlyDigits(c.cnpj)===digits) : null;
+      return {
+        id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        parsed: p,
+        existingId: existing ? existing.id : null,
+        action: existing ? 'skip' : 'create',
+        include: true,
+        trib: 'SIMPLES',
+        ativ: p.ativGuess || 'SERVIÇO',
+      };
+    });
+    renderImportPreviewModal();
+  }catch(e){
+    console.error(e);
+    await showConfirm('Não foi possível ler esse arquivo. Verifique se é uma planilha .xlsx válida (ou converta o .xls no Excel/LibreOffice antes de importar).', 'Ok');
+  }
+}
+
+function renderImportPreviewModal(){
+  const root = document.getElementById('modalRoot');
+  const newCount = importItems.filter(i=> !i.existingId && i.include).length;
+  const updateCount = importItems.filter(i=> i.existingId && i.action==='update').length;
+  const createDupCount = importItems.filter(i=> i.existingId && i.action==='create').length;
+  root.innerHTML = `
+    <div class="modal-overlay" id="importOverlay">
+      <div class="modal modal-wide">
+        <h3>Importar empresas — planilha Domínio</h3>
+        <div class="imp-summary">
+          Encontrei <strong>${importItems.length}</strong> empresa(s) na planilha. Essa exportação do Domínio não traz o regime tributário nem a atividade —
+          confira/ajuste esses campos abaixo antes de importar. Empresas com CNPJ já cadastrado aparecem destacadas.
+        </div>
+        <div class="imp-list" id="importList">${importItems.map(importRowHtml).join('')}</div>
+        <div class="modal-actions" style="justify-content:space-between;">
+          <div class="envio-footer-info">${newCount} nova(s) · ${updateCount} atualização(ões) · ${createDupCount} duplicada(s) a criar mesmo assim</div>
+          <div style="display:flex; gap:.6rem;">
+            <button class="btn ghost" id="btnImportCancel">Cancelar</button>
+            <button class="btn accent" id="btnImportConfirm">Importar selecionadas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  wireImportPreviewHandlers();
+}
+
+function importRowHtml(item){
+  const p = item.parsed;
+  const isDup = !!item.existingId;
+  const existing = isDup ? state.companies.find(c=>c.id===item.existingId) : null;
+  const infoLine1 = [p.cnpj, p.ie?`IE: ${p.ie}`:'', p.im?`IM: ${p.im}`:'', p.inscSuframa?`Suframa: ${p.inscSuframa}`:''].filter(Boolean).join(' · ');
+  const infoLine2 = [p.email, p.telefone].filter(Boolean).join(' · ') || '—';
+  return `<div class="imp-row ${isDup?'is-dup':''}" data-imp-id="${item.id}">
+    <div class="imp-row-check">
+      ${isDup ? '' : `<input type="checkbox" data-imp-include="${item.id}" ${item.include?'checked':''}>`}
+    </div>
+    <div class="imp-row-main">
+      ${isDup
+        ? `<span class="imp-badge imp-badge-dup">CNPJ já cadastrado: ${existing? existing.nome : ''}</span>`
+        : `<span class="imp-badge imp-badge-new">Nova empresa</span>`}
+      <div class="imp-row-name">${p.nome}</div>
+      <div class="imp-row-meta mono">${infoLine1 || '—'}</div>
+      <div class="imp-row-meta">${infoLine2}${p.ativa ? '' : ' · Situação no Domínio: inativa/baixada'}</div>
+      ${isDup ? `
+        <div class="imp-row-selects">
+          <select data-imp-action="${item.id}">
+            <option value="skip" ${item.action==='skip'?'selected':''}>Pular (não alterar)</option>
+            <option value="update" ${item.action==='update'?'selected':''}>Atualizar cadastro existente</option>
+            <option value="create" ${item.action==='create'?'selected':''}>Cadastrar como nova mesmo assim</option>
+          </select>
+        </div>
+        ${item.action==='create' ? `
+        <div class="imp-row-selects">
+          <select data-imp-trib="${item.id}">
+            <option value="SIMPLES" ${item.trib==='SIMPLES'?'selected':''}>Simples Nacional</option>
+            <option value="SIMEI" ${item.trib==='SIMEI'?'selected':''}>SIMEI</option>
+            <option value="PRESUMIDO" ${item.trib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
+            <option value="REAL" ${item.trib==='REAL'?'selected':''}>Lucro Real</option>
+          </select>
+          <select data-imp-ativ="${item.id}">
+            <option value="COMÉRCIO" ${item.ativ==='COMÉRCIO'?'selected':''}>Comércio</option>
+            <option value="SERVIÇO" ${item.ativ==='SERVIÇO'?'selected':''}>Serviço</option>
+            <option value="COMÉRCIO/SERVIÇO" ${item.ativ==='COMÉRCIO/SERVIÇO'?'selected':''}>Comércio/Serviço</option>
+            <option value="INDÚSTRIA" ${item.ativ==='INDÚSTRIA'?'selected':''}>Indústria</option>
+          </select>
+        </div>` : ''}
+      ` : `
+        <div class="imp-row-selects">
+          <select data-imp-trib="${item.id}">
+            <option value="SIMPLES" ${item.trib==='SIMPLES'?'selected':''}>Simples Nacional</option>
+            <option value="SIMEI" ${item.trib==='SIMEI'?'selected':''}>SIMEI</option>
+            <option value="PRESUMIDO" ${item.trib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
+            <option value="REAL" ${item.trib==='REAL'?'selected':''}>Lucro Real</option>
+          </select>
+          <select data-imp-ativ="${item.id}">
+            <option value="COMÉRCIO" ${item.ativ==='COMÉRCIO'?'selected':''}>Comércio</option>
+            <option value="SERVIÇO" ${item.ativ==='SERVIÇO'?'selected':''}>Serviço</option>
+            <option value="COMÉRCIO/SERVIÇO" ${item.ativ==='COMÉRCIO/SERVIÇO'?'selected':''}>Comércio/Serviço</option>
+            <option value="INDÚSTRIA" ${item.ativ==='INDÚSTRIA'?'selected':''}>Indústria</option>
+          </select>
+        </div>
+      `}
+    </div>
+  </div>`;
+}
+
+function wireImportPreviewHandlers(){
+  const root = document.getElementById('modalRoot');
+  root.querySelectorAll('[data-imp-include]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===chk.dataset.impInclude);
+      if(item) item.include = chk.checked;
+      updateImportFooter();
+    });
+  });
+  root.querySelectorAll('[data-imp-action]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impAction);
+      if(item) item.action = sel.value;
+      renderImportPreviewModal();
+    });
+  });
+  root.querySelectorAll('[data-imp-trib]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impTrib);
+      if(item) item.trib = sel.value;
+    });
+  });
+  root.querySelectorAll('[data-imp-ativ]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impAtiv);
+      if(item) item.ativ = sel.value;
+    });
+  });
+  document.getElementById('btnImportCancel').onclick = ()=>{ importItems = []; root.innerHTML=''; };
+  document.getElementById('importOverlay').addEventListener('click', (e)=>{ if(e.target.id==='importOverlay'){ importItems = []; root.innerHTML=''; } });
+  document.getElementById('btnImportConfirm').onclick = confirmImport;
+}
+
+function updateImportFooter(){
+  const newCount = importItems.filter(i=> !i.existingId && i.include).length;
+  const updateCount = importItems.filter(i=> i.existingId && i.action==='update').length;
+  const createDupCount = importItems.filter(i=> i.existingId && i.action==='create').length;
+  const infoEl = document.querySelector('#modalRoot .envio-footer-info');
+  if(infoEl) infoEl.textContent = `${newCount} nova(s) · ${updateCount} atualização(ões) · ${createDupCount} duplicada(s) a criar mesmo assim`;
+}
+
+async function confirmImport(){
+  let created = 0, updated = 0;
+  importItems.forEach(item=>{
+    const p = item.parsed;
+    if(!item.existingId){
+      if(!item.include) return;
+      const base = {
+        nome: p.nome,
+        cnpj: p.cnpj || '—',
+        trib: item.trib,
+        ativ: item.ativ,
+        ie: p.ie,
+        im: p.im,
+        inscSuframa: p.inscSuframa,
+        email: p.email,
+        telefone: p.telefone,
+        folha: p.folha,
+        contab: true,
+        suframa: !!p.inscSuframa,
+        parcelamentos: false,
+        anual: true,
+        ativa: p.ativa,
+      };
+      base.obligations = computeDefaultObligations(base);
+      state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...base});
+      created++;
+    } else if(item.action==='update'){
+      const existing = state.companies.find(c=>c.id===item.existingId);
+      if(existing){
+        Object.assign(existing, {
+          nome: p.nome,
+          cnpj: p.cnpj || existing.cnpj,
+          ie: p.ie || existing.ie,
+          im: p.im || existing.im,
+          inscSuframa: p.inscSuframa || existing.inscSuframa,
+          email: p.email || existing.email,
+          telefone: p.telefone || existing.telefone,
+          ativa: p.ativa,
+        });
+        updated++;
+      }
+    } else if(item.action==='create'){
+      const base = {
+        nome: p.nome,
+        cnpj: p.cnpj || '—',
+        trib: item.trib,
+        ativ: item.ativ,
+        ie: p.ie,
+        im: p.im,
+        inscSuframa: p.inscSuframa,
+        email: p.email,
+        telefone: p.telefone,
+        folha: p.folha,
+        contab: true,
+        suframa: !!p.inscSuframa,
+        parcelamentos: false,
+        anual: true,
+        ativa: p.ativa,
+      };
+      base.obligations = computeDefaultObligations(base);
+      state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...base});
+      created++;
+    }
+    // action === 'skip' -> nada a fazer
+  });
+  persist();
+  importItems = [];
+  document.getElementById('modalRoot').innerHTML = '';
+  renderAll();
+  await showConfirm(`Importação concluída: ${created} empresa(s) cadastrada(s) e ${updated} atualizada(s).`, 'Ok');
+}
+
+/* ---------- Master render ---------- */
+function renderAll(){
+  renderStats();
+  renderTabs();
+  renderPeriodControl();
+  if(activeTab==='painel') renderPainel();
+  else if(activeTab==='empresas') renderEmpresas();
+  else if(activeTab==='simples') renderRegimeLikeTab('simples','Simples Nacional', `Checklist mensal — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='mei') renderRegimeLikeTab('mei','MEI', `Empresas MEI — checklist mensal, ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='presumido_real') renderRegimeLikeTab('presumido_real','Presumido e Real', `Checklist mensal — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='folha') renderRegimeLikeTab('folha','Folha de Pagamento', `Empresas com folha ativa — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='suframa') renderRegimeLikeTab('suframa','SUFRAMA', `Empresas com inscrição SUFRAMA — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='contabil') renderRegimeLikeTab('contabil','Contábil', `Movimentação e documentos — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='parcelamentos') renderRegimeLikeTab('parcelamentos','Parcelamentos', `Parcelamentos em andamento — ${fmtMonthLabel(selectedMonth)}`);
+  else if(activeTab==='anual') renderRegimeLikeTab('anual','Obrigações Anuais', `Ano-base ${selectedYear}`);
+  else if(activeTab==='envio') renderEnvioDocumentos();
+  else if(activeTab==='demandas') renderDemandas();
+  else if(activeTab==='config') renderConfiguracoes();
+}
+
+/* ---------- Wiring ---------- */
+document.getElementById('headerDriveStatus').addEventListener('click', ()=>{
+  activeTab = 'config';
+  renderAll();
+});
+document.getElementById('monthInput').addEventListener('change', (e)=>{
+  selectedMonth = e.target.value;
+  renderAll();
+});
+document.getElementById('yearInput').addEventListener('change', (e)=>{
+  selectedYear = e.target.value;
+  renderAll();
+});
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  searchQuery = e.target.value;
+  renderAll();
+});
+
+// A inicialização agora acontece em auth.onAuthStateChanged() (login por pessoa via Firebase),
+// que chama loadState()/renderAll()/tryAutoReconnectDrive() assim que alguém autorizado entra.
+
+})();
+</script>
+</body>
+</html>
