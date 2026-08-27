@@ -103,6 +103,8 @@ header.app{
   display:flex; gap:1.6rem; margin-top:.9rem; flex-wrap:wrap;
 }
 .stat{display:flex; flex-direction:column; gap:.1rem;}
+.stat.clickable{cursor:pointer; transition:opacity .12s;}
+.stat.clickable:hover{opacity:.65;}
 .stat .num{font-family:'Fraunces',serif; font-size:1.5rem; font-weight:600; color:#F2F0E6;}
 .stat .lbl{font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:#9FB2AB;}
 .stat .num.accent{color:var(--accent);}
@@ -214,6 +216,8 @@ main{padding:1.4rem;max-width:1180px;margin:0 auto;}
 .painel-card{
   border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
 }
+.painel-card.clickable{cursor:pointer; transition:border-color .12s, background .12s;}
+.painel-card.clickable:hover{border-color:var(--accent); background:#F8F7F2;}
 .painel-card .num{font-family:'Fraunces',serif; font-size:1.9rem; font-weight:600;}
 .painel-card .lbl{font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.15rem;}
 .painel-card .sub{font-size:.72rem; color:var(--muted); margin-top:.5rem; display:flex; flex-direction:column; gap:.15rem;}
@@ -401,7 +405,11 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .demanda-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
 .demanda-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
 .demanda-message{font-size:.83rem; color:var(--ink); line-height:1.5; margin-top:.55rem; white-space:pre-wrap; word-break:break-word;}
-.demanda-card-actions{display:flex; justify-content:flex-end; gap:.2rem; margin-top:.5rem; border-top:1px dashed var(--line); padding-top:.4rem;}
+.demanda-card-actions{display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-top:.5rem; border-top:1px dashed var(--line); padding-top:.4rem; flex-wrap:wrap;}
+.demanda-resp-select{
+  padding:.3rem .55rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif; color:var(--muted); max-width:200px;
+}
 .config-category{border:1px solid var(--line-strong); border-radius:10px; padding:1rem; background:#FCFCFA;}
 .config-category-title{font-family:'Fraunces',serif; font-weight:600; font-size:1rem; margin-bottom:.6rem; color:var(--ink-2);}
 .oblig-manage-label{font-size:.82rem; color:var(--ink);}
@@ -567,6 +575,7 @@ function migrateState(){
   state.obligations = state.obligations || [];
   state.docTypes = state.docTypes || [];
   state.demandas = state.demandas || [];
+  state.users = state.users || [];
   DEFAULT_OBLIGATIONS.forEach(d=>{
     if(!state.obligations.find(o=>o.id===d.id)){ state.obligations.push({...d}); changed = true; }
   });
@@ -624,6 +633,7 @@ async function loadState(){
     docTypes: DEFAULT_DOC_TYPES.map(d=>({...d})),
     docTypesInitialized: true,
     demandas: [],
+    users: [],
   };
   state.companies.forEach(c=>{ c.obligations = computeDefaultObligations(c); c.anual = true; c.parcelamentos = false; });
   persist();
@@ -1421,11 +1431,17 @@ function renderStats(){
 
   const el = document.getElementById('statsStrip');
   el.innerHTML = `
-    <div class="stat"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
-    <div class="stat"><div class="num accent">${pct}%</div><div class="lbl">Concluído no mês</div></div>
-    <div class="stat"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
-    <div class="stat"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
+    <div class="stat clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
+    <div class="stat clickable" data-jump="painel"><div class="num accent">${pct}%</div><div class="lbl">Concluído no mês</div></div>
+    <div class="stat clickable" data-jump="simples"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
+    <div class="stat clickable" data-jump="presumido_real"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
   `;
+  el.querySelectorAll('[data-jump]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      activeTab = card.dataset.jump;
+      renderAll();
+    });
+  });
 }
 
 function renderTabs(){
@@ -1609,17 +1625,17 @@ function renderPainel(){
       <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="btn ghost small">💬 Abrir WhatsApp Web ↗</a>
     </div>
     <div class="painel-grid">
-      <div class="painel-card"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
-      <div class="painel-card"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
-      <div class="painel-card"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
-      <div class="painel-card"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
+      <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
+      <div class="painel-card clickable" data-scroll="pendingSection"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
+      <div class="painel-card clickable" data-jump="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
+      <div class="painel-card clickable" data-jump="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
     </div>
 
     <div class="sheet-title" style="font-size:1rem;">Demandas</div>
     <div class="painel-grid" style="margin-bottom:1rem;">
-      <div class="painel-card"><div class="num" style="color:#7A5F1F;">${demandasAbertas}</div><div class="lbl">Abertas</div></div>
-      <div class="painel-card"><div class="num" style="color:#2A5F79;">${demandasAndamento}</div><div class="lbl">Em andamento</div></div>
-      <div class="painel-card"><div class="num" style="color:var(--good);">${demandasConcluidas}</div><div class="lbl">Concluídas</div></div>
+      <div class="painel-card clickable" data-jump-demandas="aberta"><div class="num" style="color:#7A5F1F;">${demandasAbertas}</div><div class="lbl">Abertas</div></div>
+      <div class="painel-card clickable" data-jump-demandas="andamento"><div class="num" style="color:#2A5F79;">${demandasAndamento}</div><div class="lbl">Em andamento</div></div>
+      <div class="painel-card clickable" data-jump-demandas="concluida"><div class="num" style="color:var(--good);">${demandasConcluidas}</div><div class="lbl">Concluídas</div></div>
     </div>
     <div class="pending-list" style="margin-bottom:1.4rem;">
       ${demandasAtivas.length? demandasAtivas.map(d=>{
@@ -1636,7 +1652,7 @@ function renderPainel(){
     ${state.demandas.length ? `<div style="text-align:right;margin-top:-.8rem;margin-bottom:1.2rem;"><span class="go" data-jump="demandas" style="font-size:.78rem;">Ver todas as demandas →</span></div>` : ''}
 
     <div class="sheet-title" style="font-size:1rem;">Empresas com pendências</div>
-    <div class="pending-list" style="margin-top:.6rem;">
+    <div class="pending-list" id="pendingSection" style="margin-top:.6rem;">
       ${pendingList.length? pendingList.map(x=>`
         <div class="pending-row">
           <div>
@@ -1652,6 +1668,19 @@ function renderPainel(){
     el.addEventListener('click', ()=>{
       activeTab = el.dataset.jump;
       renderAll();
+    });
+  });
+  container.querySelectorAll('[data-jump-demandas]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      demandaFilter = el.dataset.jumpDemandas;
+      activeTab = 'demandas';
+      renderAll();
+    });
+  });
+  container.querySelectorAll('[data-scroll]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const target = document.getElementById(el.dataset.scroll);
+      if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
     });
   });
 }
@@ -2121,6 +2150,7 @@ async function sendEnvioSelected(){
 
 /* ---- Demandas tab ---- */
 let demandaFilter = 'todas'; // todas | aberta | andamento | concluida
+let demandaResponsavelFilter = 'todos'; // todos | 'none' | userId
 
 function escapeHtml(str){
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -2137,11 +2167,30 @@ function renderDemandas(){
       <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
     </div>
     <div class="demanda-filters" id="demandaFilters"></div>
+    <div class="demanda-filters" id="demandaRespFilterWrap" style="margin-top:-.5rem;"></div>
     <div id="demandaList"></div>
   `;
   document.getElementById('btnNewDemanda').addEventListener('click', ()=>openDemandaModal(null));
   renderDemandaFilters();
+  renderDemandaResponsavelFilter();
   renderDemandaList();
+}
+
+function renderDemandaResponsavelFilter(){
+  const el = document.getElementById('demandaRespFilterWrap');
+  if(!el) return;
+  const users = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome));
+  el.innerHTML = `
+    <select id="demandaRespFilterSelect" style="padding:.35rem .6rem; border:1px solid var(--line-strong); border-radius:20px; font-size:.78rem; font-family:'Public Sans',sans-serif;">
+      <option value="todos" ${demandaResponsavelFilter==='todos'?'selected':''}>Todos os responsáveis</option>
+      <option value="none" ${demandaResponsavelFilter==='none'?'selected':''}>Sem responsável</option>
+      ${users.map(u=>`<option value="${u.id}" ${demandaResponsavelFilter===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('')}
+    </select>
+  `;
+  document.getElementById('demandaRespFilterSelect').addEventListener('change', (e)=>{
+    demandaResponsavelFilter = e.target.value;
+    renderDemandaList();
+  });
 }
 
 function renderDemandaFilters(){
@@ -2168,13 +2217,14 @@ function renderDemandaFilters(){
 
 function demandaCardHtml(d){
   const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+  const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
   const dt = new Date(d.criadoEm);
   const dataFmt = isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
   return `<div class="demanda-card" data-demanda-id="${d.id}">
     <div class="demanda-card-top">
       <div>
         <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'}</div>
-        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}</div>
+        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}</div>
       </div>
       <select class="demanda-status-select status-${d.status}" data-demanda-status="${d.id}">
         <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
@@ -2184,8 +2234,14 @@ function demandaCardHtml(d){
     </div>
     <div class="demanda-message">${escapeHtml(d.mensagem).replace(/\n/g,'<br>')}</div>
     <div class="demanda-card-actions">
-      <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
-      <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-demanda="${d.id}" title="Excluir">×</button>
+      <select class="demanda-resp-select" data-demanda-responsavel="${d.id}">
+        <option value="">— sem responsável —</option>
+        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}" ${u.id===d.responsavelId?'selected':''}>${escapeHtml(u.nome)}</option>`).join('')}
+      </select>
+      <div style="display:flex; gap:.2rem;">
+        <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
+        <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-demanda="${d.id}" title="Excluir">×</button>
+      </div>
     </div>
   </div>`;
 }
@@ -2195,6 +2251,8 @@ function renderDemandaList(){
   if(!el) return;
   let list = state.demandas.slice();
   if(demandaFilter!=='todas') list = list.filter(d=>d.status===demandaFilter);
+  if(demandaResponsavelFilter==='none') list = list.filter(d=>!d.responsavelId);
+  else if(demandaResponsavelFilter!=='todos') list = list.filter(d=>d.responsavelId===demandaResponsavelFilter);
   if(searchQuery){
     const q = searchQuery.toLowerCase();
     list = list.filter(d=>{
@@ -2220,6 +2278,13 @@ function wireDemandaCardHandlers(container){
       renderDemandaFilters();
     });
   });
+  container.querySelectorAll('[data-demanda-responsavel]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const d = state.demandas.find(x=>x.id===sel.dataset.demandaResponsavel);
+      if(d){ d.responsavelId = sel.value || null; d.atualizadoEm = new Date().toISOString(); persist(); }
+      renderDemandaList();
+    });
+  });
   container.querySelectorAll('[data-edit-demanda]').forEach(btn=>{
     btn.addEventListener('click', ()=> openDemandaModal(btn.dataset.editDemanda));
   });
@@ -2239,10 +2304,12 @@ function wireDemandaCardHandlers(container){
 
 function openDemandaModal(demandaId){
   const editing = !!demandaId;
-  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta'};
+  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:''};
   const root = document.getElementById('modalRoot');
   const companyOptions = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(c=>`<option value="${c.id}" ${c.id===d.companyId?'selected':''}>${c.nome}</option>`).join('');
+  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(u=>`<option value="${u.id}" ${u.id===d.responsavelId?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal">
@@ -2253,12 +2320,20 @@ function openDemandaModal(demandaId){
           </div>
           <div class="form-row"><label>Título curto (opcional)</label><input id="demTitulo" type="text" value="${(d.titulo||'').replace(/"/g,'&quot;')}" placeholder="Ex: Pedido de segunda via de nota"></div>
           <div class="form-row"><label>Mensagem do cliente (cole aqui)</label><textarea id="demMensagem" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${(d.mensagem||'').replace(/</g,'&lt;')}</textarea><div id="demMensagemError" style="color:var(--bad);font-size:.74rem;display:none;">Cole ou digite a mensagem.</div></div>
-          <div class="form-row"><label>Status</label>
-            <select id="demStatus">
-              <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
-              <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
-              <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
-            </select>
+          <div class="form-cols">
+            <div class="form-row"><label>Status</label>
+              <select id="demStatus">
+                <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
+                <option value="andamento" ${d.status==='andamento'?'selected':''}>Em andamento</option>
+                <option value="concluida" ${d.status==='concluida'?'selected':''}>Concluída</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Responsável</label>
+              <select id="demResponsavel">
+                <option value="">— não atribuído —</option>
+                ${userOptions}
+              </select>
+            </div>
           </div>
         </div>
         <div class="modal-actions">
@@ -2281,13 +2356,14 @@ function openDemandaModal(demandaId){
     let titulo = document.getElementById('demTitulo').value.trim();
     if(!titulo) titulo = mensagem.split('\n')[0].slice(0,60);
     const status = document.getElementById('demStatus').value;
+    const responsavelId = document.getElementById('demResponsavel').value || null;
     const nowIso = new Date().toISOString();
     if(editing){
-      Object.assign(d, {companyId, titulo, mensagem, status, atualizadoEm: nowIso});
+      Object.assign(d, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
     } else {
       state.demandas.push({
         id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        companyId, titulo, mensagem, status,
+        companyId, titulo, mensagem, status, responsavelId,
         criadoEm: nowIso, atualizadoEm: nowIso,
       });
     }
@@ -2349,6 +2425,11 @@ function renderConfiguracoes(){
     <div class="sheet-sub">Defina aqui as tarefas de cada categoria de obrigação. No cadastro da empresa você só marca quais dessas tarefas se aplicam a cada uma.</div>
     ${renderDrivePanel()}
     <div class="config-grid" id="configGrid"></div>
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Responsáveis</div>
+    <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda.</div>
+    <div id="usersList"></div>
+    <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
+
     <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Tipos de documento (envio automático)</div>
     <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
     <div id="docTypesList"></div>
@@ -2373,6 +2454,92 @@ function renderConfiguracoes(){
   });
   renderDocTypesList();
   document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
+  renderUsersList();
+  document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
+}
+
+function renderUsersList(){
+  const el = document.getElementById('usersList');
+  if(!el) return;
+  if(state.users.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhum responsável cadastrado ainda.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="doctype-list">${state.users.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
+    <div class="doctype-card">
+      <div class="doctype-card-top">
+        <div class="doctype-card-name">${escapeHtml(u.nome)} ${u.ativo===false? '<span style="color:var(--muted);font-weight:500;font-size:.76rem;">(inativo)</span>':''}</div>
+        <div class="oblig-row-actions">
+          <button type="button" class="oblig-icon-btn" data-edit-user="${u.id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-user="${u.id}" title="Excluir">×</button>
+        </div>
+      </div>
+      ${u.email? `<div class="doctype-card-kw">${escapeHtml(u.email)}</div>` : ''}
+    </div>
+  `).join('')}</div>`;
+  el.querySelectorAll('[data-edit-user]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openUserModal(btn.dataset.editUser));
+  });
+  el.querySelectorAll('[data-del-user]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const u = state.users.find(x=>x.id===btn.dataset.delUser);
+      if(!u) return;
+      const ok = await showConfirm(`Excluir o responsável "${u.nome}"? As demandas já atribuídas a ${u.nome} ficarão sem responsável.`);
+      if(!ok) return;
+      state.users = state.users.filter(x=>x.id!==u.id);
+      state.demandas.forEach(d=>{ if(d.responsavelId===u.id) d.responsavelId = null; });
+      persist();
+      renderUsersList();
+    });
+  });
+}
+
+function openUserModal(userId){
+  const editing = !!userId;
+  const u = editing ? state.users.find(x=>x.id===userId) : {nome:'', email:'', ativo:true};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar responsável' : 'Novo responsável'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome</label><input id="userNome" type="text" value="${(u.nome||'').replace(/"/g,'&quot;')}" placeholder="Nome do responsável"><div id="userNomeError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
+          <div class="form-row"><label>E-mail (opcional)</label><input id="userEmail" type="email" value="${(u.email||'').replace(/"/g,'&quot;')}" placeholder="nome@empresa.com"></div>
+          <div class="form-row" style="flex-direction:row; align-items:center; gap:.5rem;">
+            <input type="checkbox" id="userAtivo" style="width:14px;height:14px;"> <label style="text-transform:none; font-weight:500; font-size:.85rem;">Responsável ativo</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('userAtivo').checked = u.ativo!==false;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const nome = document.getElementById('userNome').value.trim();
+    if(!nome){
+      document.getElementById('userNomeError').style.display = 'block';
+      document.getElementById('userNome').focus();
+      return;
+    }
+    const data = {
+      nome,
+      email: document.getElementById('userEmail').value.trim(),
+      ativo: document.getElementById('userAtivo').checked,
+    };
+    if(editing){
+      Object.assign(u, data);
+    } else {
+      state.users.push({id:'user_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
+    }
+    persist();
+    root.innerHTML = '';
+    renderUsersList();
+  };
 }
 
 function renderDocTypesList(){
