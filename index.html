@@ -1141,7 +1141,9 @@ function extractCompetenciaVencimento(text){
       const end = Math.min(text.length, m.index + m[0].length + window);
       const segment = text.slice(start, end);
       const labelStart = m.index - start, labelEnd = labelStart + m[0].length;
-      const dateRe = /\b\d{2}\/\d{4}\b/g;
+      // O lookbehind evita confundir "MM/AAAA" com o final de uma data completa "DD/MM/AAAA" que
+      // esteja por perto (ex: não interpretar o "08/2026" de "20/08/2026" como competência).
+      const dateRe = /(?<!\d{2}\/)\b\d{2}\/\d{4}\b/g;
       let dm;
       while((dm = dateRe.exec(segment))){
         let dist;
@@ -1154,13 +1156,24 @@ function extractCompetenciaVencimento(text){
     return best;
   }
 
+  // Alguns DARFs (ex: guias geradas pelo sistema SENDA/eSocial para INSS/IRRF sobre folha) repetem,
+  // junto de cada item da guia, o padrão colado "PA:MM/AAAA ... Vencimento:DD/MM/AAAA" — isso é mais
+  // confiável que o cabeçalho "Período de Apuração" nesses documentos, porque o gerador desse PDF às
+  // vezes emite o rótulo do cabeçalho bem longe do seu valor real (o texto extraído do PDF não segue
+  // a ordem visual de leitura), enquanto esse padrão por item mantém rótulo e valor sempre colados.
+  const paInlineMatch = text.match(/PA:\s*(\d{2}\/\d{4})[^0-9]{0,30}?Vencimento:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if(paInlineMatch){
+    competencia = paInlineMatch[1];
+    vencimento = paInlineMatch[2];
+  }
+
   // "Período de Apuração" is the authoritative field whenever present (DAS, DARF, PGDAS-D).
   // We scan a generous window after the label and read período + vencimento together, in the
   // order their values actually appear — this stays correct whether the real PDF text extraction
   // keeps "label value label value" order or bunches all labels first, then all values (both are
   // common depending on the PDF generator), since either way the dates keep their column order.
   const paMatch = text.match(/Per[íi]odo de Apura[çc][ãa]o/i);
-  if(paMatch){
+  if(paMatch && !paInlineMatch){
     const win = text.slice(paMatch.index + paMatch[0].length, paMatch.index + paMatch[0].length + 200);
     const rangeMatch = win.match(/(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i);
     if(rangeMatch && rangeMatch.index < 5){
@@ -1241,7 +1254,7 @@ function extractCompetenciaVencimento(text){
   // Fallback: guias com "Competência" como cabeçalho de tabela e valor em MM/AAAA
   // (ex: GFD - Guia do FGTS Digital).
   if(!competencia){
-    competencia = nearestMonthYearNearLabel(/Compet[êe]ncia/i, 120) || '';
+    competencia = nearestMonthYearNearLabel(/Compet[êe]ncia/i, 250) || '';
   }
   // If we still have no vencimento but do have a competência, fall back to the closest
   // date overall found anywhere near "Referência" (covers documents like the Alvará/TVF where
