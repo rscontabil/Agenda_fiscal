@@ -117,6 +117,12 @@ header.app{
 .auth-gate-card h2{font-family:'Fraunces',serif; font-size:1.25rem; margin:.2rem 0 .5rem;}
 .auth-gate-card p{font-size:.86rem; color:var(--muted); line-height:1.5; margin:0 0 1.2rem;}
 .auth-gate-error{color:var(--bad); font-size:.8rem; margin-top:.9rem; min-height:1em;}
+.auth-gate-spinner{
+  width:36px; height:36px; margin:0 auto;
+  border:3px solid var(--line-strong); border-top-color:var(--accent);
+  border-radius:50%; animation:authSpin .8s linear infinite;
+}
+@keyframes authSpin{ to{ transform:rotate(360deg); } }
 .header-user{display:flex; align-items:center; gap:.5rem; font-size:.78rem; color:var(--muted);}
 .header-user button{
   background:none; border:1px solid var(--line-strong); border-radius:20px; padding:.25rem .7rem;
@@ -510,12 +516,16 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 <body>
 
 <div id="authGate" class="auth-gate">
-  <div class="auth-gate-card">
+  <div class="auth-gate-card" id="authGateLoginCard">
     <div class="brand-mark" style="margin:0 auto .8rem;">RS</div>
     <h2>Agenda de Obrigações Fiscais</h2>
     <p>Entre com a conta Google autorizada da equipe para continuar.</p>
     <button id="btnGoogleLogin" class="btn accent" type="button">Entrar com Google</button>
     <div id="authGateError" class="auth-gate-error"></div>
+  </div>
+  <div class="auth-gate-card" id="authGateLoadingCard" style="display:none;">
+    <div class="auth-gate-spinner"></div>
+    <p id="authGateLoadingText" style="margin-top:1rem;color:var(--muted);font-size:.86rem;">Carregando…</p>
   </div>
 </div>
 
@@ -611,23 +621,32 @@ const ALLOWED_EMAILS = ['rscontabilidade79@gmail.com', 'jt.pimentel26@gmail.com'
 let currentUser = null;
 let firestoreUnsub = null;
 
-function showAuthGate(message){
+function showAuthGateLoginCard(message){
   document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('authGateLoginCard').style.display = '';
+  document.getElementById('authGateLoadingCard').style.display = 'none';
   document.getElementById('headerUser').style.display = 'none';
-  const err = document.getElementById('authGateError');
-  err.textContent = message || '';
+  document.getElementById('authGateError').textContent = message || '';
+}
+function showAuthGateLoading(text){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('authGateLoginCard').style.display = 'none';
+  document.getElementById('authGateLoadingCard').style.display = '';
+  document.getElementById('authGateLoadingText').textContent = text || 'Carregando…';
 }
 function hideAuthGate(){
   document.getElementById('authGate').style.display = 'none';
 }
 
 document.getElementById('btnGoogleLogin').addEventListener('click', async ()=>{
+  showAuthGateLoading('Entrando com o Google…');
   const provider = new firebase.auth.GoogleAuthProvider();
   try{
     await auth.signInWithPopup(provider);
+    // a partir daqui, quem assume é o auth.onAuthStateChanged abaixo
   }catch(e){
     console.error('Erro no login', e);
-    showAuthGate('Não foi possível entrar (' + (e.code || e.message) + '). Tente novamente.');
+    showAuthGateLoginCard('Não foi possível entrar (' + (e.code || e.message) + '). Tente novamente.');
   }
 });
 document.getElementById('btnLogout').addEventListener('click', async ()=>{
@@ -639,20 +658,21 @@ auth.onAuthStateChanged(async (user)=>{
   if(user){
     const email = (user.email || '').toLowerCase();
     if(!ALLOWED_EMAILS.includes(email)){
-      showAuthGate('Esse e-mail (' + user.email + ') não tem acesso a este aplicativo. Fale com o administrador.');
+      showAuthGateLoginCard('Esse e-mail (' + user.email + ') não tem acesso a este aplicativo. Fale com o administrador.');
       await auth.signOut();
       return;
     }
     currentUser = user;
-    hideAuthGate();
+    showAuthGateLoading('Carregando os dados da equipe…');
     document.getElementById('headerUser').style.display = 'flex';
     document.getElementById('headerUserEmail').textContent = user.email;
     await loadState();
     renderAll();
+    hideAuthGate();
     tryAutoReconnectDrive();
   } else {
     currentUser = null;
-    showAuthGate();
+    showAuthGateLoginCard();
   }
 });
 
