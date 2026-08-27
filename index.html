@@ -341,6 +341,38 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .envio-footer{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem;}
 .envio-footer-info{font-size:.8rem; color:var(--muted);}
 
+.modal-wide{max-width:760px;}
+.imp-summary{font-size:.84rem; color:var(--muted); margin-bottom:.9rem; line-height:1.5;}
+.imp-summary strong{color:var(--ink);}
+.imp-list{display:flex; flex-direction:column; gap:.6rem; margin-bottom:1rem; max-height:52vh; overflow-y:auto; padding-right:.2rem;}
+.imp-row{
+  display:flex; gap:.6rem; align-items:flex-start; border:1px solid var(--line); border-radius:10px;
+  padding:.7rem .8rem; background:#FCFCFA;
+}
+.imp-row.is-dup{background:var(--gold-bg); border-color:#E3D3A0;}
+.imp-row-check{padding-top:.2rem;}
+.imp-row-check input{width:15px; height:15px; cursor:pointer;}
+.imp-row-main{flex:1; min-width:0;}
+.imp-row-name{font-size:.85rem; font-weight:700; margin-bottom:.15rem; word-break:break-word;}
+.imp-row-meta{font-size:.72rem; color:var(--muted); line-height:1.5; margin-bottom:.45rem;}
+.imp-row-meta .mono{font-family:'JetBrains Mono',monospace;}
+.imp-row-selects{display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.35rem;}
+.imp-row-selects select{
+  padding:.35rem .5rem; border:1px solid var(--line-strong); border-radius:6px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif;
+}
+.imp-badge{
+  display:inline-block; font-size:.7rem; font-weight:700; padding:.15rem .55rem; border-radius:20px;
+  margin-bottom:.35rem;
+}
+.imp-badge-dup{background:#E3D3A0; color:#7A5F1F;}
+.imp-badge-new{background:var(--good-bg); color:var(--good);}
+.imp-dropzone{
+  border:2px dashed var(--line-strong); border-radius:12px; padding:1.8rem 1rem; text-align:center;
+  margin-bottom:.2rem;
+}
+.imp-dropzone-inner{font-size:.86rem; color:var(--muted); line-height:1.6;}
+
 .doctype-list{display:flex; flex-direction:column; gap:.6rem; margin-bottom:.8rem;}
 .doctype-card{border:1px solid var(--line-strong); border-radius:10px; padding:.8rem 1rem; background:#FCFCFA;}
 .doctype-card-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;}
@@ -444,6 +476,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -513,6 +546,7 @@ let selectedYear = String(now.getFullYear());
 let saveTimer = null;
 let envioItems = [];
 let envioSending = false;
+let importItems = [];
 
 /* ---------- Storage ---------- */
 const STORAGE_KEY = 'agenda-obrigacoes-fiscais-v1';
@@ -1657,7 +1691,11 @@ function renderEmpresas(){
         <div class="sheet-title" style="margin-bottom:0;">Empresas</div>
         <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists.</div>
       </div>
-      <button class="btn accent" id="btnNewCompany">+ Nova empresa</button>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn ghost" id="btnImportCompanies">Importar planilha (Domínio)</button>
+        <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button class="btn accent" id="btnNewCompany">+ Nova empresa</button>
+      </div>
     </div>
     <div style="overflow-x:auto;">
     <table class="emp-table">
@@ -1697,6 +1735,12 @@ function renderEmpresas(){
   document.getElementById('btnNewCompany').addEventListener('click', ()=>openCompanyModal(null));
   container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openCompanyModal(b.dataset.edit)));
   container.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteCompany(b.dataset.del)));
+  const importInput = document.getElementById('importFileInput');
+  document.getElementById('btnImportCompanies').addEventListener('click', ()=> importInput.click());
+  importInput.addEventListener('change', ()=>{
+    if(importInput.files && importInput.files[0]) handleImportFile(importInput.files[0]);
+    importInput.value = '';
+  });
 }
 
 async function deleteObligationFromCatalog(id){
@@ -2601,6 +2645,325 @@ async function deleteCompany(id){
   Object.values(state.annual).forEach(bucket=>{ delete bucket[id]; });
   persist();
   renderAll();
+}
+
+/* ---------- Importação de cadastro (planilha Domínio Sistemas) ---------- */
+function onlyDigits(s){ return (s||'').toString().replace(/\D/g,''); }
+
+function guessAtividadeFromRamo(ramo){
+  const r = (ramo||'').toLowerCase();
+  const isComercio = /com[eé]rcio|comercial|varejist|atacadist/.test(r);
+  const isServico = /servi[cç]o|consultori|representa[cç][aã]o|apoio administrativo|advocacia|contabil/.test(r);
+  const isIndustria = /ind[uú]stria|fabrica[cç][aã]o|industrial|manufatur/.test(r);
+  if(isIndustria) return 'INDÚSTRIA';
+  if(isComercio && isServico) return 'COMÉRCIO/SERVIÇO';
+  if(isComercio) return 'COMÉRCIO';
+  return 'SERVIÇO';
+}
+
+// Lê uma linha "achatada" de célula (padrão de relatório do Domínio: rótulo:,,,valor,,,rótulo2:,,,valor2)
+// e devolve um mapa {rótulo: valor} para essa linha.
+function scanDominioRow(row){
+  const cells = (row||[]).map(c => (c===undefined||c===null) ? '' : String(c).trim());
+  const out = {};
+  let i = 0;
+  while(i < cells.length){
+    const cell = cells[i];
+    if(cell.endsWith(':') && cell.length>1){
+      const label = cell;
+      let j = i+1;
+      while(j<cells.length && cells[j]==='') j++;
+      const val = (j<cells.length) ? cells[j] : '';
+      if(val.endsWith(':') && val.length < 45 && !/\d/.test(val)){
+        out[label] = '';
+        i = j;
+        continue;
+      }
+      out[label] = val;
+      i = j+1;
+    } else {
+      i++;
+    }
+  }
+  return out;
+}
+
+// A exportação "Cadastro de Empresas" do Domínio vem como uma ficha por empresa (não uma tabela linha-a-linha),
+// com blocos delimitados por "DADOS CADASTRAIS". Não traz o regime tributário — isso é definido na conferência.
+function parseDominioSheetRows(rows){
+  const blockStarts = [];
+  rows.forEach((row, idx)=>{
+    if(String((row && row[0]) || '').trim() === 'DADOS CADASTRAIS') blockStarts.push(idx);
+  });
+  if(blockStarts.length === 0) return [];
+  const parsed = [];
+  blockStarts.forEach((start, bi)=>{
+    const end = blockStarts[bi+1] !== undefined ? blockStarts[bi+1] : rows.length;
+    const fields = {};
+    rows.slice(start, end).forEach(row=> Object.assign(fields, scanDominioRow(row)));
+    const nome = fields['Razão social:'] || fields['Nome:'] || '';
+    if(!nome) return;
+    const cnpj = fields['CNPJ/CPF/CEI/CAEPF:'] || fields['C.N.P.J.:'] || '';
+    const situacao = (fields['Situação:'] || '').trim();
+    const modulos = fields['Módulos:'] || '';
+    const inscSuframa = fields['Insc. Suframa:'] || '';
+    parsed.push({
+      nome,
+      cnpj: cnpj.trim(),
+      ie: (fields['Insc. estadual:']||'').trim(),
+      im: (fields['Insc. municipal:']||'').trim(),
+      inscSuframa: inscSuframa.trim(),
+      email: (fields['E-mail:']||'').trim(),
+      telefone: (fields['Telefone:']||'').trim(),
+      ativa: situacao.toLowerCase()==='ativa',
+      folha: /folha/i.test(modulos),
+      ativGuess: guessAtividadeFromRamo(fields['Ramo de atividade:']||''),
+    });
+  });
+  return parsed;
+}
+
+async function handleImportFile(file){
+  const name = file.name.toLowerCase();
+  if(!window.XLSX){
+    await showConfirm('A biblioteca de leitura de planilhas ainda não carregou. Aguarde alguns segundos e tente novamente.', 'Ok');
+    return;
+  }
+  try{
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, {type:'array'});
+    const sheetName = workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+    const rows = sheet ? XLSX.utils.sheet_to_json(sheet, {header:1, defval:'', raw:false}) : [];
+    const parsedList = rows.length ? parseDominioSheetRows(rows) : [];
+    if(parsedList.length === 0){
+      const isXls = name.endsWith('.xls');
+      await showConfirm(
+        isXls
+          ? 'Não consegui ler dados nesse arquivo .xls — esse formato específico do Domínio às vezes não é reconhecido pelo navegador. Abra o arquivo no Excel ou LibreOffice, use "Salvar como" → .xlsx, e importe o arquivo convertido.'
+          : 'Não encontrei nenhuma empresa nesse arquivo. Confirme se é a exportação "Cadastro de Empresas" do Domínio Sistemas (ficha por empresa, com o bloco "DADOS CADASTRAIS").',
+        'Ok'
+      );
+      return;
+    }
+    importItems = parsedList.map(p=>{
+      const digits = onlyDigits(p.cnpj);
+      const existing = digits ? state.companies.find(c=> onlyDigits(c.cnpj)===digits) : null;
+      return {
+        id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        parsed: p,
+        existingId: existing ? existing.id : null,
+        action: existing ? 'skip' : 'create',
+        include: true,
+        trib: 'SIMPLES',
+        ativ: p.ativGuess || 'SERVIÇO',
+      };
+    });
+    renderImportPreviewModal();
+  }catch(e){
+    console.error(e);
+    await showConfirm('Não foi possível ler esse arquivo. Verifique se é uma planilha .xlsx válida (ou converta o .xls no Excel/LibreOffice antes de importar).', 'Ok');
+  }
+}
+
+function renderImportPreviewModal(){
+  const root = document.getElementById('modalRoot');
+  const newCount = importItems.filter(i=> !i.existingId && i.include).length;
+  const updateCount = importItems.filter(i=> i.existingId && i.action==='update').length;
+  const createDupCount = importItems.filter(i=> i.existingId && i.action==='create').length;
+  root.innerHTML = `
+    <div class="modal-overlay" id="importOverlay">
+      <div class="modal modal-wide">
+        <h3>Importar empresas — planilha Domínio</h3>
+        <div class="imp-summary">
+          Encontrei <strong>${importItems.length}</strong> empresa(s) na planilha. Essa exportação do Domínio não traz o regime tributário nem a atividade —
+          confira/ajuste esses campos abaixo antes de importar. Empresas com CNPJ já cadastrado aparecem destacadas.
+        </div>
+        <div class="imp-list" id="importList">${importItems.map(importRowHtml).join('')}</div>
+        <div class="modal-actions" style="justify-content:space-between;">
+          <div class="envio-footer-info">${newCount} nova(s) · ${updateCount} atualização(ões) · ${createDupCount} duplicada(s) a criar mesmo assim</div>
+          <div style="display:flex; gap:.6rem;">
+            <button class="btn ghost" id="btnImportCancel">Cancelar</button>
+            <button class="btn accent" id="btnImportConfirm">Importar selecionadas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  wireImportPreviewHandlers();
+}
+
+function importRowHtml(item){
+  const p = item.parsed;
+  const isDup = !!item.existingId;
+  const existing = isDup ? state.companies.find(c=>c.id===item.existingId) : null;
+  const infoLine1 = [p.cnpj, p.ie?`IE: ${p.ie}`:'', p.im?`IM: ${p.im}`:'', p.inscSuframa?`Suframa: ${p.inscSuframa}`:''].filter(Boolean).join(' · ');
+  const infoLine2 = [p.email, p.telefone].filter(Boolean).join(' · ') || '—';
+  return `<div class="imp-row ${isDup?'is-dup':''}" data-imp-id="${item.id}">
+    <div class="imp-row-check">
+      ${isDup ? '' : `<input type="checkbox" data-imp-include="${item.id}" ${item.include?'checked':''}>`}
+    </div>
+    <div class="imp-row-main">
+      ${isDup
+        ? `<span class="imp-badge imp-badge-dup">CNPJ já cadastrado: ${existing? existing.nome : ''}</span>`
+        : `<span class="imp-badge imp-badge-new">Nova empresa</span>`}
+      <div class="imp-row-name">${p.nome}</div>
+      <div class="imp-row-meta mono">${infoLine1 || '—'}</div>
+      <div class="imp-row-meta">${infoLine2}${p.ativa ? '' : ' · Situação no Domínio: inativa/baixada'}</div>
+      ${isDup ? `
+        <div class="imp-row-selects">
+          <select data-imp-action="${item.id}">
+            <option value="skip" ${item.action==='skip'?'selected':''}>Pular (não alterar)</option>
+            <option value="update" ${item.action==='update'?'selected':''}>Atualizar cadastro existente</option>
+            <option value="create" ${item.action==='create'?'selected':''}>Cadastrar como nova mesmo assim</option>
+          </select>
+        </div>
+        ${item.action==='create' ? `
+        <div class="imp-row-selects">
+          <select data-imp-trib="${item.id}">
+            <option value="SIMPLES" ${item.trib==='SIMPLES'?'selected':''}>Simples Nacional</option>
+            <option value="SIMEI" ${item.trib==='SIMEI'?'selected':''}>SIMEI</option>
+            <option value="PRESUMIDO" ${item.trib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
+            <option value="REAL" ${item.trib==='REAL'?'selected':''}>Lucro Real</option>
+          </select>
+          <select data-imp-ativ="${item.id}">
+            <option value="COMÉRCIO" ${item.ativ==='COMÉRCIO'?'selected':''}>Comércio</option>
+            <option value="SERVIÇO" ${item.ativ==='SERVIÇO'?'selected':''}>Serviço</option>
+            <option value="COMÉRCIO/SERVIÇO" ${item.ativ==='COMÉRCIO/SERVIÇO'?'selected':''}>Comércio/Serviço</option>
+            <option value="INDÚSTRIA" ${item.ativ==='INDÚSTRIA'?'selected':''}>Indústria</option>
+          </select>
+        </div>` : ''}
+      ` : `
+        <div class="imp-row-selects">
+          <select data-imp-trib="${item.id}">
+            <option value="SIMPLES" ${item.trib==='SIMPLES'?'selected':''}>Simples Nacional</option>
+            <option value="SIMEI" ${item.trib==='SIMEI'?'selected':''}>SIMEI</option>
+            <option value="PRESUMIDO" ${item.trib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
+            <option value="REAL" ${item.trib==='REAL'?'selected':''}>Lucro Real</option>
+          </select>
+          <select data-imp-ativ="${item.id}">
+            <option value="COMÉRCIO" ${item.ativ==='COMÉRCIO'?'selected':''}>Comércio</option>
+            <option value="SERVIÇO" ${item.ativ==='SERVIÇO'?'selected':''}>Serviço</option>
+            <option value="COMÉRCIO/SERVIÇO" ${item.ativ==='COMÉRCIO/SERVIÇO'?'selected':''}>Comércio/Serviço</option>
+            <option value="INDÚSTRIA" ${item.ativ==='INDÚSTRIA'?'selected':''}>Indústria</option>
+          </select>
+        </div>
+      `}
+    </div>
+  </div>`;
+}
+
+function wireImportPreviewHandlers(){
+  const root = document.getElementById('modalRoot');
+  root.querySelectorAll('[data-imp-include]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===chk.dataset.impInclude);
+      if(item) item.include = chk.checked;
+      updateImportFooter();
+    });
+  });
+  root.querySelectorAll('[data-imp-action]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impAction);
+      if(item) item.action = sel.value;
+      renderImportPreviewModal();
+    });
+  });
+  root.querySelectorAll('[data-imp-trib]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impTrib);
+      if(item) item.trib = sel.value;
+    });
+  });
+  root.querySelectorAll('[data-imp-ativ]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const item = importItems.find(i=>i.id===sel.dataset.impAtiv);
+      if(item) item.ativ = sel.value;
+    });
+  });
+  document.getElementById('btnImportCancel').onclick = ()=>{ importItems = []; root.innerHTML=''; };
+  document.getElementById('importOverlay').addEventListener('click', (e)=>{ if(e.target.id==='importOverlay'){ importItems = []; root.innerHTML=''; } });
+  document.getElementById('btnImportConfirm').onclick = confirmImport;
+}
+
+function updateImportFooter(){
+  const newCount = importItems.filter(i=> !i.existingId && i.include).length;
+  const updateCount = importItems.filter(i=> i.existingId && i.action==='update').length;
+  const createDupCount = importItems.filter(i=> i.existingId && i.action==='create').length;
+  const infoEl = document.querySelector('#modalRoot .envio-footer-info');
+  if(infoEl) infoEl.textContent = `${newCount} nova(s) · ${updateCount} atualização(ões) · ${createDupCount} duplicada(s) a criar mesmo assim`;
+}
+
+async function confirmImport(){
+  let created = 0, updated = 0;
+  importItems.forEach(item=>{
+    const p = item.parsed;
+    if(!item.existingId){
+      if(!item.include) return;
+      const base = {
+        nome: p.nome,
+        cnpj: p.cnpj || '—',
+        trib: item.trib,
+        ativ: item.ativ,
+        ie: p.ie,
+        im: p.im,
+        inscSuframa: p.inscSuframa,
+        email: p.email,
+        telefone: p.telefone,
+        folha: p.folha,
+        contab: true,
+        suframa: !!p.inscSuframa,
+        parcelamentos: false,
+        anual: true,
+        ativa: p.ativa,
+      };
+      base.obligations = computeDefaultObligations(base);
+      state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...base});
+      created++;
+    } else if(item.action==='update'){
+      const existing = state.companies.find(c=>c.id===item.existingId);
+      if(existing){
+        Object.assign(existing, {
+          nome: p.nome,
+          cnpj: p.cnpj || existing.cnpj,
+          ie: p.ie || existing.ie,
+          im: p.im || existing.im,
+          inscSuframa: p.inscSuframa || existing.inscSuframa,
+          email: p.email || existing.email,
+          telefone: p.telefone || existing.telefone,
+          ativa: p.ativa,
+        });
+        updated++;
+      }
+    } else if(item.action==='create'){
+      const base = {
+        nome: p.nome,
+        cnpj: p.cnpj || '—',
+        trib: item.trib,
+        ativ: item.ativ,
+        ie: p.ie,
+        im: p.im,
+        inscSuframa: p.inscSuframa,
+        email: p.email,
+        telefone: p.telefone,
+        folha: p.folha,
+        contab: true,
+        suframa: !!p.inscSuframa,
+        parcelamentos: false,
+        anual: true,
+        ativa: p.ativa,
+      };
+      base.obligations = computeDefaultObligations(base);
+      state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...base});
+      created++;
+    }
+    // action === 'skip' -> nada a fazer
+  });
+  persist();
+  importItems = [];
+  document.getElementById('modalRoot').innerHTML = '';
+  renderAll();
+  await showConfirm(`Importação concluída: ${created} empresa(s) cadastrada(s) e ${updated} atualizada(s).`, 'Ok');
 }
 
 /* ---------- Master render ---------- */
