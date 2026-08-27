@@ -750,6 +750,19 @@ function migrateState(){
     state.fgtsExcludeFixed = true;
     changed = true;
   }
+  // Correção pontual: a primeira versão do tipo "DARF - INSS/IRRF sobre Folha" tinha uma palavra-chave
+  // frágil demais ("PA:") e ficou duplicada no catálogo padrão — quem já tinha sincronizado essa versão
+  // precisa da correção aplicada uma vez, trocando para a palavra-chave certa ("SENDA").
+  if(!state.darfFolhaFixed){
+    const darfFolha = state.docTypes.find(d=>d.id==='doctype__darf_folha');
+    if(darfFolha && !(darfFolha.keywords||[]).includes('SENDA')){
+      darfFolha.keywords = ['Receitas Federais', 'SENDA'];
+      darfFolha.excludeKeywords = [];
+      darfFolha.name = 'DARF - INSS/IRRF sobre Folha (eSocial)';
+    }
+    state.darfFolhaFixed = true;
+    changed = true;
+  }
   state.companies.forEach(c=>{
     if(!c.obligations){ c.obligations = computeDefaultObligations(c); changed = true; }
     if(c.anual===undefined){ c.anual = true; changed = true; }
@@ -1474,6 +1487,14 @@ const DEFAULT_DOC_TYPES = [
     excludeKeywords: [],
     emailSubject: 'DARF de Retenção (CSRF) - {empresa}',
     emailBody: 'Olá,\n\nSegue em anexo o DARF referente à retenção de contribuições sobre pagamentos de PJ a PJ de {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
+  },
+  {
+    id: 'doctype__darf_folha',
+    name: 'DARF - INSS/IRRF sobre Folha (eSocial)',
+    keywords: ['Receitas Federais', 'SENDA'],
+    excludeKeywords: [],
+    emailSubject: 'DARF - INSS/IRRF sobre Folha - {empresa}',
+    emailBody: 'Olá,\n\nSegue em anexo o DARF de recolhimento de INSS/IRRF sobre a folha de pagamento referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe Contábil',
   },
   {
     id: 'doctype__retencoes_recolher',
