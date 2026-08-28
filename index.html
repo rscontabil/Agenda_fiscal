@@ -1849,7 +1849,8 @@ function computeUpcomingReminders(){
       items.forEach(item=>{
         const ob = state.obligations.find(o=>o.id===item.id);
         if(!ob || !ob.dueDay) return;
-        const due = new Date(today.getFullYear(), today.getMonth(), ob.dueDay);
+        const rawDue = new Date(today.getFullYear(), today.getMonth(), ob.dueDay);
+        const due = adjustToBusinessDay(rawDue, ob.weekendAdjust);
         const diffDays = Math.round((due - today) / 86400000);
         if(diffDays > diasAntes) return;
         const bucket = state.monthly[todayKey] && state.monthly[todayKey][c.id] && state.monthly[todayKey][c.id][item.id];
@@ -2120,7 +2121,7 @@ function computeObrigacoesRows(){
         let vencimento = null;
         if(ob && ob.dueDay && period==='month'){
           const [y,m] = selectedMonth.split('-').map(Number);
-          vencimento = new Date(y, m-1, ob.dueDay);
+          vencimento = adjustToBusinessDay(new Date(y, m-1, ob.dueDay), ob.weekendAdjust);
         }
         rows.push({company:c, category:cat, period, item, entry, vencimento});
       });
@@ -2173,8 +2174,13 @@ function renderObrigacoes(){
   const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(u=>`<option value="${u.id}" ${obrigFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
   container.innerHTML = `
-    <div class="sheet-title">Obrigações</div>
-    <div class="sheet-sub">Vencimento, responsável e status de cada obrigação por empresa. ${obrigViewMode==='mensal' ? fmtMonthLabel(selectedMonth) : 'Ano-base ' + selectedYear}.</div>
+    <div class="painel-header-row">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Obrigações</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Vencimento, responsável e status de cada obrigação por empresa. ${obrigViewMode==='mensal' ? fmtMonthLabel(selectedMonth) : 'Ano-base ' + selectedYear}.</div>
+      </div>
+      <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
+    </div>
     <div class="obrig-filters">
       <div class="obrig-mode-toggle">
         <button type="button" class="obrig-mode-btn ${obrigViewMode==='mensal'?'active':''}" data-obrig-mode="mensal">Mensal</button>
@@ -2219,6 +2225,7 @@ function renderObrigacoes(){
 
 function wireObrigacoesHandlers(rows){
   const container = document.getElementById('sheetContent');
+  document.getElementById('btnNovaObrigacao').addEventListener('click', ()=> openNovaObrigacaoModal());
   container.querySelectorAll('[data-obrig-mode]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       obrigViewMode = btn.dataset.obrigMode;
@@ -2259,6 +2266,76 @@ function wireObrigacoesHandlers(rows){
       setObligationField(row.period, row.company.id, row.item.id, 'detalhes', inp.value);
     });
   });
+}
+
+function openNovaObrigacaoModal(){
+  const cats = obrigViewMode==='anual' ? ['anual'] : CATEGORY_ORDER.filter(c=>c!=='anual');
+  const companies = activeCompanies().sort((a,b)=>a.nome.localeCompare(b.nome));
+  const obligations = state.obligations.filter(o=>cats.includes(o.category)).sort((a,b)=>{
+    const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+    return ci !== 0 ? ci : a.label.localeCompare(b.label);
+  });
+  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(u=>`<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('');
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>Nova obrigação</h3>
+        <div class="sheet-sub" style="margin-bottom:1rem;">Selecione a empresa e a obrigação (cadastrada em Configurações → Cadastro de Obrigações). Se a empresa ainda não tinha essa obrigação marcada, ela passa a ter a partir de agora.</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Empresa</label>
+            <select id="novaObrigCompany">${companies.map(c=>`<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('')}</select>
+          </div>
+          <div class="form-row"><label>Obrigação</label>
+            <select id="novaObrigItem">
+              ${obligations.length? obligations.map(o=>`<option value="${o.id}">${CATEGORY_LABELS[o.category]} — ${escapeHtml(o.label)}</option>`).join('') : '<option disabled>Nenhuma obrigação cadastrada nessa visão (Mensal/Anual)</option>'}
+            </select>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Status</label>
+              <select id="novaObrigStatus">
+                <option value="pendente">Pendente</option>
+                <option value="andamento">Em andamento</option>
+                <option value="concluida">Concluída</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Responsável (opcional)</label>
+              <select id="novaObrigResp">
+                <option value="">— sem responsável —</option>
+                ${userOptions}
+              </select>
+            </div>
+          </div>
+          <div class="form-row"><label>Detalhes (opcional)</label><input id="novaObrigDetalhes" type="text" placeholder="Observações, códigos de acesso…"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave" ${obligations.length? '' : 'disabled'}>Incluir</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const companyId = document.getElementById('novaObrigCompany').value;
+    const obligId = document.getElementById('novaObrigItem').value;
+    const company = state.companies.find(c=>c.id===companyId);
+    const ob = state.obligations.find(o=>o.id===obligId);
+    if(!company || !ob) return;
+    if(!company.obligations) company.obligations = [];
+    if(!company.obligations.includes(obligId)) company.obligations.push(obligId);
+    const period = ob.category==='anual' ? 'year' : 'month';
+    const entry = getObligationEntry(period, companyId, obligId);
+    entry.status = document.getElementById('novaObrigStatus').value;
+    entry.responsavelId = document.getElementById('novaObrigResp').value || null;
+    entry.detalhes = document.getElementById('novaObrigDetalhes').value;
+    persist();
+    root.innerHTML = '';
+    renderObrigacoes();
+    renderTabs();
+  };
 }
 
 function renderPainel(){
@@ -3211,7 +3288,7 @@ function renderConfiguracoes(){
     <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
     <div style="overflow-x:auto; margin-bottom:.8rem;">
     <table class="obrig-table" id="obligCatalogTable">
-      <thead><tr><th>Nome</th><th>Categoria</th><th>Dia de vencimento</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Categoria</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
       <tbody id="obligCatalogBody"></tbody>
     </table>
     </div>
@@ -3346,6 +3423,71 @@ function openUserModal(userId){
   };
 }
 
+/* ---------- Feriados nacionais e ajuste de dia útil ---------- */
+function easterDate(year){
+  // Algoritmo de Meeus/Jones/Butcher para calcular o Domingo de Páscoa
+  const a = year % 19;
+  const b = Math.floor(year/100);
+  const c = year % 100;
+  const d = Math.floor(b/4);
+  const e = b % 4;
+  const f = Math.floor((b+8)/25);
+  const g = Math.floor((b-f+1)/3);
+  const h = (19*a + b - d - g + 15) % 30;
+  const i = Math.floor(c/4);
+  const k = c % 4;
+  const l = (32 + 2*e + 2*i - h - k) % 7;
+  const m = Math.floor((a + 11*h + 22*l)/451);
+  const month = Math.floor((h + l - 7*m + 114)/31);
+  const day = ((h + l - 7*m + 114) % 31) + 1;
+  return new Date(year, month-1, day);
+}
+
+const _holidaysCache = {};
+function getBrazilianHolidays(year){
+  if(_holidaysCache[year]) return _holidaysCache[year];
+  const easter = easterDate(year);
+  const addDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate()+days); return d; };
+  const holidays = [
+    new Date(year,0,1),    // Confraternização Universal
+    new Date(year,3,21),   // Tiradentes
+    new Date(year,4,1),    // Dia do Trabalho
+    new Date(year,8,7),    // Independência
+    new Date(year,9,12),   // N. Sra. Aparecida
+    new Date(year,10,2),   // Finados
+    new Date(year,10,15),  // Proclamação da República
+    new Date(year,10,20),  // Consciência Negra (feriado nacional desde 2024)
+    new Date(year,11,25),  // Natal
+    addDays(easter,-48),   // Carnaval (segunda)
+    addDays(easter,-47),   // Carnaval (terça)
+    addDays(easter,-2),    // Sexta-feira Santa
+    addDays(easter,60),    // Corpus Christi
+  ];
+  _holidaysCache[year] = holidays;
+  return holidays;
+}
+function isBrazilianHoliday(date){
+  return getBrazilianHolidays(date.getFullYear()).some(h=>
+    h.getFullYear()===date.getFullYear() && h.getMonth()===date.getMonth() && h.getDate()===date.getDate()
+  );
+}
+function isBusinessDay(date){
+  const dow = date.getDay();
+  if(dow===0 || dow===6) return false; // domingo, sábado
+  return !isBrazilianHoliday(date);
+}
+// Ajusta uma data pro dia útil mais próximo, conforme a regra da obrigação:
+// 'antecipar' (dia útil anterior), 'postergar' (dia útil seguinte), ou sem ajuste.
+function adjustToBusinessDay(date, mode){
+  if(mode!=='antecipar' && mode!=='postergar') return date;
+  if(isBusinessDay(date)) return date;
+  const step = mode==='antecipar' ? -1 : 1;
+  const d = new Date(date);
+  let guard = 0;
+  while(!isBusinessDay(d) && guard < 30){ d.setDate(d.getDate()+step); guard++; }
+  return d;
+}
+
 function renderObligationCatalogList(){
   const el = document.getElementById('obligCatalogBody');
   if(!el) return;
@@ -3354,14 +3496,17 @@ function renderObligationCatalogList(){
     return ci !== 0 ? ci : a.label.localeCompare(b.label);
   });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="4"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="6"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
     return;
   }
+  const adjustLabels = {antecipar:'Antecipa', postergar:'Posterga', nenhum:'Não ajusta'};
   el.innerHTML = sorted.map(o=>`
     <tr>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
       <td class="mono">${o.dueDay ? 'dia ' + o.dueDay : '—'}</td>
+      <td class="mono">${o.metaDay ? 'dia ' + o.metaDay : '—'}</td>
+      <td>${adjustLabels[o.weekendAdjust] || 'Não ajusta'}</td>
       <td>
         <div class="oblig-row-actions">
           <button type="button" class="oblig-icon-btn" data-edit-obligcat="${o.id}" title="Editar">✎</button>
@@ -3383,7 +3528,7 @@ function renderObligationCatalogList(){
 
 function openObligationCatalogModal(obligId){
   const editing = !!obligId;
-  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null};
+  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null, metaDay:null, weekendAdjust:'postergar'};
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay">
@@ -3391,13 +3536,22 @@ function openObligationCatalogModal(obligId){
         <h3>${editing? 'Editar obrigação' : 'Nova obrigação'}</h3>
         <div class="form-grid">
           <div class="form-row"><label>Nome da obrigação</label><input id="obligCatName" type="text" value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: PGDAS-D / DAS"><div id="obligCatNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
+          <div class="form-row"><label>Categoria</label>
+            <select id="obligCatCategory" ${editing? 'disabled title="Não é possível trocar a categoria de uma obrigação já cadastrada — exclua e crie uma nova se precisar."':''}>
+              ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${o.category===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+            </select>
+          </div>
           <div class="form-cols">
-            <div class="form-row"><label>Categoria</label>
-              <select id="obligCatCategory" ${editing? 'disabled title="Não é possível trocar a categoria de uma obrigação já cadastrada — exclua e crie uma nova se precisar."':''}>
-                ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${o.category===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-row"><label>Dia de vencimento (opcional)</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"></div>
+            <div class="form-row"><label>Dia de vencimento *</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"><div id="obligCatDueDayError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o dia de vencimento.</div></div>
+            <div class="form-row"><label>Dia meta (opcional)</label><input id="obligCatMetaDay" type="number" min="1" max="31" value="${o.metaDay||''}" placeholder="Ex: 15"></div>
+          </div>
+          <div class="form-row">
+            <label>Se o vencimento cair em fim de semana ou feriado</label>
+            <select id="obligCatWeekendAdjust">
+              <option value="postergar" ${(!o.weekendAdjust || o.weekendAdjust==='postergar')?'selected':''}>Posterga para o próximo dia útil</option>
+              <option value="antecipar" ${o.weekendAdjust==='antecipar'?'selected':''}>Antecipa para o dia útil anterior</option>
+              <option value="nenhum" ${o.weekendAdjust==='nenhum'?'selected':''}>Não ajusta (mantém a data exata)</option>
+            </select>
           </div>
         </div>
         <div class="modal-actions">
@@ -3411,16 +3565,32 @@ function openObligationCatalogModal(obligId){
   document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
   document.getElementById('btnSave').onclick = ()=>{
     const label = document.getElementById('obligCatName').value.trim();
+    let hasError = false;
+    document.getElementById('obligCatNameError').style.display = 'none';
+    document.getElementById('obligCatDueDayError').style.display = 'none';
     if(!label){
       document.getElementById('obligCatNameError').style.display = 'block';
-      document.getElementById('obligCatName').focus();
-      return;
+      hasError = true;
     }
     const dueDayVal = parseInt(document.getElementById('obligCatDueDay').value, 10);
     const dueDay = (dueDayVal>=1 && dueDayVal<=31) ? dueDayVal : null;
+    if(!dueDay){
+      document.getElementById('obligCatDueDayError').style.display = 'block';
+      hasError = true;
+    }
+    if(hasError){
+      if(!label) document.getElementById('obligCatName').focus();
+      else document.getElementById('obligCatDueDay').focus();
+      return;
+    }
+    const metaDayVal = parseInt(document.getElementById('obligCatMetaDay').value, 10);
+    const metaDay = (metaDayVal>=1 && metaDayVal<=31) ? metaDayVal : null;
+    const weekendAdjust = document.getElementById('obligCatWeekendAdjust').value;
     if(editing){
       o.label = label;
       o.dueDay = dueDay;
+      o.metaDay = metaDay;
+      o.weekendAdjust = weekendAdjust;
     } else {
       const category = document.getElementById('obligCatCategory').value;
       const prefix = category.slice(0,4);
@@ -3429,6 +3599,8 @@ function openObligationCatalogModal(obligId){
         category,
         label,
         dueDay,
+        metaDay,
+        weekendAdjust,
       });
     }
     persist();
