@@ -473,6 +473,8 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .obrig-status-select.status-pendente{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
 .obrig-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
 .obrig-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.obrig-status-select.status-dispensada{background:#EEF0E9; color:var(--muted); border-color:var(--line-strong);}
+.obrig-status-select.status-cancelada{background:var(--bad-bg); color:var(--bad); border-color:#E3A0A0;}
 .obrig-resp-select{
   padding:.3rem .5rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
   cursor:pointer; font-family:'Public Sans',sans-serif; color:var(--muted); max-width:170px;
@@ -481,6 +483,12 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   width:100%; min-width:160px; padding:.3rem .5rem; border:1px solid var(--line-strong); border-radius:8px;
   font-size:.78rem; font-family:'Public Sans',sans-serif; box-sizing:border-box;
 }
+.obrig-venc-edit-btn{
+  background:transparent; border:none; color:var(--muted); font-size:.78rem; cursor:pointer;
+  padding:.1rem .3rem; border-radius:5px; margin-left:.2rem;
+}
+.obrig-venc-edit-btn:hover{background:#EEF0E9; color:var(--ink);}
+.obrig-venc-edit-btn.has-override{color:var(--accent); font-weight:700;}
 .demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
 .demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
 .demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
@@ -855,6 +863,16 @@ function migrateState(){
   DEFAULT_OBLIGATIONS.forEach(d=>{
     if(state.deletedDefaultObligationIds.includes(d.id)) return; // usuário excluiu de propósito, não recriar
     if(!state.obligations.find(o=>o.id===d.id)){ state.obligations.push({...d}); changed = true; }
+  });
+  // Garante os campos novos do catálogo de obrigações (esfera/área/regra de vencimento).
+  state.obligations.forEach(o=>{
+    if(o.dueDayRule===undefined){ o.dueDayRule = 'fixo'; changed = true; }
+    if(o.esfera===undefined){ o.esfera = ''; changed = true; }
+    if(o.area===undefined){ o.area = ''; changed = true; }
+  });
+  // Garante que toda empresa tenha o objeto de exceções de vencimento (vazio por padrão).
+  state.companies.forEach(c=>{
+    if(!c.obligationOverrides){ c.obligationOverrides = {}; changed = true; }
   });
   if(state.docTypes.length===0 && !state.docTypesInitialized){
     DEFAULT_DOC_TYPES.forEach(d=>state.docTypes.push({...d}));
@@ -1806,7 +1824,10 @@ function periodBucket(period){
   if(!store[pk]) store[pk] = {};
   return {pk, obj:store[pk]};
 }
-const OBRIG_STATUS_LABELS = {pendente:'Pendente', andamento:'Em andamento', concluida:'Concluída'};
+const OBRIG_STATUS_LABELS = {pendente:'Pendente', andamento:'Em andamento', concluida:'Concluída', dispensada:'Dispensada', cancelada:'Cancelada'};
+function isResolvedStatus(status){
+  return status==='concluida' || status==='dispensada' || status==='cancelada';
+}
 function getObligationEntry(period, companyId, itemKey){
   const {obj} = periodBucket(period);
   if(!obj[companyId]) obj[companyId] = {};
@@ -1823,7 +1844,7 @@ function setObligationField(period, companyId, itemKey, field, value){
 function isChecked(period, companyId, itemKey){
   const {obj} = periodBucket(period);
   const entry = obj[companyId] && obj[companyId][itemKey];
-  return !!(entry && entry.status === 'concluida');
+  return !!(entry && isResolvedStatus(entry.status));
 }
 
 /* ---------- Lembretes (vencimentos próximos) ---------- */
@@ -1848,13 +1869,13 @@ function computeUpcomingReminders(){
       const items = companyItemsForCategory(c, cat, todayKey);
       items.forEach(item=>{
         const ob = state.obligations.find(o=>o.id===item.id);
-        if(!ob || !ob.dueDay) return;
-        const rawDue = new Date(today.getFullYear(), today.getMonth(), ob.dueDay);
-        const due = adjustToBusinessDay(rawDue, ob.weekendAdjust);
+        if(!ob) return;
+        const due = computeObligationDueDate(ob, c, today.getFullYear(), today.getMonth()+1);
+        if(!due) return;
         const diffDays = Math.round((due - today) / 86400000);
         if(diffDays > diasAntes) return;
         const bucket = state.monthly[todayKey] && state.monthly[todayKey][c.id] && state.monthly[todayKey][c.id][item.id];
-        const done = !!(bucket && bucket.status === 'concluida');
+        const done = !!(bucket && isResolvedStatus(bucket.status));
         if(done) return;
         results.push({
           company: c,
@@ -1967,6 +1988,10 @@ let obrigViewMode = 'mensal'; // mensal | anual — alterna dentro da aba Obriga
 let obrigFilterCategoria = 'todas';
 let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
+let obrigFilterEsfera = 'todas';
+let obrigFilterArea = 'todas';
+const ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
+const AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
@@ -2113,17 +2138,20 @@ function computeObrigacoesRows(){
       const pk = period==='year' ? selectedYear : selectedMonth;
       const items = TAB_DEFS[cat].items(c, pk);
       items.forEach(item=>{
+        const ob = state.obligations.find(o=>o.id===item.id);
+        if(obrigFilterEsfera!=='todas' && (!ob || ob.esfera!==obrigFilterEsfera)) return;
+        if(obrigFilterArea!=='todas' && (!ob || ob.area!==obrigFilterArea)) return;
         const entry = peekObligationEntry(period, c.id, item.id);
         if(obrigFilterStatus!=='todos' && entry.status!==obrigFilterStatus) return;
         if(obrigFilterResponsavel==='none' && entry.responsavelId) return;
         if(obrigFilterResponsavel!=='todos' && obrigFilterResponsavel!=='none' && entry.responsavelId!==obrigFilterResponsavel) return;
-        const ob = state.obligations.find(o=>o.id===item.id);
         let vencimento = null;
-        if(ob && ob.dueDay && period==='month'){
+        if(ob && period==='month'){
           const [y,m] = selectedMonth.split('-').map(Number);
-          vencimento = adjustToBusinessDay(new Date(y, m-1, ob.dueDay), ob.weekendAdjust);
+          vencimento = computeObligationDueDate(ob, c, y, m);
         }
-        rows.push({company:c, category:cat, period, item, entry, vencimento});
+        const hasOverride = !!(c.obligationOverrides && c.obligationOverrides[item.id]);
+        rows.push({company:c, category:cat, period, item, entry, vencimento, ob, hasOverride});
       });
     });
   });
@@ -2144,16 +2172,20 @@ function obrigRowHtml(row){
   const key = obrigRowKey(row);
   const responsavel = row.entry.responsavelId ? state.users.find(u=>u.id===row.entry.responsavelId) : null;
   const vencFmt = row.vencimento ? row.vencimento.toLocaleDateString('pt-BR') : '—';
-  const overdue = row.vencimento && row.entry.status!=='concluida' && row.vencimento < new Date(new Date().setHours(0,0,0,0));
+  const overdue = row.vencimento && !isResolvedStatus(row.entry.status) && row.vencimento < new Date(new Date().setHours(0,0,0,0));
   return `<tr class="obrig-tr ${overdue?'overdue':''}" data-obrig-key="${key}">
     <td class="obrig-td-empresa">${escapeHtml(row.company.nome)}</td>
-    <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}</div></td>
-    <td class="mono">${vencFmt}</td>
+    <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}${row.ob&&row.ob.esfera?' · '+row.ob.esfera:''}${row.ob&&row.ob.area?' · '+row.ob.area:''}</div></td>
+    <td class="mono">
+      ${vencFmt}${row.period==='month' ? `<button type="button" class="obrig-venc-edit-btn ${row.hasOverride?'has-override':''}" data-obrig-venc-edit="${key}" title="${row.hasOverride? 'Vencimento personalizado pra essa empresa (clique pra editar)' : 'Personalizar vencimento pra essa empresa'}">✎</button>` : ''}
+    </td>
     <td>
       <select class="obrig-status-select status-${row.entry.status}" data-obrig-status="${key}">
         <option value="pendente" ${row.entry.status==='pendente'?'selected':''}>Pendente</option>
         <option value="andamento" ${row.entry.status==='andamento'?'selected':''}>Em andamento</option>
         <option value="concluida" ${row.entry.status==='concluida'?'selected':''}>Concluída</option>
+        <option value="dispensada" ${row.entry.status==='dispensada'?'selected':''}>Dispensada</option>
+        <option value="cancelada" ${row.entry.status==='cancelada'?'selected':''}>Cancelada</option>
       </select>
     </td>
     <td>
@@ -2190,11 +2222,21 @@ function renderObrigacoes(){
         <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
         ${(obrigViewMode==='anual'?['anual']:CATEGORY_ORDER.filter(c=>c!=='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
       </select>
+      <select id="obrigFilterEsferaSelect">
+        <option value="todas" ${obrigFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
+        ${ESFERA_OPTIONS.map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+      </select>
+      <select id="obrigFilterAreaSelect">
+        <option value="todas" ${obrigFilterArea==='todas'?'selected':''}>Todas as áreas</option>
+        ${AREA_OPTIONS.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
+      </select>
       <select id="obrigFilterStatusSelect">
         <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
         <option value="pendente" ${obrigFilterStatus==='pendente'?'selected':''}>Pendente</option>
         <option value="andamento" ${obrigFilterStatus==='andamento'?'selected':''}>Em andamento</option>
         <option value="concluida" ${obrigFilterStatus==='concluida'?'selected':''}>Concluída</option>
+        <option value="dispensada" ${obrigFilterStatus==='dispensada'?'selected':''}>Dispensada</option>
+        <option value="cancelada" ${obrigFilterStatus==='cancelada'?'selected':''}>Cancelada</option>
       </select>
       <select id="obrigFilterResponsavelSelect">
         <option value="todos" ${obrigFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
@@ -2236,6 +2278,10 @@ function wireObrigacoesHandlers(rows){
   });
   const catSel = document.getElementById('obrigFilterCategoriaSelect');
   if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; renderObrigacoes(); });
+  const esferaSel = document.getElementById('obrigFilterEsferaSelect');
+  if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; renderObrigacoes(); });
+  const areaSel = document.getElementById('obrigFilterAreaSelect');
+  if(areaSel) areaSel.addEventListener('change', ()=>{ obrigFilterArea = areaSel.value; renderObrigacoes(); });
   const statusSel = document.getElementById('obrigFilterStatusSelect');
   if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; renderObrigacoes(); });
   const respSel = document.getElementById('obrigFilterResponsavelSelect');
@@ -2243,6 +2289,13 @@ function wireObrigacoesHandlers(rows){
 
   function findRow(key){ return rows.find(r=>obrigRowKey(r)===key); }
 
+  container.querySelectorAll('[data-obrig-venc-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const row = findRow(btn.dataset.obrigVencEdit);
+      if(!row) return;
+      openVencimentoOverrideModal(row);
+    });
+  });
   container.querySelectorAll('[data-obrig-status]').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const row = findRow(sel.dataset.obrigStatus);
@@ -2266,6 +2319,81 @@ function wireObrigacoesHandlers(rows){
       setObligationField(row.period, row.company.id, row.item.id, 'detalhes', inp.value);
     });
   });
+}
+
+function openVencimentoOverrideModal(row){
+  const company = row.company;
+  const ob = row.ob;
+  const override = (company.obligationOverrides && company.obligationOverrides[ob.id]) || {};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>Vencimento personalizado</h3>
+        <div class="sheet-sub" style="margin-bottom:1rem;">${escapeHtml(company.nome)} — ${escapeHtml(ob.label)}. Deixe em branco pra usar o padrão do catálogo (${DUE_DAY_RULE_LABELS[ob.dueDayRule||'fixo']}${ob.dueDayRule==='fixo'&&ob.dueDay? ', dia '+ob.dueDay:''}).</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Tipo de vencimento</label>
+            <select id="ovrRule">
+              <option value="">— usar padrão do catálogo —</option>
+              <option value="fixo" ${override.dueDayRule==='fixo'?'selected':''}>Dia fixo do mês</option>
+              <option value="ultimo_dia" ${override.dueDayRule==='ultimo_dia'?'selected':''}>Último dia do mês</option>
+              <option value="ultimo_dia_util" ${override.dueDayRule==='ultimo_dia_util'?'selected':''}>Último dia útil do mês</option>
+            </select>
+          </div>
+          <div class="form-row" id="ovrDueDayRow"><label>Dia de vencimento</label><input id="ovrDueDay" type="number" min="1" max="31" value="${override.dueDay||''}"></div>
+          <div class="form-row"><label>Ajuste se cair em fim de semana/feriado</label>
+            <select id="ovrWeekendAdjust">
+              <option value="">— usar padrão do catálogo —</option>
+              <option value="postergar" ${override.weekendAdjust==='postergar'?'selected':''}>Posterga para o próximo dia útil</option>
+              <option value="antecipar" ${override.weekendAdjust==='antecipar'?'selected':''}>Antecipa para o dia útil anterior</option>
+              <option value="nenhum" ${override.weekendAdjust==='nenhum'?'selected':''}>Não ajusta</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions" style="justify-content:space-between;">
+          ${row.hasOverride ? `<button class="btn danger small" id="btnRemoveOverride" type="button">Remover exceção</button>` : '<span></span>'}
+          <div style="display:flex; gap:.6rem;">
+            <button class="btn ghost" id="btnCancel">Cancelar</button>
+            <button class="btn accent" id="btnSave">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  function syncDueDayVisibility(){
+    const rule = document.getElementById('ovrRule').value;
+    document.getElementById('ovrDueDayRow').style.display = (rule==='' || rule==='fixo') ? '' : 'none';
+  }
+  document.getElementById('ovrRule').addEventListener('change', syncDueDayVisibility);
+  syncDueDayVisibility();
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  const removeBtn = document.getElementById('btnRemoveOverride');
+  if(removeBtn) removeBtn.onclick = ()=>{
+    delete company.obligationOverrides[ob.id];
+    persist();
+    root.innerHTML = '';
+    renderObrigacoes();
+  };
+  document.getElementById('btnSave').onclick = ()=>{
+    const rule = document.getElementById('ovrRule').value;
+    const dueDayVal = parseInt(document.getElementById('ovrDueDay').value, 10);
+    const dueDay = (dueDayVal>=1 && dueDayVal<=31) ? dueDayVal : null;
+    const weekendAdjust = document.getElementById('ovrWeekendAdjust').value;
+    const newOverride = {};
+    if(rule) newOverride.dueDayRule = rule;
+    if(rule==='fixo' && dueDay) newOverride.dueDay = dueDay;
+    if(weekendAdjust) newOverride.weekendAdjust = weekendAdjust;
+    if(!company.obligationOverrides) company.obligationOverrides = {};
+    if(Object.keys(newOverride).length===0){
+      delete company.obligationOverrides[ob.id];
+    } else {
+      company.obligationOverrides[ob.id] = newOverride;
+    }
+    persist();
+    root.innerHTML = '';
+    renderObrigacoes();
+  };
 }
 
 function openNovaObrigacaoModal(){
@@ -2298,6 +2426,8 @@ function openNovaObrigacaoModal(){
                 <option value="pendente">Pendente</option>
                 <option value="andamento">Em andamento</option>
                 <option value="concluida">Concluída</option>
+                <option value="dispensada">Dispensada</option>
+                <option value="cancelada">Cancelada</option>
               </select>
             </div>
             <div class="form-row"><label>Responsável (opcional)</label>
@@ -3288,7 +3418,7 @@ function renderConfiguracoes(){
     <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
     <div style="overflow-x:auto; margin-bottom:.8rem;">
     <table class="obrig-table" id="obligCatalogTable">
-      <thead><tr><th>Nome</th><th>Categoria</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Categoria</th><th>Esfera</th><th>Área</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
       <tbody id="obligCatalogBody"></tbody>
     </table>
     </div>
@@ -3488,6 +3618,27 @@ function adjustToBusinessDay(date, mode){
   return d;
 }
 
+const DUE_DAY_RULE_LABELS = {fixo:'Dia fixo do mês', ultimo_dia:'Último dia do mês', ultimo_dia_util:'Último dia útil do mês'};
+
+// Calcula o vencimento de uma obrigação num mês/ano, já considerando: a regra de vencimento
+// (dia fixo, último dia do mês, ou último dia útil), o ajuste de fim de semana/feriado, e uma
+// eventual exceção cadastrada especificamente pra essa empresa (company.obligationOverrides).
+function computeObligationDueDate(ob, company, year, month){
+  const override = company && company.obligationOverrides && company.obligationOverrides[ob.id];
+  const rule = (override && override.dueDayRule) || ob.dueDayRule || 'fixo';
+  const weekendAdjust = (override && override.weekendAdjust !== undefined && override.weekendAdjust !== '') ? override.weekendAdjust : ob.weekendAdjust;
+  if(rule==='ultimo_dia' || rule==='ultimo_dia_util'){
+    let date = new Date(year, month, 0); // dia 0 do mês seguinte = último dia do mês atual (month é 1-based)
+    if(rule==='ultimo_dia_util'){
+      while(!isBusinessDay(date)) date.setDate(date.getDate()-1);
+    }
+    return date;
+  }
+  const dueDay = (override && override.dueDay) || ob.dueDay;
+  if(!dueDay) return null;
+  return adjustToBusinessDay(new Date(year, month-1, dueDay), weekendAdjust);
+}
+
 function renderObligationCatalogList(){
   const el = document.getElementById('obligCatalogBody');
   if(!el) return;
@@ -3496,15 +3647,20 @@ function renderObligationCatalogList(){
     return ci !== 0 ? ci : a.label.localeCompare(b.label);
   });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="6"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
     return;
   }
   const adjustLabels = {antecipar:'Antecipa', postergar:'Posterga', nenhum:'Não ajusta'};
-  el.innerHTML = sorted.map(o=>`
+  el.innerHTML = sorted.map(o=>{
+    const rule = o.dueDayRule || 'fixo';
+    const vencTxt = rule==='fixo' ? (o.dueDay ? 'dia ' + o.dueDay : '—') : DUE_DAY_RULE_LABELS[rule];
+    return `
     <tr>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
-      <td class="mono">${o.dueDay ? 'dia ' + o.dueDay : '—'}</td>
+      <td>${o.esfera||'—'}</td>
+      <td>${o.area||'—'}</td>
+      <td class="mono">${vencTxt}</td>
       <td class="mono">${o.metaDay ? 'dia ' + o.metaDay : '—'}</td>
       <td>${adjustLabels[o.weekendAdjust] || 'Não ajusta'}</td>
       <td>
@@ -3514,7 +3670,7 @@ function renderObligationCatalogList(){
         </div>
       </td>
     </tr>
-  `).join('');
+  `;}).join('');
   el.querySelectorAll('[data-edit-obligcat]').forEach(btn=>{
     btn.addEventListener('click', ()=> openObligationCatalogModal(btn.dataset.editObligcat));
   });
@@ -3528,7 +3684,7 @@ function renderObligationCatalogList(){
 
 function openObligationCatalogModal(obligId){
   const editing = !!obligId;
-  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null, metaDay:null, weekendAdjust:'postergar'};
+  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null, dueDayRule:'fixo', metaDay:null, weekendAdjust:'postergar', esfera:'', area:''};
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay">
@@ -3542,10 +3698,31 @@ function openObligationCatalogModal(obligId){
             </select>
           </div>
           <div class="form-cols">
-            <div class="form-row"><label>Dia de vencimento *</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"><div id="obligCatDueDayError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o dia de vencimento.</div></div>
+            <div class="form-row"><label>Esfera (opcional)</label>
+              <select id="obligCatEsfera">
+                <option value="">— não informado —</option>
+                ${ESFERA_OPTIONS.map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-row"><label>Área (opcional)</label>
+              <select id="obligCatArea">
+                <option value="">— não informado —</option>
+                ${AREA_OPTIONS.map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-row"><label>Tipo de vencimento</label>
+            <select id="obligCatRule">
+              <option value="fixo" ${(!o.dueDayRule || o.dueDayRule==='fixo')?'selected':''}>Dia fixo do mês</option>
+              <option value="ultimo_dia" ${o.dueDayRule==='ultimo_dia'?'selected':''}>Último dia do mês</option>
+              <option value="ultimo_dia_util" ${o.dueDayRule==='ultimo_dia_util'?'selected':''}>Último dia útil do mês</option>
+            </select>
+          </div>
+          <div class="form-cols">
+            <div class="form-row" id="obligCatDueDayRow"><label>Dia de vencimento *</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"><div id="obligCatDueDayError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o dia de vencimento.</div></div>
             <div class="form-row"><label>Dia meta (opcional)</label><input id="obligCatMetaDay" type="number" min="1" max="31" value="${o.metaDay||''}" placeholder="Ex: 15"></div>
           </div>
-          <div class="form-row">
+          <div class="form-row" id="obligCatWeekendAdjustRow">
             <label>Se o vencimento cair em fim de semana ou feriado</label>
             <select id="obligCatWeekendAdjust">
               <option value="postergar" ${(!o.weekendAdjust || o.weekendAdjust==='postergar')?'selected':''}>Posterga para o próximo dia útil</option>
@@ -3561,10 +3738,19 @@ function openObligationCatalogModal(obligId){
       </div>
     </div>
   `;
+  function syncRuleVisibility(){
+    const rule = document.getElementById('obligCatRule').value;
+    const isFixo = rule==='fixo';
+    document.getElementById('obligCatDueDayRow').style.display = isFixo ? '' : 'none';
+    document.getElementById('obligCatWeekendAdjustRow').style.display = isFixo ? '' : 'none';
+  }
+  document.getElementById('obligCatRule').addEventListener('change', syncRuleVisibility);
+  syncRuleVisibility();
   document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
   document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
   document.getElementById('btnSave').onclick = ()=>{
     const label = document.getElementById('obligCatName').value.trim();
+    const rule = document.getElementById('obligCatRule').value;
     let hasError = false;
     document.getElementById('obligCatNameError').style.display = 'none';
     document.getElementById('obligCatDueDayError').style.display = 'none';
@@ -3574,7 +3760,7 @@ function openObligationCatalogModal(obligId){
     }
     const dueDayVal = parseInt(document.getElementById('obligCatDueDay').value, 10);
     const dueDay = (dueDayVal>=1 && dueDayVal<=31) ? dueDayVal : null;
-    if(!dueDay){
+    if(rule==='fixo' && !dueDay){
       document.getElementById('obligCatDueDayError').style.display = 'block';
       hasError = true;
     }
@@ -3586,11 +3772,16 @@ function openObligationCatalogModal(obligId){
     const metaDayVal = parseInt(document.getElementById('obligCatMetaDay').value, 10);
     const metaDay = (metaDayVal>=1 && metaDayVal<=31) ? metaDayVal : null;
     const weekendAdjust = document.getElementById('obligCatWeekendAdjust').value;
+    const esfera = document.getElementById('obligCatEsfera').value;
+    const area = document.getElementById('obligCatArea').value;
     if(editing){
       o.label = label;
-      o.dueDay = dueDay;
+      o.dueDayRule = rule;
+      o.dueDay = rule==='fixo' ? dueDay : null;
       o.metaDay = metaDay;
       o.weekendAdjust = weekendAdjust;
+      o.esfera = esfera;
+      o.area = area;
     } else {
       const category = document.getElementById('obligCatCategory').value;
       const prefix = category.slice(0,4);
@@ -3598,9 +3789,12 @@ function openObligationCatalogModal(obligId){
         id: `${prefix}__custom_${Date.now()}`,
         category,
         label,
-        dueDay,
+        dueDayRule: rule,
+        dueDay: rule==='fixo' ? dueDay : null,
         metaDay,
         weekendAdjust,
+        esfera,
+        area,
       });
     }
     persist();
