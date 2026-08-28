@@ -743,7 +743,12 @@ auth.onAuthStateChanged(async (user)=>{
     showAuthGateLoading('Carregando os dados da equipe…');
     document.getElementById('headerUser').style.display = 'flex';
     document.getElementById('headerUserEmail').textContent = user.email;
-    await loadState();
+    const ok = await loadState();
+    if(!ok){
+      showAuthGateLoginCard('Não foi possível carregar os dados (erro de conexão ou permissão com o banco de dados). Tente recarregar a página; se persistir, use uma janela normal do navegador (não anônima/privada) e confira sua conexão com a internet.');
+      await auth.signOut();
+      return;
+    }
     renderAll();
     hideAuthGate();
     tryAutoReconnectDrive();
@@ -908,13 +913,13 @@ async function loadState(){
       }
       if(!firstLoadResolved){
         firstLoadResolved = true;
-        resolve();
+        resolve(true);
       } else {
         renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe)
       }
     }, (err)=>{
       console.error('Erro de conexão com o Firestore', err);
-      if(!firstLoadResolved){ firstLoadResolved = true; resolve(); }
+      if(!firstLoadResolved){ firstLoadResolved = true; resolve(false); }
     });
   });
 }
