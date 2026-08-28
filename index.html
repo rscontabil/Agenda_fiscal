@@ -862,6 +862,16 @@ async function loadState(){
   if(firestoreUnsub){ firestoreUnsub(); firestoreUnsub = null; }
   let firstLoadResolved = false;
   return new Promise((resolve)=>{
+    // Limite de segurança: se o Firestore não responder (nem sucesso, nem erro) dentro desse tempo
+    // — ex: conexão travada silenciosamente por rede/firewall — desistimos e avisamos, em vez de
+    // deixar a tela girando pra sempre sem explicação.
+    const timeoutId = setTimeout(()=>{
+      if(!firstLoadResolved){
+        firstLoadResolved = true;
+        console.error('Tempo esgotado esperando resposta do Firestore (15s sem sucesso nem erro).');
+        resolve(false);
+      }
+    }, 15000);
     firestoreUnsub = firestoreDocRef().onSnapshot(async (snap)=>{
       try{
         // Importante: nunca criar/gravar dados a partir de uma leitura que ainda não foi confirmada
@@ -902,6 +912,7 @@ async function loadState(){
           }
         } else {
           state = snap.data() || {};
+          window.__debugState = state; // temporário: pra diagnosticar direto no console do navegador
           if(!fromCache){
             const changed = migrateState();
             if(changed) persist();
@@ -917,6 +928,7 @@ async function loadState(){
         // confirmação do servidor). Se ainda não tiver `state`, esperamos a próxima notificação.
         if(state){
           firstLoadResolved = true;
+          clearTimeout(timeoutId);
           resolve(true);
         }
       } else {
@@ -924,7 +936,7 @@ async function loadState(){
       }
     }, (err)=>{
       console.error('Erro de conexão com o Firestore', err);
-      if(!firstLoadResolved){ firstLoadResolved = true; resolve(false); }
+      if(!firstLoadResolved){ firstLoadResolved = true; clearTimeout(timeoutId); resolve(false); }
     });
   });
 }
