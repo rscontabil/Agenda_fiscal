@@ -635,16 +635,21 @@ let importItems = [];
 
 /* ---------- Firebase (login por pessoa + banco de dados em tempo real) ---------- */
 const firebaseConfig = {
-  apiKey: "AIzaSyAMOXM022qK86jICyJ0fbVsFaMLG2seXdo",
-  authDomain: "agenda-fiscal-4f3af.firebaseapp.com",
-  projectId: "agenda-fiscal-4f3af",
-  storageBucket: "agenda-fiscal-4f3af.firebasestorage.app",
-  messagingSenderId: "1052084312197",
-  appId: "1:1052084312197:web:829e42e57d4340c4f231ec"
+  apiKey: "AIzaSyCiEbHklogJqgUrEUkt7XXvDd-41-A1GR8",
+  authDomain: "agenda-fiscal-rs-v2.firebaseapp.com",
+  projectId: "agenda-fiscal-rs-v2",
+  storageBucket: "agenda-fiscal-rs-v2.firebasestorage.app",
+  messagingSenderId: "618660440598",
+  appId: "1:618660440598:web:986c4dd92438c049f72337"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Em redes com firewall/proxy restritivo, a conexão "moderna" do Firestore (tipo WebSocket) pode
+// travar silenciosamente sem erro. Isso força um formato de conexão mais compatível com esse tipo
+// de rede (parecido com requisições HTTPS comuns), detectando automaticamente quando é necessário.
+db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
 
 // Garante explicitamente que o login fica lembrado entre sessões/atualizações de página
 // (persistência local), em vez de depender do comportamento padrão do navegador.
@@ -935,7 +940,7 @@ async function loadState(){
           resolve(true);
         }
       } else {
-        renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe)
+        if(state) renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe); ignora se a resposta chegou tarde demais (depois do tempo esgotado) e ainda não há dados
       }
     }, (err)=>{
       console.error('Erro de conexão com o Firestore', err);
