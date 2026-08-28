@@ -1,9 +1,10 @@
 // Service Worker — Agenda de Obrigações Fiscais
-// Estratégia: guarda uma cópia do "casco" do app (HTML/manifest/ícones) para abrir mesmo offline,
-// e para os scripts externos (Firebase, pdf.js, xlsx) tenta a rede primeiro e usa a cópia salva
-// só se a rede falhar — assim o app sempre tenta ficar atualizado, mas não trava sem internet.
+// Estratégia: rede primeiro, SEMPRE — o app sempre tenta buscar a versão mais nova quando tem
+// internet, e só usa a cópia salva localmente se a rede falhar (para funcionar offline).
+// (Antes era "cache primeiro" para o casco do app, mas isso causava a tela mostrar uma versão
+// desatualizada até o usuário limpar o cache manualmente — rede primeiro evita esse problema.)
 
-const CACHE_VERSION = 'agenda-fiscal-v1';
+const CACHE_VERSION = 'agenda-fiscal-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -36,33 +37,16 @@ self.addEventListener('fetch', (event) => {
   // a Cache API não aceita esses esquemas, e essas requisições nem são do nosso app mesmo.
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  const isSameOrigin = url.origin === self.location.origin;
-
-  if (isSameOrigin) {
-    // Casco do app: cache primeiro (abre rápido e funciona offline), atualiza em segundo plano.
-    event.respondWith(
-      caches.match(req).then((cached) => {
-        const network = fetch(req).then((res) => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
-          }
-          return res;
-        }).catch(() => cached);
-        return cached || network;
-      })
-    );
-  } else {
-    // Bibliotecas externas (Firebase, pdf.js, xlsx, fontes): rede primeiro, cache como reserva
-    // se a rede falhar (ex: sem internet, ou aquele bloqueio de firewall que já vimos antes).
-    event.respondWith(
-      fetch(req).then((res) => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
-        }
-        return res;
-      }).catch(() => caches.match(req))
-    );
-  }
+  // Rede primeiro, sempre — para o casco do app e para bibliotecas externas (Firebase, pdf.js, xlsx).
+  // Só recorre à cópia salva se a rede falhar de verdade (sem internet, ou bloqueio de firewall).
+  event.respondWith(
+    fetch(req, {cache: 'no-store'}).then((res) => {
+      if (res && res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
+      }
+      return res;
+    }).catch(() => caches.match(req))
+  );
 });
+
