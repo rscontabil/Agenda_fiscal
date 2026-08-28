@@ -912,8 +912,13 @@ async function loadState(){
         console.error('Erro carregando dados do Firestore', e);
       }
       if(!firstLoadResolved){
-        firstLoadResolved = true;
-        resolve(true);
+        // Só libera a tela quando já temos um `state` de verdade — evita renderizar antes da hora
+        // quando a primeira resposta é só "ainda não sei se existe" (cache local vazio, esperando
+        // confirmação do servidor). Se ainda não tiver `state`, esperamos a próxima notificação.
+        if(state){
+          firstLoadResolved = true;
+          resolve(true);
+        }
       } else {
         renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe)
       }
