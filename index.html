@@ -646,6 +646,12 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Garante explicitamente que o login fica lembrado entre sessões/atualizações de página
+// (persistência local), em vez de depender do comportamento padrão do navegador.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((err)=>{
+  console.warn('Não foi possível configurar a persistência do login:', err);
+});
+
 // Persistência offline: guarda uma cópia local dos dados (Firestore) para o app continuar
 // funcionando (ler e editar) mesmo sem internet, sincronizando sozinho quando a conexão voltar.
 db.enablePersistence({synchronizeTabs: true}).catch((err)=>{
@@ -853,36 +859,50 @@ async function loadState(){
   return new Promise((resolve)=>{
     firestoreUnsub = firestoreDocRef().onSnapshot(async (snap)=>{
       try{
+        // Importante: nunca criar/gravar dados a partir de uma leitura que ainda não foi confirmada
+        // pelo servidor (snap.metadata.fromCache) — isso evita que um dispositivo com cache local
+        // desatualizado (ex: computador que não abre o app há um tempo) grave por cima dados mais
+        // recentes que outra pessoa da equipe já salvou, antes de sincronizar de verdade.
+        const fromCache = snap.metadata && snap.metadata.fromCache;
         if(!snap.exists){
-          const cachedRaw = storageGet(STORAGE_KEY);
-          let seeded = null;
-          if(cachedRaw){
-            try{ seeded = JSON.parse(cachedRaw); }catch(e){ seeded = null; }
-          }
-          if(seeded && Array.isArray(seeded.companies) && seeded.companies.length){
-            state = seeded;
-            migrateState();
+          if(fromCache){
+            // Ainda não sabemos se o documento existe de verdade — só o servidor pode confirmar isso.
+            // Atualiza a tela com o que tiver (evita tela em branco) mas não cria nada ainda.
+            if(state) renderAll();
           } else {
-            state = {
-              companies: SEED_COMPANIES.map(c=>({...c})),
-              monthly:{},
-              annual:{},
-              obligations: DEFAULT_OBLIGATIONS.map(o=>({...o})),
-              docTypes: DEFAULT_DOC_TYPES.map(d=>({...d})),
-              docTypesInitialized: true,
-              demandas: [],
-              users: [],
-            };
-            state.companies.forEach(c=>{ c.obligations = computeDefaultObligations(c); c.anual = true; c.parcelamentos = false; });
-            migrateState();
+            const cachedRaw = storageGet(STORAGE_KEY);
+            let seeded = null;
+            if(cachedRaw){
+              try{ seeded = JSON.parse(cachedRaw); }catch(e){ seeded = null; }
+            }
+            if(seeded && Array.isArray(seeded.companies) && seeded.companies.length){
+              state = seeded;
+              migrateState();
+            } else {
+              state = {
+                companies: SEED_COMPANIES.map(c=>({...c})),
+                monthly:{},
+                annual:{},
+                obligations: DEFAULT_OBLIGATIONS.map(o=>({...o})),
+                docTypes: DEFAULT_DOC_TYPES.map(d=>({...d})),
+                docTypesInitialized: true,
+                demandas: [],
+                users: [],
+              };
+              state.companies.forEach(c=>{ c.obligations = computeDefaultObligations(c); c.anual = true; c.parcelamentos = false; });
+              migrateState();
+            }
+            await firestoreDocRef().set(state);
+            storageSet(STORAGE_KEY, JSON.stringify(state));
           }
-          await firestoreDocRef().set(state);
         } else {
           state = snap.data() || {};
-          const changed = migrateState();
-          if(changed) persist();
+          if(!fromCache){
+            const changed = migrateState();
+            if(changed) persist();
+          }
+          storageSet(STORAGE_KEY, JSON.stringify(state)); // cache local de apoio (não autoritativo)
         }
-        storageSet(STORAGE_KEY, JSON.stringify(state)); // cache local de apoio (não autoritativo)
       }catch(e){
         console.error('Erro carregando dados do Firestore', e);
       }
