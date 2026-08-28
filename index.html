@@ -489,6 +489,24 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 }
 .obrig-venc-edit-btn:hover{background:#EEF0E9; color:var(--ink);}
 .obrig-venc-edit-btn.has-override{color:var(--accent); font-weight:700;}
+
+.tag-manager-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1.4rem; margin-bottom:1rem;}
+.tag-manager-title{font-family:'Fraunces',serif; font-weight:600; font-size:.92rem; margin-bottom:.5rem; color:var(--ink-2);}
+.tag-list{display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.6rem; min-height:1.6rem;}
+.tag-chip{
+  display:inline-flex; align-items:center; gap:.3rem; background:#EEF0E9; color:var(--ink);
+  padding:.25rem .5rem .25rem .7rem; border-radius:20px; font-size:.78rem;
+}
+.tag-chip button{
+  background:none; border:none; color:var(--muted); cursor:pointer; font-size:.85rem; line-height:1;
+  padding:0 .15rem;
+}
+.tag-chip button:hover{color:var(--bad);}
+.tag-add-row{display:flex; gap:.4rem;}
+.tag-add-row input{
+  flex:1; padding:.4rem .6rem; border:1px solid var(--line-strong); border-radius:7px; font-size:.8rem;
+  font-family:'Public Sans',sans-serif;
+}
 .demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
 .demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
 .demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
@@ -827,6 +845,9 @@ function migrateState(){
   state.users = state.users || [];
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
+  if(!state.customCategories){ state.customCategories = []; changed = true; }
+  if(!state.esferaOptions){ state.esferaOptions = DEFAULT_ESFERA_OPTIONS.slice(); changed = true; }
+  if(!state.areaOptions){ state.areaOptions = DEFAULT_AREA_OPTIONS.slice(); changed = true; }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
   function migrateObligationBucket(periodStore){
@@ -1003,6 +1024,7 @@ async function loadState(){
       }catch(e){
         console.error('Erro carregando dados do Firestore', e);
       }
+      if(state) rebuildCustomCategoriesFromState();
       if(!firstLoadResolved){
         // Só libera a tela quando já temos um `state` de verdade — evita renderizar antes da hora
         // quando a primeira resposta é só "ainda não sei se existe" (cache local vazio, esperando
@@ -1814,6 +1836,33 @@ CATEGORY_ORDER.forEach(cat=>{
   };
 });
 
+// Registra (ou atualiza) uma categoria criada pelo usuário nas estruturas em memória
+// (CATEGORY_ORDER, CATEGORY_LABELS, TAB_DEFS). Categorias mensais entram antes de "anual"
+// na ordem de exibição; categorias anuais entram depois.
+function registerCategoryRuntime(cat){
+  if(!CATEGORY_ORDER.includes(cat.id)){
+    const anualIdx = CATEGORY_ORDER.indexOf('anual');
+    if(cat.period==='year') CATEGORY_ORDER.push(cat.id);
+    else CATEGORY_ORDER.splice(anualIdx>=0?anualIdx:CATEGORY_ORDER.length, 0, cat.id);
+  }
+  CATEGORY_LABELS[cat.id] = cat.label;
+  TAB_DEFS[cat.id] = {
+    category: cat.id,
+    period: cat.period==='year' ? 'year' : 'month',
+    filter: c => (c.obligations||[]).some(id=>obligationCategory(id)===cat.id),
+    items: (c,pk) => companyItemsForCategory(c, cat.id, pk),
+  };
+}
+function unregisterCategoryRuntime(catId){
+  const idx = CATEGORY_ORDER.indexOf(catId);
+  if(idx>=0) CATEGORY_ORDER.splice(idx,1);
+  delete CATEGORY_LABELS[catId];
+  delete TAB_DEFS[catId];
+}
+function rebuildCustomCategoriesFromState(){
+  (state.customCategories||[]).forEach(registerCategoryRuntime);
+}
+
 /* ---------- Data helpers ---------- */
 function activeCompanies(){
   return state.companies.filter(c=>c.ativa!==false);
@@ -1990,8 +2039,8 @@ let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
-const ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
-const AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
+const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
+const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
@@ -2127,7 +2176,7 @@ function peekObligationEntry(period, companyId, itemKey){
 }
 
 function computeObrigacoesRows(){
-  const cats = obrigViewMode==='anual' ? ['anual'] : CATEGORY_ORDER.filter(c=>c!=='anual');
+  const cats = CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual'));
   const companies = activeCompanies().filter(matchesSearch);
   const rows = [];
   companies.forEach(c=>{
@@ -2220,15 +2269,15 @@ function renderObrigacoes(){
       </div>
       <select id="obrigFilterCategoriaSelect">
         <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
-        ${(obrigViewMode==='anual'?['anual']:CATEGORY_ORDER.filter(c=>c!=='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+        ${CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
       </select>
       <select id="obrigFilterEsferaSelect">
         <option value="todas" ${obrigFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
-        ${ESFERA_OPTIONS.map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+        ${state.esferaOptions.map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
       </select>
       <select id="obrigFilterAreaSelect">
         <option value="todas" ${obrigFilterArea==='todas'?'selected':''}>Todas as áreas</option>
-        ${AREA_OPTIONS.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
+        ${state.areaOptions.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
       </select>
       <select id="obrigFilterStatusSelect">
         <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
@@ -2397,7 +2446,7 @@ function openVencimentoOverrideModal(row){
 }
 
 function openNovaObrigacaoModal(){
-  const cats = obrigViewMode==='anual' ? ['anual'] : CATEGORY_ORDER.filter(c=>c!=='anual');
+  const cats = CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual'));
   const companies = activeCompanies().sort((a,b)=>a.nome.localeCompare(b.nome));
   const obligations = state.obligations.filter(o=>cats.includes(o.category)).sort((a,b)=>{
     const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
@@ -3414,6 +3463,31 @@ function renderConfiguracoes(){
       <div class="form-row"><label>Modelo de corpo — E-mail</label><textarea id="remEmailBody" rows="5" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.emailBodyTemplate)||'')}</textarea></div>
       <div><button class="btn accent small" id="btnSaveReminders" type="button">Salvar lembretes</button></div>
     </div>
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Cadastro de Categorias</div>
+    <div class="sheet-sub">Categorias organizam as obrigações e as abas de tributação. As categorias padrão do sistema não podem ser editadas ou excluídas; você pode criar categorias novas.</div>
+    <div style="overflow-x:auto; margin-bottom:.8rem;">
+    <table class="obrig-table" id="categoriesTable">
+      <thead><tr><th>Nome</th><th>Tipo de período</th><th></th><th></th></tr></thead>
+      <tbody id="categoriesBody"></tbody>
+    </table>
+    </div>
+    <button class="btn ghost small" id="btnNewCategory" type="button">+ Nova categoria</button>
+
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Esferas e Áreas</div>
+    <div class="sheet-sub">Classificações opcionais usadas no Cadastro de Obrigações e nos filtros da aba Obrigações.</div>
+    <div class="tag-manager-cols">
+      <div>
+        <div class="tag-manager-title">Esferas</div>
+        <div id="esferaTagList" class="tag-list"></div>
+        <div class="tag-add-row"><input type="text" id="novaEsferaInput" placeholder="Nova esfera…"><button type="button" class="btn ghost small" id="btnAddEsfera">+ Adicionar</button></div>
+      </div>
+      <div>
+        <div class="tag-manager-title">Áreas</div>
+        <div id="areaTagList" class="tag-list"></div>
+        <div class="tag-add-row"><input type="text" id="novaAreaInput" placeholder="Nova área…"><button type="button" class="btn ghost small" id="btnAddArea">+ Adicionar</button></div>
+      </div>
+    </div>
+
     <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Cadastro de Obrigações</div>
     <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
     <div style="overflow-x:auto; margin-bottom:.8rem;">
@@ -3461,6 +3535,11 @@ function renderConfiguracoes(){
       mountManageCategoryBlock(wrap.querySelector('.config-category-block'), cat);
     });
   }
+  renderCategoriesList();
+  document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
+  renderEsferaAreaLists();
+  document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
+  document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
   renderObligationCatalogList();
   document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
   renderDocTypesList();
@@ -3639,6 +3718,136 @@ function computeObligationDueDate(ob, company, year, month){
   return adjustToBusinessDay(new Date(year, month-1, dueDay), weekendAdjust);
 }
 
+const BUILT_IN_CATEGORY_IDS = ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos','anual'];
+
+function renderCategoriesList(){
+  const el = document.getElementById('categoriesBody');
+  if(!el) return;
+  el.innerHTML = CATEGORY_ORDER.map(id=>{
+    const isCustom = !BUILT_IN_CATEGORY_IDS.includes(id);
+    const period = TAB_DEFS[id] ? TAB_DEFS[id].period : 'month';
+    return `<tr>
+      <td>${escapeHtml(CATEGORY_LABELS[id]||id)}</td>
+      <td>${period==='year' ? 'Anual' : 'Mensal'}</td>
+      <td>${isCustom ? '' : '<span style="color:var(--muted);font-size:.72rem;">Padrão do sistema</span>'}</td>
+      <td>
+        ${isCustom ? `<div class="oblig-row-actions">
+          <button type="button" class="oblig-icon-btn" data-edit-category="${id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-category="${id}" title="Excluir">×</button>
+        </div>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  el.querySelectorAll('[data-edit-category]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCategoryModal(btn.dataset.editCategory));
+  });
+  el.querySelectorAll('[data-del-category]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const catId = btn.dataset.delCategory;
+      const inUse = state.obligations.some(o=>o.category===catId);
+      if(inUse){
+        await showConfirm(`Essa categoria ainda tem obrigações cadastradas nela. Exclua ou mude a categoria dessas obrigações primeiro, em "Cadastro de Obrigações".`, 'Ok');
+        return;
+      }
+      const ok = await showConfirm(`Excluir a categoria "${CATEGORY_LABELS[catId]}"?`);
+      if(!ok) return;
+      state.customCategories = state.customCategories.filter(c=>c.id!==catId);
+      unregisterCategoryRuntime(catId);
+      persist();
+      renderCategoriesList();
+    });
+  });
+}
+
+function openCategoryModal(catId){
+  const editing = !!catId;
+  const existing = editing ? {id:catId, label:CATEGORY_LABELS[catId], period:TAB_DEFS[catId].period} : {label:'', period:'month'};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar categoria' : 'Nova categoria'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome da categoria</label><input id="categoryName" type="text" value="${(existing.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: Trabalhista"><div id="categoryNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
+          <div class="form-row"><label>Tipo de período</label>
+            <select id="categoryPeriod" ${editing? 'disabled title="Não é possível mudar o período de uma categoria já cadastrada — exclua e crie uma nova se precisar."':''}>
+              <option value="month" ${existing.period!=='year'?'selected':''}>Mensal</option>
+              <option value="year" ${existing.period==='year'?'selected':''}>Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const label = document.getElementById('categoryName').value.trim();
+    if(!label){
+      document.getElementById('categoryNameError').style.display = 'block';
+      document.getElementById('categoryName').focus();
+      return;
+    }
+    if(editing){
+      CATEGORY_LABELS[catId] = label;
+      const entry = state.customCategories.find(c=>c.id===catId);
+      if(entry) entry.label = label;
+    } else {
+      const period = document.getElementById('categoryPeriod').value;
+      const id = 'custom_' + Date.now();
+      const cat = {id, label, period};
+      state.customCategories.push(cat);
+      registerCategoryRuntime(cat);
+    }
+    persist();
+    root.innerHTML = '';
+    renderCategoriesList();
+  };
+}
+
+function renderEsferaAreaLists(){
+  renderTagList('esferaOptions', 'esferaTagList');
+  renderTagList('areaOptions', 'areaTagList');
+}
+
+function renderTagList(stateKey, containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const list = state[stateKey] || [];
+  if(list.length===0){
+    el.innerHTML = `<div style="color:var(--muted); font-size:.78rem;">Nenhuma cadastrada ainda.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(tag=>`<span class="tag-chip">${escapeHtml(tag)}<button type="button" data-del-tag="${escapeHtml(tag)}">×</button></span>`).join('');
+  el.querySelectorAll('[data-del-tag]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const tag = btn.dataset.delTag;
+      const ok = await showConfirm(`Remover "${tag}" da lista? Obrigações que já usam esse valor continuam com ele; só deixa de aparecer como opção pra novas.`);
+      if(!ok) return;
+      state[stateKey] = state[stateKey].filter(t=>t!==tag);
+      persist();
+      renderTagList(stateKey, containerId);
+    });
+  });
+}
+
+function addTagOption(stateKey, inputId, containerId){
+  const input = document.getElementById(inputId);
+  const val = input.value.trim();
+  if(!val) return;
+  state[stateKey] = state[stateKey] || [];
+  if(!state[stateKey].includes(val)){
+    state[stateKey].push(val);
+    persist();
+  }
+  input.value = '';
+  renderTagList(stateKey, containerId);
+}
+
 function renderObligationCatalogList(){
   const el = document.getElementById('obligCatalogBody');
   if(!el) return;
@@ -3701,13 +3910,13 @@ function openObligationCatalogModal(obligId){
             <div class="form-row"><label>Esfera (opcional)</label>
               <select id="obligCatEsfera">
                 <option value="">— não informado —</option>
-                ${ESFERA_OPTIONS.map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
+                ${state.esferaOptions.map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
               </select>
             </div>
             <div class="form-row"><label>Área (opcional)</label>
               <select id="obligCatArea">
                 <option value="">— não informado —</option>
-                ${AREA_OPTIONS.map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
+                ${state.areaOptions.map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -3937,18 +4146,8 @@ function openCompanyModal(companyId){
           <div class="oblig-regime-label" id="obligRegimeLabel"></div>
           <div id="regimeBlock"></div>
 
-          <div class="oblig-toggles">
-            <label class="oblig-toggle"><input type="checkbox" id="flagFolha"> Folha de pagamento</label>
-            <label class="oblig-toggle"><input type="checkbox" id="flagSuframa"> SUFRAMA</label>
-            <label class="oblig-toggle"><input type="checkbox" id="flagContab"> Contábil</label>
-            <label class="oblig-toggle"><input type="checkbox" id="flagParcelamentos"> Parcelamentos</label>
-            <label class="oblig-toggle"><input type="checkbox" id="flagAnual"> Obrigações anuais</label>
-          </div>
-          <div id="folhaBlock" class="oblig-toggle-block"></div>
-          <div id="suframaBlock" class="oblig-toggle-block"></div>
-          <div id="contabilBlock" class="oblig-toggle-block"></div>
-          <div id="parcelamentosBlock" class="oblig-toggle-block"></div>
-          <div id="anualBlock" class="oblig-toggle-block"></div>
+          <div class="oblig-toggles" id="dynamicCategoryToggles"></div>
+          <div id="dynamicCategoryBlocks"></div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -3998,11 +4197,26 @@ function openCompanyModal(companyId){
     chk.addEventListener('change', sync);
     sync();
   }
-  setupToggle('flagFolha','folhaBlock','folha', !!c.folha);
-  setupToggle('flagSuframa','suframaBlock','suframa', !!c.suframa);
-  setupToggle('flagContab','contabilBlock','contabil', c.contab!==false);
-  setupToggle('flagParcelamentos','parcelamentosBlock','parcelamentos', !!c.parcelamentos);
-  setupToggle('flagAnual','anualBlock','anual', c.anual!==false);
+  // Categorias fora do regime tributário (folha, suframa, contábil, parcelamentos, anual + qualquer
+  // categoria personalizada criada em Configurações) — geradas dinamicamente, então categorias novas
+  // aparecem aqui automaticamente, sem precisar mexer neste modal de novo.
+  const FLAG_FIELD_MAP = {folha:'folha', suframa:'suframa', contabil:'contab', parcelamentos:'parcelamentos', anual:'anual'};
+  const OTHER_CATEGORIES = CATEGORY_ORDER.filter(cat=>!['simples','mei','presumido_real'].includes(cat));
+  const togglesContainer = document.getElementById('dynamicCategoryToggles');
+  const blocksContainer = document.getElementById('dynamicCategoryBlocks');
+  togglesContainer.innerHTML = OTHER_CATEGORIES.map(cat=>`<label class="oblig-toggle"><input type="checkbox" id="flag_${cat}"> ${CATEGORY_LABELS[cat]}</label>`).join('');
+  blocksContainer.innerHTML = OTHER_CATEGORIES.map(cat=>`<div id="block_${cat}" class="oblig-toggle-block"></div>`).join('');
+  OTHER_CATEGORIES.forEach(cat=>{
+    const flagField = FLAG_FIELD_MAP[cat];
+    let initialOn;
+    if(flagField){
+      initialOn = (flagField==='contab' || flagField==='anual') ? (c[flagField]!==false) : !!c[flagField];
+    } else {
+      // categoria personalizada: não tem campo próprio — liga se a empresa já tiver alguma tarefa dela marcada
+      initialOn = [...selectedObligations].some(id=>obligationCategory(id)===cat);
+    }
+    setupToggle(`flag_${cat}`, `block_${cat}`, cat, initialOn);
+  });
 
   document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
   document.getElementById('gotoConfigLink').addEventListener('click', (e)=>{
@@ -4019,22 +4233,24 @@ function openCompanyModal(companyId){
       document.getElementById('fNome').focus();
       return;
     }
+    // Lê o estado de cada toggle de categoria (padrão do sistema + personalizadas).
+    const categoryToggleState = {};
+    OTHER_CATEGORIES.forEach(cat=>{
+      const chk = document.getElementById(`flag_${cat}`);
+      categoryToggleState[cat] = chk ? chk.checked : false;
+    });
     const flagsFinal = {
-      folha: document.getElementById('flagFolha').checked,
-      suframa: document.getElementById('flagSuframa').checked,
-      contab: document.getElementById('flagContab').checked,
-      parcelamentos: document.getElementById('flagParcelamentos').checked,
-      anual: document.getElementById('flagAnual').checked,
+      folha: categoryToggleState.folha || false,
+      suframa: categoryToggleState.suframa || false,
+      contab: categoryToggleState.contabil || false,
+      parcelamentos: categoryToggleState.parcelamentos || false,
+      anual: categoryToggleState.anual || false,
     };
     const finalRegimeCat = regimeCategoryFor(document.getElementById('fTrib').value);
     const prunedObligations = [...selectedObligations].filter(id=>{
       const cat = obligationCategory(id);
       if(cat==='simples' || cat==='mei' || cat==='presumido_real') return cat===finalRegimeCat;
-      if(cat==='folha') return flagsFinal.folha;
-      if(cat==='suframa') return flagsFinal.suframa;
-      if(cat==='contabil') return flagsFinal.contab;
-      if(cat==='parcelamentos') return flagsFinal.parcelamentos;
-      if(cat==='anual') return flagsFinal.anual;
+      if(OTHER_CATEGORIES.includes(cat)) return !!categoryToggleState[cat];
       return true;
     });
     const data = {
