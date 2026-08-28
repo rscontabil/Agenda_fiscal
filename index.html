@@ -3207,7 +3207,15 @@ function renderConfiguracoes(){
       <div class="form-row"><label>Modelo de corpo — E-mail</label><textarea id="remEmailBody" rows="5" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.emailBodyTemplate)||'')}</textarea></div>
       <div><button class="btn accent small" id="btnSaveReminders" type="button">Salvar lembretes</button></div>
     </div>
-    <div class="config-grid" id="configGrid"></div>
+    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Cadastro de Obrigações</div>
+    <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
+    <div style="overflow-x:auto; margin-bottom:.8rem;">
+    <table class="obrig-table" id="obligCatalogTable">
+      <thead><tr><th>Nome</th><th>Categoria</th><th>Dia de vencimento</th><th></th></tr></thead>
+      <tbody id="obligCatalogBody"></tbody>
+    </table>
+    </div>
+    <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
     <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Responsáveis</div>
     <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda.</div>
     <div id="usersList"></div>
@@ -3237,13 +3245,17 @@ function renderConfiguracoes(){
     persist();
   });
   const grid = document.getElementById('configGrid');
-  CATEGORY_ORDER.forEach(cat=>{
-    const wrap = document.createElement('div');
-    wrap.className = 'config-category';
-    wrap.innerHTML = `<div class="config-category-title">${CATEGORY_LABELS[cat]}</div><div class="config-category-block"></div>`;
-    grid.appendChild(wrap);
-    mountManageCategoryBlock(wrap.querySelector('.config-category-block'), cat);
-  });
+  if(grid){
+    CATEGORY_ORDER.forEach(cat=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'config-category';
+      wrap.innerHTML = `<div class="config-category-title">${CATEGORY_LABELS[cat]}</div><div class="config-category-block"></div>`;
+      grid.appendChild(wrap);
+      mountManageCategoryBlock(wrap.querySelector('.config-category-block'), cat);
+    });
+  }
+  renderObligationCatalogList();
+  document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
   renderDocTypesList();
   document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
   renderUsersList();
@@ -3331,6 +3343,97 @@ function openUserModal(userId){
     persist();
     root.innerHTML = '';
     renderUsersList();
+  };
+}
+
+function renderObligationCatalogList(){
+  const el = document.getElementById('obligCatalogBody');
+  if(!el) return;
+  const sorted = state.obligations.slice().sort((a,b)=>{
+    const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+    return ci !== 0 ? ci : a.label.localeCompare(b.label);
+  });
+  if(sorted.length===0){
+    el.innerHTML = `<tr><td colspan="4"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
+    return;
+  }
+  el.innerHTML = sorted.map(o=>`
+    <tr>
+      <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
+      <td>${CATEGORY_LABELS[o.category]||o.category}</td>
+      <td class="mono">${o.dueDay ? 'dia ' + o.dueDay : '—'}</td>
+      <td>
+        <div class="oblig-row-actions">
+          <button type="button" class="oblig-icon-btn" data-edit-obligcat="${o.id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-obligcat="${o.id}" title="Excluir">×</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  el.querySelectorAll('[data-edit-obligcat]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openObligationCatalogModal(btn.dataset.editObligcat));
+  });
+  el.querySelectorAll('[data-del-obligcat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = await deleteObligationFromCatalog(btn.dataset.delObligcat);
+      if(ok) renderObligationCatalogList();
+    });
+  });
+}
+
+function openObligationCatalogModal(obligId){
+  const editing = !!obligId;
+  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null};
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar obrigação' : 'Nova obrigação'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome da obrigação</label><input id="obligCatName" type="text" value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: PGDAS-D / DAS"><div id="obligCatNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
+          <div class="form-cols">
+            <div class="form-row"><label>Categoria</label>
+              <select id="obligCatCategory" ${editing? 'disabled title="Não é possível trocar a categoria de uma obrigação já cadastrada — exclua e crie uma nova se precisar."':''}>
+                ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${o.category===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-row"><label>Dia de vencimento (opcional)</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = ()=>{
+    const label = document.getElementById('obligCatName').value.trim();
+    if(!label){
+      document.getElementById('obligCatNameError').style.display = 'block';
+      document.getElementById('obligCatName').focus();
+      return;
+    }
+    const dueDayVal = parseInt(document.getElementById('obligCatDueDay').value, 10);
+    const dueDay = (dueDayVal>=1 && dueDayVal<=31) ? dueDayVal : null;
+    if(editing){
+      o.label = label;
+      o.dueDay = dueDay;
+    } else {
+      const category = document.getElementById('obligCatCategory').value;
+      const prefix = category.slice(0,4);
+      state.obligations.push({
+        id: `${prefix}__custom_${Date.now()}`,
+        category,
+        label,
+        dueDay,
+      });
+    }
+    persist();
+    root.innerHTML = '';
+    renderObligationCatalogList();
   };
 }
 
