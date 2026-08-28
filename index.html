@@ -444,6 +444,43 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 }
 .demanda-filter-chip:hover{background:#F2F0E6;}
 .demanda-filter-chip.active{background:var(--ink); color:#F2F0E6; border-color:var(--ink);}
+
+.obrig-filters{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-bottom:1rem;}
+.obrig-mode-toggle{display:flex; border:1px solid var(--line-strong); border-radius:20px; overflow:hidden;}
+.obrig-mode-btn{
+  background:#fff; border:none; padding:.4rem 1rem; font-size:.78rem; font-weight:600; color:var(--muted);
+  cursor:pointer; font-family:'Public Sans',sans-serif;
+}
+.obrig-mode-btn.active{background:var(--ink); color:#F2F0E6;}
+.obrig-filters select{
+  padding:.4rem .7rem; border:1px solid var(--line-strong); border-radius:20px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; color:var(--ink); background:#fff;
+}
+.obrig-table{width:100%; border-collapse:collapse; font-size:.82rem;}
+.obrig-table th{
+  text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
+  padding:.5rem .6rem; border-bottom:2px solid var(--line-strong); white-space:nowrap;
+}
+.obrig-table td{padding:.55rem .6rem; border-bottom:1px solid var(--line); vertical-align:middle;}
+.obrig-tr:hover{background:#FBFAF5;}
+.obrig-tr.overdue{background:var(--bad-bg);}
+.obrig-td-empresa{font-weight:600; min-width:160px;}
+.obrig-cat-tag{font-size:.68rem; color:var(--muted); margin-top:.1rem;}
+.obrig-status-select{
+  padding:.3rem .5rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif; font-weight:600;
+}
+.obrig-status-select.status-pendente{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
+.obrig-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
+.obrig-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.obrig-resp-select{
+  padding:.3rem .5rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
+  cursor:pointer; font-family:'Public Sans',sans-serif; color:var(--muted); max-width:170px;
+}
+.obrig-detalhes-input{
+  width:100%; min-width:160px; padding:.3rem .5rem; border:1px solid var(--line-strong); border-radius:8px;
+  font-size:.78rem; font-family:'Public Sans',sans-serif; box-sizing:border-box;
+}
 .demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
 .demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
 .demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
@@ -608,14 +645,7 @@ const TABS = [
   {id:'painel', label:'Painel'},
   {id:'lembretes', label:'Lembretes'},
   {id:'demandas', label:'Demandas'},
-  {id:'simples', label:'Simples Nacional'},
-  {id:'mei', label:'MEI'},
-  {id:'presumido_real', label:'Presumido e Real'},
-  {id:'folha', label:'Folha'},
-  {id:'suframa', label:'SUFRAMA'},
-  {id:'contabil', label:'Contábil'},
-  {id:'parcelamentos', label:'Parcelamentos'},
-  {id:'anual', label:'Anual'},
+  {id:'obrigacoes', label:'Obrigações'},
   {id:'envio', label:'Envio de Documentos'},
   {id:'empresas', label:'Empresas'},
   {id:'config', label:'Configurações'},
@@ -789,6 +819,30 @@ function migrateState(){
   state.users = state.users || [];
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
+  // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
+  // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
+  function migrateObligationBucket(periodStore){
+    Object.keys(periodStore||{}).forEach(pk=>{
+      const companyBucket = periodStore[pk];
+      Object.keys(companyBucket||{}).forEach(companyId=>{
+        const itemsBucket = companyBucket[companyId];
+        Object.keys(itemsBucket||{}).forEach(itemId=>{
+          const val = itemsBucket[itemId];
+          if(typeof val === 'boolean'){
+            itemsBucket[itemId] = {status: val ? 'concluida' : 'pendente', responsavelId: null, detalhes: ''};
+            changed = true;
+          } else if(val && typeof val === 'object' && !val.status){
+            val.status = 'pendente';
+            if(val.responsavelId===undefined) val.responsavelId = null;
+            if(val.detalhes===undefined) val.detalhes = '';
+            changed = true;
+          }
+        });
+      });
+    });
+  }
+  migrateObligationBucket(state.monthly);
+  migrateObligationBucket(state.annual);
   if(!state.reminderSettings){
     state.reminderSettings = {
       diasAntes: 3,
@@ -1752,9 +1806,24 @@ function periodBucket(period){
   if(!store[pk]) store[pk] = {};
   return {pk, obj:store[pk]};
 }
+const OBRIG_STATUS_LABELS = {pendente:'Pendente', andamento:'Em andamento', concluida:'Concluída'};
+function getObligationEntry(period, companyId, itemKey){
+  const {obj} = periodBucket(period);
+  if(!obj[companyId]) obj[companyId] = {};
+  if(!obj[companyId][itemKey]){
+    obj[companyId][itemKey] = {status:'pendente', responsavelId:null, detalhes:''};
+  }
+  return obj[companyId][itemKey];
+}
+function setObligationField(period, companyId, itemKey, field, value){
+  const entry = getObligationEntry(period, companyId, itemKey);
+  entry[field] = value;
+  persist();
+}
 function isChecked(period, companyId, itemKey){
   const {obj} = periodBucket(period);
-  return !!(obj[companyId] && obj[companyId][itemKey]);
+  const entry = obj[companyId] && obj[companyId][itemKey];
+  return !!(entry && entry.status === 'concluida');
 }
 
 /* ---------- Lembretes (vencimentos próximos) ---------- */
@@ -1783,7 +1852,8 @@ function computeUpcomingReminders(){
         const due = new Date(today.getFullYear(), today.getMonth(), ob.dueDay);
         const diffDays = Math.round((due - today) / 86400000);
         if(diffDays > diasAntes) return;
-        const done = !!(state.monthly[todayKey] && state.monthly[todayKey][c.id] && state.monthly[todayKey][c.id][item.id]);
+        const bucket = state.monthly[todayKey] && state.monthly[todayKey][c.id] && state.monthly[todayKey][c.id][item.id];
+        const done = !!(bucket && bucket.status === 'concluida');
         if(done) return;
         results.push({
           company: c,
@@ -1861,12 +1931,13 @@ function renderStats(){
   el.innerHTML = `
     <div class="stat clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
     <div class="stat clickable" data-jump="painel"><div class="num accent">${pct}%</div><div class="lbl">Concluído no mês</div></div>
-    <div class="stat clickable" data-jump="simples"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
-    <div class="stat clickable" data-jump="presumido_real"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
+    <div class="stat clickable" data-jump="obrigacoes" data-jump-cat="simples"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
+    <div class="stat clickable" data-jump="obrigacoes" data-jump-cat="presumido_real"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
   `;
   el.querySelectorAll('[data-jump]').forEach(card=>{
     card.addEventListener('click', ()=>{
       activeTab = card.dataset.jump;
+      if(card.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = card.dataset.jumpCat; }
       renderAll();
     });
   });
@@ -1891,6 +1962,11 @@ function renderTabs(){
   });
 }
 
+let obrigViewMode = 'mensal'; // mensal | anual — alterna dentro da aba Obrigações
+let obrigFilterCategoria = 'todas';
+let obrigFilterStatus = 'todos';
+let obrigFilterResponsavel = 'todos';
+
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
   const yearInput = document.getElementById('yearInput');
@@ -1898,7 +1974,7 @@ function renderPeriodControl(){
     monthInput.style.display='none'; yearInput.style.display='none';
     return;
   }
-  if(activeTab==='anual'){
+  if(activeTab==='obrigacoes' && obrigViewMode==='anual'){
     monthInput.style.display='none';
     yearInput.style.display='inline-block';
     if(!yearInput.dataset.filled){
@@ -2017,6 +2093,174 @@ function renderRegimeLikeTab(tabId, title, sub){
   attachPillHandlers(document.getElementById('companyList'), tabId);
 }
 
+/* ---------- Obrigações (tabela única: vencimento, responsável, status, detalhes) ---------- */
+function peekObligationEntry(period, companyId, itemKey){
+  const {obj} = periodBucket(period);
+  const entry = obj[companyId] && obj[companyId][itemKey];
+  return entry || {status:'pendente', responsavelId:null, detalhes:''};
+}
+
+function computeObrigacoesRows(){
+  const cats = obrigViewMode==='anual' ? ['anual'] : CATEGORY_ORDER.filter(c=>c!=='anual');
+  const companies = activeCompanies().filter(matchesSearch);
+  const rows = [];
+  companies.forEach(c=>{
+    cats.forEach(cat=>{
+      if(obrigFilterCategoria!=='todas' && obrigFilterCategoria!==cat) return;
+      if(!TAB_DEFS[cat].filter(c)) return;
+      const period = TAB_DEFS[cat].period;
+      const pk = period==='year' ? selectedYear : selectedMonth;
+      const items = TAB_DEFS[cat].items(c, pk);
+      items.forEach(item=>{
+        const entry = peekObligationEntry(period, c.id, item.id);
+        if(obrigFilterStatus!=='todos' && entry.status!==obrigFilterStatus) return;
+        if(obrigFilterResponsavel==='none' && entry.responsavelId) return;
+        if(obrigFilterResponsavel!=='todos' && obrigFilterResponsavel!=='none' && entry.responsavelId!==obrigFilterResponsavel) return;
+        const ob = state.obligations.find(o=>o.id===item.id);
+        let vencimento = null;
+        if(ob && ob.dueDay && period==='month'){
+          const [y,m] = selectedMonth.split('-').map(Number);
+          vencimento = new Date(y, m-1, ob.dueDay);
+        }
+        rows.push({company:c, category:cat, period, item, entry, vencimento});
+      });
+    });
+  });
+  rows.sort((a,b)=>{
+    if(a.vencimento && b.vencimento) return a.vencimento - b.vencimento;
+    if(a.vencimento) return -1;
+    if(b.vencimento) return 1;
+    return a.company.nome.localeCompare(b.company.nome);
+  });
+  return rows;
+}
+
+function obrigRowKey(row){
+  return `${row.period}__${row.company.id}__${row.item.id}`;
+}
+
+function obrigRowHtml(row){
+  const key = obrigRowKey(row);
+  const responsavel = row.entry.responsavelId ? state.users.find(u=>u.id===row.entry.responsavelId) : null;
+  const vencFmt = row.vencimento ? row.vencimento.toLocaleDateString('pt-BR') : '—';
+  const overdue = row.vencimento && row.entry.status!=='concluida' && row.vencimento < new Date(new Date().setHours(0,0,0,0));
+  return `<tr class="obrig-tr ${overdue?'overdue':''}" data-obrig-key="${key}">
+    <td class="obrig-td-empresa">${escapeHtml(row.company.nome)}</td>
+    <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}</div></td>
+    <td class="mono">${vencFmt}</td>
+    <td>
+      <select class="obrig-status-select status-${row.entry.status}" data-obrig-status="${key}">
+        <option value="pendente" ${row.entry.status==='pendente'?'selected':''}>Pendente</option>
+        <option value="andamento" ${row.entry.status==='andamento'?'selected':''}>Em andamento</option>
+        <option value="concluida" ${row.entry.status==='concluida'?'selected':''}>Concluída</option>
+      </select>
+    </td>
+    <td>
+      <select class="obrig-resp-select" data-obrig-resp="${key}">
+        <option value="">— sem responsável —</option>
+        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}" ${u.id===row.entry.responsavelId?'selected':''}>${escapeHtml(u.nome)}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <input type="text" class="obrig-detalhes-input" data-obrig-detalhes="${key}" value="${(row.entry.detalhes||'').replace(/"/g,'&quot;')}" placeholder="Observações, códigos de acesso…">
+    </td>
+  </tr>`;
+}
+
+function renderObrigacoes(){
+  const container = document.getElementById('sheetContent');
+  const rows = computeObrigacoesRows();
+  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(u=>`<option value="${u.id}" ${obrigFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
+  container.innerHTML = `
+    <div class="sheet-title">Obrigações</div>
+    <div class="sheet-sub">Vencimento, responsável e status de cada obrigação por empresa. ${obrigViewMode==='mensal' ? fmtMonthLabel(selectedMonth) : 'Ano-base ' + selectedYear}.</div>
+    <div class="obrig-filters">
+      <div class="obrig-mode-toggle">
+        <button type="button" class="obrig-mode-btn ${obrigViewMode==='mensal'?'active':''}" data-obrig-mode="mensal">Mensal</button>
+        <button type="button" class="obrig-mode-btn ${obrigViewMode==='anual'?'active':''}" data-obrig-mode="anual">Anual</button>
+      </div>
+      <select id="obrigFilterCategoriaSelect">
+        <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
+        ${(obrigViewMode==='anual'?['anual']:CATEGORY_ORDER.filter(c=>c!=='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+      </select>
+      <select id="obrigFilterStatusSelect">
+        <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
+        <option value="pendente" ${obrigFilterStatus==='pendente'?'selected':''}>Pendente</option>
+        <option value="andamento" ${obrigFilterStatus==='andamento'?'selected':''}>Em andamento</option>
+        <option value="concluida" ${obrigFilterStatus==='concluida'?'selected':''}>Concluída</option>
+      </select>
+      <select id="obrigFilterResponsavelSelect">
+        <option value="todos" ${obrigFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
+        <option value="none" ${obrigFilterResponsavel==='none'?'selected':''}>Sem responsável</option>
+        ${userOptions}
+      </select>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="obrig-table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Obrigação</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th>Responsável</th>
+          <th>Detalhes</th>
+        </tr>
+      </thead>
+      <tbody id="obrigTbody">
+        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="6"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  `;
+  wireObrigacoesHandlers(rows);
+}
+
+function wireObrigacoesHandlers(rows){
+  const container = document.getElementById('sheetContent');
+  container.querySelectorAll('[data-obrig-mode]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      obrigViewMode = btn.dataset.obrigMode;
+      obrigFilterCategoria = 'todas';
+      renderPeriodControl();
+      renderObrigacoes();
+    });
+  });
+  const catSel = document.getElementById('obrigFilterCategoriaSelect');
+  if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; renderObrigacoes(); });
+  const statusSel = document.getElementById('obrigFilterStatusSelect');
+  if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; renderObrigacoes(); });
+  const respSel = document.getElementById('obrigFilterResponsavelSelect');
+  if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; renderObrigacoes(); });
+
+  function findRow(key){ return rows.find(r=>obrigRowKey(r)===key); }
+
+  container.querySelectorAll('[data-obrig-status]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const row = findRow(sel.dataset.obrigStatus);
+      if(!row) return;
+      setObligationField(row.period, row.company.id, row.item.id, 'status', sel.value);
+      sel.className = 'obrig-status-select status-' + sel.value;
+      renderTabs(); // atualiza contador de lembretes / progresso
+    });
+  });
+  container.querySelectorAll('[data-obrig-resp]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const row = findRow(sel.dataset.obrigResp);
+      if(!row) return;
+      setObligationField(row.period, row.company.id, row.item.id, 'responsavelId', sel.value || null);
+    });
+  });
+  container.querySelectorAll('[data-obrig-detalhes]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const row = findRow(inp.dataset.obrigDetalhes);
+      if(!row) return;
+      setObligationField(row.period, row.company.id, row.item.id, 'detalhes', inp.value);
+    });
+  });
+}
+
 function renderPainel(){
   const companies = activeCompanies();
   const rows = [];
@@ -2062,8 +2306,8 @@ function renderPainel(){
     <div class="painel-grid">
       <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
       <div class="painel-card clickable" data-scroll="pendingSection"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
-      <div class="painel-card clickable" data-jump="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
-      <div class="painel-card clickable" data-jump="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
+      <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
+      <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
     </div>
 
     <div class="sheet-title" style="font-size:1rem;">Demandas</div>
@@ -2094,7 +2338,7 @@ function renderPainel(){
             <div class="name">${x.c.nome}</div>
             <div class="cnpj mono" style="font-size:.7rem;">${x.c.cnpj} · ${x.done}/${x.total} itens concluídos</div>
           </div>
-          <span class="go" data-jump="${[...x.tabs][0]}">Ver detalhes →</span>
+          <span class="go" data-jump="obrigacoes" data-jump-cat="${[...x.tabs][0]}" data-jump-search="${x.c.nome.replace(/"/g,'&quot;')}">Ver detalhes →</span>
         </div>
       `).join('') : '<div class="empty-note">Nenhuma pendência — tudo em dia! 🎉</div>'}
     </div>
@@ -2102,6 +2346,12 @@ function renderPainel(){
   container.querySelectorAll('[data-jump]').forEach(el=>{
     el.addEventListener('click', ()=>{
       activeTab = el.dataset.jump;
+      if(el.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = el.dataset.jumpCat; }
+      if(el.dataset.jumpSearch){
+        searchQuery = el.dataset.jumpSearch;
+        const searchInput = document.getElementById('searchInput');
+        if(searchInput) searchInput.value = searchQuery;
+      }
       renderAll();
     });
   });
@@ -3726,14 +3976,7 @@ function renderAll(){
   renderPeriodControl();
   if(activeTab==='painel') renderPainel();
   else if(activeTab==='empresas') renderEmpresas();
-  else if(activeTab==='simples') renderRegimeLikeTab('simples','Simples Nacional', `Checklist mensal — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='mei') renderRegimeLikeTab('mei','MEI', `Empresas MEI — checklist mensal, ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='presumido_real') renderRegimeLikeTab('presumido_real','Presumido e Real', `Checklist mensal — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='folha') renderRegimeLikeTab('folha','Folha de Pagamento', `Empresas com folha ativa — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='suframa') renderRegimeLikeTab('suframa','SUFRAMA', `Empresas com inscrição SUFRAMA — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='contabil') renderRegimeLikeTab('contabil','Contábil', `Movimentação e documentos — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='parcelamentos') renderRegimeLikeTab('parcelamentos','Parcelamentos', `Parcelamentos em andamento — ${fmtMonthLabel(selectedMonth)}`);
-  else if(activeTab==='anual') renderRegimeLikeTab('anual','Obrigações Anuais', `Ano-base ${selectedYear}`);
+  else if(activeTab==='obrigacoes') renderObrigacoes();
   else if(activeTab==='envio') renderEnvioDocumentos();
   else if(activeTab==='lembretes') renderLembretes();
   else if(activeTab==='demandas') renderDemandas();
