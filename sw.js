@@ -32,6 +32,10 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  // Ignora requisições que não são http/https (ex: chrome-extension://, de extensões do navegador) —
+  // a Cache API não aceita esses esquemas, e essas requisições nem são do nosso app mesmo.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   const isSameOrigin = url.origin === self.location.origin;
 
   if (isSameOrigin) {
