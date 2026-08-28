@@ -731,11 +731,13 @@ document.getElementById('btnLogout').addEventListener('click', async ()=>{
   await auth.signOut();
 });
 
+let pendingAuthError = null;
+
 auth.onAuthStateChanged(async (user)=>{
   if(user){
     const email = (user.email || '').toLowerCase();
     if(!ALLOWED_EMAILS.includes(email)){
-      showAuthGateLoginCard('Esse e-mail (' + user.email + ') não tem acesso a este aplicativo. Fale com o administrador.');
+      pendingAuthError = 'Esse e-mail (' + user.email + ') não tem acesso a este aplicativo. Fale com o administrador.';
       await auth.signOut();
       return;
     }
@@ -745,7 +747,7 @@ auth.onAuthStateChanged(async (user)=>{
     document.getElementById('headerUserEmail').textContent = user.email;
     const ok = await loadState();
     if(!ok){
-      showAuthGateLoginCard('Não foi possível carregar os dados (erro de conexão ou permissão com o banco de dados). Tente recarregar a página; se persistir, use uma janela normal do navegador (não anônima/privada) e confira sua conexão com a internet.');
+      pendingAuthError = 'Não foi possível carregar os dados (erro de conexão ou permissão com o banco de dados). Tente recarregar a página; se persistir, confira sua conexão com a internet.';
       await auth.signOut();
       return;
     }
@@ -754,7 +756,8 @@ auth.onAuthStateChanged(async (user)=>{
     tryAutoReconnectDrive();
   } else {
     currentUser = null;
-    showAuthGateLoginCard();
+    showAuthGateLoginCard(pendingAuthError);
+    pendingAuthError = null;
   }
 });
 
