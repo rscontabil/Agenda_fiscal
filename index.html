@@ -350,7 +350,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .oblig-toggle-block{margin-top:.2rem; margin-bottom:.2rem;}
 .oblig-group{border:1px solid var(--line); border-radius:8px; padding:.65rem .75rem; margin-bottom:.55rem; background:#FCFCFA;}
 
-.config-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem;}
+.config-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:1rem;}
 
 .envio-warn{
   background:var(--gold-bg); color:#7A5F1F; border:1px solid #E3D3A0; border-radius:8px;
@@ -464,7 +464,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 }
 .config-category{border:1px solid var(--line-strong); border-radius:10px; padding:1rem; background:#FCFCFA;}
 .config-category-title{font-family:'Fraunces',serif; font-weight:600; font-size:1rem; margin-bottom:.6rem; color:var(--ink-2);}
-.oblig-manage-label{font-size:.82rem; color:var(--ink);}
+.oblig-manage-label{font-size:.82rem; color:var(--ink); line-height:1.3; padding-top:.1rem;}
 
 .drive-panel{
   border:1px solid var(--line-strong); border-radius:10px; padding:1.1rem; background:#FCFCFA;
@@ -487,23 +487,24 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .drive-status-badge.drive-on{background:var(--good-bg); color:var(--good);}
 .drive-status-badge.drive-error{background:var(--bad-bg); color:var(--bad);}
 .drive-note{font-size:.74rem; color:var(--muted); line-height:1.5; margin-top:.4rem;}
-.oblig-items{display:flex; flex-direction:column; gap:.3rem; margin-bottom:.45rem;}
-.oblig-check-row{display:flex; align-items:center; justify-content:space-between; gap:.5rem;}
+.oblig-items{display:flex; flex-direction:column; gap:.4rem; margin-bottom:.45rem;}
+.oblig-check-row{display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem;}
 .oblig-step-num{
   display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
   width:18px; height:18px; border-radius:50%; background:var(--ink); color:#F2F0E6;
   font-size:.65rem; font-weight:700; font-family:'IBM Plex Mono',monospace;
+  margin-top:.1rem;
 }
-.oblig-row-label-group{display:flex; align-items:center; gap:.45rem; min-width:0; flex:1;}
+.oblig-row-label-group{display:flex; align-items:flex-start; gap:.45rem; min-width:0; flex:1;}
 .oblig-row-label-group .oblig-edit-input{flex:1; min-width:0;}
 .item-pill .oblig-step-num{background:var(--muted); opacity:.55;}
 .item-pill.checked .oblig-step-num{background:var(--good); opacity:1;}
 .oblig-check{display:flex; align-items:center; gap:.45rem; font-size:.82rem; color:var(--ink); cursor:pointer;}
 .oblig-check input{accent-color:var(--good); width:14px; height:14px; cursor:pointer;}
-.oblig-row-actions{display:flex; gap:.15rem; flex-shrink:0;}
+.oblig-row-actions{display:flex; gap:.05rem; flex-shrink:0; margin-top:.05rem;}
 .oblig-icon-btn{
-  background:transparent; border:none; color:var(--muted); font-size:1rem; line-height:1;
-  cursor:pointer; padding:.1rem .4rem; border-radius:5px; flex-shrink:0;
+  background:transparent; border:none; color:var(--muted); font-size:.85rem; line-height:1;
+  cursor:pointer; padding:.15rem .28rem; border-radius:5px; flex-shrink:0;
 }
 .oblig-icon-btn:hover{background:#EEF0E9; color:var(--ink);}
 .oblig-del-btn:hover{background:var(--bad-bg); color:var(--bad);}
@@ -3579,7 +3580,8 @@ function wireImportPreviewHandlers(){
     sel.addEventListener('change', ()=>{
       const item = importItems.find(i=>i.id===sel.dataset.impAction);
       if(item) item.action = sel.value;
-      renderImportPreviewModal();
+      refreshImportRow(item); // só essa linha, sem perder a posição da rolagem
+      updateImportFooter();
     });
   });
   root.querySelectorAll('[data-imp-trib]').forEach(sel=>{
@@ -3597,6 +3599,44 @@ function wireImportPreviewHandlers(){
   document.getElementById('btnImportCancel').onclick = ()=>{ importItems = []; root.innerHTML=''; };
   document.getElementById('importOverlay').addEventListener('click', (e)=>{ if(e.target.id==='importOverlay'){ importItems = []; root.innerHTML=''; } });
   document.getElementById('btnImportConfirm').onclick = confirmImport;
+}
+
+function refreshImportRow(item){
+  const root = document.getElementById('modalRoot');
+  const rowEl = root.querySelector(`[data-imp-id="${item.id}"]`);
+  if(!rowEl) return;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = importRowHtml(item);
+  const newRowEl = wrapper.firstElementChild;
+  rowEl.replaceWith(newRowEl);
+  // rewire só os controles dessa linha nova
+  newRowEl.querySelectorAll('[data-imp-include]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const it = importItems.find(i=>i.id===chk.dataset.impInclude);
+      if(it) it.include = chk.checked;
+      updateImportFooter();
+    });
+  });
+  newRowEl.querySelectorAll('[data-imp-action]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const it = importItems.find(i=>i.id===sel.dataset.impAction);
+      if(it) it.action = sel.value;
+      refreshImportRow(it);
+      updateImportFooter();
+    });
+  });
+  newRowEl.querySelectorAll('[data-imp-trib]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const it = importItems.find(i=>i.id===sel.dataset.impTrib);
+      if(it) it.trib = sel.value;
+    });
+  });
+  newRowEl.querySelectorAll('[data-imp-ativ]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const it = importItems.find(i=>i.id===sel.dataset.impAtiv);
+      if(it) it.ativ = sel.value;
+    });
+  });
 }
 
 function updateImportFooter(){
