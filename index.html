@@ -447,6 +447,13 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 
 .obrig-filters{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin-bottom:1rem;}
 .obrig-mode-toggle{display:flex; border:1px solid var(--line-strong); border-radius:20px; overflow:hidden;}
+.config-subtabs{display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.4rem; border-bottom:1px solid var(--line); padding-bottom:.9rem;}
+.config-subtab-btn{
+  background:#fff; border:1px solid var(--line-strong); padding:.4rem 1rem; font-size:.8rem; font-weight:600;
+  color:var(--muted); cursor:pointer; font-family:'Public Sans',sans-serif; border-radius:20px;
+}
+.config-subtab-btn:hover{background:#F2F0E6;}
+.config-subtab-btn.active{background:var(--ink); color:#F2F0E6; border-color:var(--ink);}
 .obrig-mode-btn{
   background:#fff; border:none; padding:.4rem 1rem; font-size:.78rem; font-weight:600; color:var(--muted);
   cursor:pointer; font-family:'Public Sans',sans-serif;
@@ -470,9 +477,11 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   padding:.3rem .5rem; border-radius:8px; font-size:.76rem; border:1px solid var(--line-strong);
   cursor:pointer; font-family:'Public Sans',sans-serif; font-weight:600;
 }
-.obrig-status-select.status-pendente{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
+.obrig-status-select.status-nao_iniciada{background:var(--gold-bg); color:#7A5F1F; border-color:#E3D3A0;}
 .obrig-status-select.status-andamento{background:#E5EEF3; color:#2A5F79; border-color:#BFD8E5;}
-.obrig-status-select.status-concluida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.obrig-status-select.status-enviada{background:#EAE5F3; color:#5A3D8A; border-color:#D3C6E8;}
+.obrig-status-select.status-transmitida{background:var(--good-bg); color:var(--good); border-color:#BFE0CD;}
+.obrig-status-select.status-retificada{background:#FCEBD9; color:#9A5B10; border-color:#F0CBA0;}
 .obrig-status-select.status-dispensada{background:#EEF0E9; color:var(--muted); border-color:var(--line-strong);}
 .obrig-status-select.status-cancelada{background:var(--bad-bg); color:var(--bad); border-color:#E3A0A0;}
 .obrig-resp-select{
@@ -850,6 +859,7 @@ function migrateState(){
   if(!state.areaOptions){ state.areaOptions = DEFAULT_AREA_OPTIONS.slice(); changed = true; }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
+  const OLD_TO_NEW_STATUS_MAP = {pendente:'nao_iniciada', andamento:'andamento', concluida:'transmitida', dispensada:'dispensada', cancelada:'cancelada'};
   function migrateObligationBucket(periodStore){
     Object.keys(periodStore||{}).forEach(pk=>{
       const companyBucket = periodStore[pk];
@@ -858,13 +868,20 @@ function migrateState(){
         Object.keys(itemsBucket||{}).forEach(itemId=>{
           const val = itemsBucket[itemId];
           if(typeof val === 'boolean'){
-            itemsBucket[itemId] = {status: val ? 'concluida' : 'pendente', responsavelId: null, detalhes: ''};
+            itemsBucket[itemId] = {status: val ? 'transmitida' : 'nao_iniciada', responsavelId: null, detalhes: '', comprovante: ''};
             changed = true;
-          } else if(val && typeof val === 'object' && !val.status){
-            val.status = 'pendente';
-            if(val.responsavelId===undefined) val.responsavelId = null;
-            if(val.detalhes===undefined) val.detalhes = '';
-            changed = true;
+          } else if(val && typeof val === 'object'){
+            if(!val.status){
+              val.status = 'nao_iniciada';
+              changed = true;
+            } else if(OLD_TO_NEW_STATUS_MAP[val.status]){
+              // migra do vocabulário antigo (pendente/concluida) pro novo (não iniciada/transmitida)
+              val.status = OLD_TO_NEW_STATUS_MAP[val.status];
+              changed = true;
+            }
+            if(val.responsavelId===undefined){ val.responsavelId = null; changed = true; }
+            if(val.detalhes===undefined){ val.detalhes = ''; changed = true; }
+            if(val.comprovante===undefined){ val.comprovante = ''; changed = true; }
           }
         });
       });
@@ -1873,15 +1890,21 @@ function periodBucket(period){
   if(!store[pk]) store[pk] = {};
   return {pk, obj:store[pk]};
 }
-const OBRIG_STATUS_LABELS = {pendente:'Pendente', andamento:'Em andamento', concluida:'Concluída', dispensada:'Dispensada', cancelada:'Cancelada'};
+const OBRIG_STATUS_LABELS = {
+  nao_iniciada:'Não iniciada', andamento:'Em andamento', enviada:'Enviada',
+  transmitida:'Transmitida', retificada:'Retificada', dispensada:'Dispensada', cancelada:'Cancelada',
+};
 function isResolvedStatus(status){
-  return status==='concluida' || status==='dispensada' || status==='cancelada';
+  return status==='transmitida' || status==='retificada' || status==='dispensada' || status==='cancelada';
+}
+function statusOptionsHtml(current){
+  return Object.keys(OBRIG_STATUS_LABELS).map(s=>`<option value="${s}" ${current===s?'selected':''}>${OBRIG_STATUS_LABELS[s]}</option>`).join('');
 }
 function getObligationEntry(period, companyId, itemKey){
   const {obj} = periodBucket(period);
   if(!obj[companyId]) obj[companyId] = {};
   if(!obj[companyId][itemKey]){
-    obj[companyId][itemKey] = {status:'pendente', responsavelId:null, detalhes:''};
+    obj[companyId][itemKey] = {status:'nao_iniciada', responsavelId:null, detalhes:'', comprovante:''};
   }
   return obj[companyId][itemKey];
 }
@@ -2039,6 +2062,7 @@ let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
+let obrigShowMoreFilters = false;
 const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
 const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 
@@ -2172,7 +2196,7 @@ function renderRegimeLikeTab(tabId, title, sub){
 function peekObligationEntry(period, companyId, itemKey){
   const {obj} = periodBucket(period);
   const entry = obj[companyId] && obj[companyId][itemKey];
-  return entry || {status:'pendente', responsavelId:null, detalhes:''};
+  return entry || {status:'nao_iniciada', responsavelId:null, detalhes:'', comprovante:''};
 }
 
 function computeObrigacoesRows(){
@@ -2230,11 +2254,7 @@ function obrigRowHtml(row){
     </td>
     <td>
       <select class="obrig-status-select status-${row.entry.status}" data-obrig-status="${key}">
-        <option value="pendente" ${row.entry.status==='pendente'?'selected':''}>Pendente</option>
-        <option value="andamento" ${row.entry.status==='andamento'?'selected':''}>Em andamento</option>
-        <option value="concluida" ${row.entry.status==='concluida'?'selected':''}>Concluída</option>
-        <option value="dispensada" ${row.entry.status==='dispensada'?'selected':''}>Dispensada</option>
-        <option value="cancelada" ${row.entry.status==='cancelada'?'selected':''}>Cancelada</option>
+        ${statusOptionsHtml(row.entry.status)}
       </select>
     </td>
     <td>
@@ -2245,6 +2265,9 @@ function obrigRowHtml(row){
     </td>
     <td>
       <input type="text" class="obrig-detalhes-input" data-obrig-detalhes="${key}" value="${(row.entry.detalhes||'').replace(/"/g,'&quot;')}" placeholder="Observações, códigos de acesso…">
+    </td>
+    <td>
+      <input type="text" class="obrig-detalhes-input" data-obrig-comprovante="${key}" value="${(row.entry.comprovante||'').replace(/"/g,'&quot;')}" placeholder="Nº protocolo, recibo…">
     </td>
   </tr>`;
 }
@@ -2271,6 +2294,19 @@ function renderObrigacoes(){
         <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
         ${CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
       </select>
+      <select id="obrigFilterStatusSelect">
+        <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
+        ${statusOptionsHtml(obrigFilterStatus==='todos'?null:obrigFilterStatus)}
+      </select>
+      <select id="obrigFilterResponsavelSelect">
+        <option value="todos" ${obrigFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
+        <option value="none" ${obrigFilterResponsavel==='none'?'selected':''}>Sem responsável</option>
+        ${userOptions}
+      </select>
+      <button type="button" class="btn ghost small" id="btnToggleMaisFiltros">${obrigShowMoreFilters?'Menos filtros ▲':'Mais filtros ▼'}</button>
+    </div>
+    ${obrigShowMoreFilters ? `
+    <div class="obrig-filters" style="margin-top:-.6rem;">
       <select id="obrigFilterEsferaSelect">
         <option value="todas" ${obrigFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
         ${state.esferaOptions.map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
@@ -2279,20 +2315,7 @@ function renderObrigacoes(){
         <option value="todas" ${obrigFilterArea==='todas'?'selected':''}>Todas as áreas</option>
         ${state.areaOptions.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
       </select>
-      <select id="obrigFilterStatusSelect">
-        <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
-        <option value="pendente" ${obrigFilterStatus==='pendente'?'selected':''}>Pendente</option>
-        <option value="andamento" ${obrigFilterStatus==='andamento'?'selected':''}>Em andamento</option>
-        <option value="concluida" ${obrigFilterStatus==='concluida'?'selected':''}>Concluída</option>
-        <option value="dispensada" ${obrigFilterStatus==='dispensada'?'selected':''}>Dispensada</option>
-        <option value="cancelada" ${obrigFilterStatus==='cancelada'?'selected':''}>Cancelada</option>
-      </select>
-      <select id="obrigFilterResponsavelSelect">
-        <option value="todos" ${obrigFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
-        <option value="none" ${obrigFilterResponsavel==='none'?'selected':''}>Sem responsável</option>
-        ${userOptions}
-      </select>
-    </div>
+    </div>` : ''}
     <div style="overflow-x:auto;">
     <table class="obrig-table">
       <thead>
@@ -2303,10 +2326,11 @@ function renderObrigacoes(){
           <th>Status</th>
           <th>Responsável</th>
           <th>Detalhes</th>
+          <th>Comprovante</th>
         </tr>
       </thead>
       <tbody id="obrigTbody">
-        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="6"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
+        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="7"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
       </tbody>
     </table>
     </div>
@@ -2335,6 +2359,10 @@ function wireObrigacoesHandlers(rows){
   if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; renderObrigacoes(); });
   const respSel = document.getElementById('obrigFilterResponsavelSelect');
   if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; renderObrigacoes(); });
+  document.getElementById('btnToggleMaisFiltros').addEventListener('click', ()=>{
+    obrigShowMoreFilters = !obrigShowMoreFilters;
+    renderObrigacoes();
+  });
 
   function findRow(key){ return rows.find(r=>obrigRowKey(r)===key); }
 
@@ -2366,6 +2394,13 @@ function wireObrigacoesHandlers(rows){
       const row = findRow(inp.dataset.obrigDetalhes);
       if(!row) return;
       setObligationField(row.period, row.company.id, row.item.id, 'detalhes', inp.value);
+    });
+  });
+  container.querySelectorAll('[data-obrig-comprovante]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const row = findRow(inp.dataset.obrigComprovante);
+      if(!row) return;
+      setObligationField(row.period, row.company.id, row.item.id, 'comprovante', inp.value);
     });
   });
 }
@@ -2472,11 +2507,7 @@ function openNovaObrigacaoModal(){
           <div class="form-cols">
             <div class="form-row"><label>Status</label>
               <select id="novaObrigStatus">
-                <option value="pendente">Pendente</option>
-                <option value="andamento">Em andamento</option>
-                <option value="concluida">Concluída</option>
-                <option value="dispensada">Dispensada</option>
-                <option value="cancelada">Cancelada</option>
+                ${statusOptionsHtml('nao_iniciada')}
               </select>
             </div>
             <div class="form-row"><label>Responsável (opcional)</label>
@@ -3448,104 +3479,136 @@ function renderDrivePanel(){
   `;
 }
 
+let configSubTab = 'catalogo';
+const CONFIG_SUBTABS = [
+  {id:'catalogo', label:'Catálogo'},
+  {id:'equipe', label:'Equipe'},
+  {id:'documentos', label:'Documentos'},
+  {id:'lembretes', label:'Lembretes'},
+  {id:'conexoes', label:'Conexões'},
+];
+
 function renderConfiguracoes(){
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="sheet-title">Configurações</div>
-    <div class="sheet-sub">Defina aqui as tarefas de cada categoria de obrigação. No cadastro da empresa você só marca quais dessas tarefas se aplicam a cada uma.</div>
-    ${renderDrivePanel()}
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Lembretes de vencimento</div>
-    <div class="sheet-sub">Configure com quantos dias de antecedência avisar, e os modelos de mensagem usados na aba "Lembretes". Defina o "dia de vencimento" de cada tarefa lá embaixo, dentro de cada categoria. Use {empresa}, {obrigacao} e {vencimento} nos modelos.</div>
-    <div class="form-grid" style="max-width:520px; margin-bottom:1.2rem;">
-      <div class="form-row"><label>Avisar com quantos dias de antecedência</label><input id="remDiasAntes" type="number" min="0" max="30" value="${(state.reminderSettings&&state.reminderSettings.diasAntes)||3}"></div>
-      <div class="form-row"><label>Modelo de mensagem — WhatsApp</label><textarea id="remWhatsapp" rows="3" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.whatsappTemplate)||'')}</textarea></div>
-      <div class="form-row"><label>Modelo de assunto — E-mail</label><input id="remEmailSubject" type="text" value="${((state.reminderSettings&&state.reminderSettings.emailSubjectTemplate)||'').replace(/"/g,'&quot;')}"></div>
-      <div class="form-row"><label>Modelo de corpo — E-mail</label><textarea id="remEmailBody" rows="5" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.emailBodyTemplate)||'')}</textarea></div>
-      <div><button class="btn accent small" id="btnSaveReminders" type="button">Salvar lembretes</button></div>
+    <div class="sheet-sub">Cadastros e ajustes gerais do sistema, organizados por assunto.</div>
+    <div class="config-subtabs">
+      ${CONFIG_SUBTABS.map(t=>`<button type="button" class="config-subtab-btn ${configSubTab===t.id?'active':''}" data-config-subtab="${t.id}">${t.label}</button>`).join('')}
     </div>
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Cadastro de Categorias</div>
-    <div class="sheet-sub">Categorias organizam as obrigações e as abas de tributação. As categorias padrão do sistema não podem ser editadas ou excluídas; você pode criar categorias novas.</div>
-    <div style="overflow-x:auto; margin-bottom:.8rem;">
-    <table class="obrig-table" id="categoriesTable">
-      <thead><tr><th>Nome</th><th>Tipo de período</th><th></th><th></th></tr></thead>
-      <tbody id="categoriesBody"></tbody>
-    </table>
-    </div>
-    <button class="btn ghost small" id="btnNewCategory" type="button">+ Nova categoria</button>
-
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Esferas e Áreas</div>
-    <div class="sheet-sub">Classificações opcionais usadas no Cadastro de Obrigações e nos filtros da aba Obrigações.</div>
-    <div class="tag-manager-cols">
-      <div>
-        <div class="tag-manager-title">Esferas</div>
-        <div id="esferaTagList" class="tag-list"></div>
-        <div class="tag-add-row"><input type="text" id="novaEsferaInput" placeholder="Nova esfera…"><button type="button" class="btn ghost small" id="btnAddEsfera">+ Adicionar</button></div>
-      </div>
-      <div>
-        <div class="tag-manager-title">Áreas</div>
-        <div id="areaTagList" class="tag-list"></div>
-        <div class="tag-add-row"><input type="text" id="novaAreaInput" placeholder="Nova área…"><button type="button" class="btn ghost small" id="btnAddArea">+ Adicionar</button></div>
-      </div>
-    </div>
-
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Cadastro de Obrigações</div>
-    <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
-    <div style="overflow-x:auto; margin-bottom:.8rem;">
-    <table class="obrig-table" id="obligCatalogTable">
-      <thead><tr><th>Nome</th><th>Categoria</th><th>Esfera</th><th>Área</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
-      <tbody id="obligCatalogBody"></tbody>
-    </table>
-    </div>
-    <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Responsáveis</div>
-    <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda.</div>
-    <div id="usersList"></div>
-    <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
-
-    <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Tipos de documento (envio automático)</div>
-    <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
-    <div id="docTypesList"></div>
-    <button class="btn ghost small" id="btnNewDocType" type="button">+ Novo tipo de documento</button>
+    <div id="configSubtabContent"></div>
   `;
-  document.getElementById('btnSaveClientId').addEventListener('click', ()=>{
-    const val = document.getElementById('driveClientIdInput').value.trim();
-    setDriveClientId(val);
-    driveTokenClient = null;
-    document.getElementById('driveActions').innerHTML = renderDriveActions();
-    wireDriveActions();
+  container.querySelectorAll('[data-config-subtab]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      configSubTab = btn.dataset.configSubtab;
+      renderConfiguracoes();
+    });
   });
-  wireDriveActions();
-  updateDriveStatusUI();
-  document.getElementById('btnSaveReminders').addEventListener('click', ()=>{
-    state.reminderSettings = {
-      diasAntes: parseInt(document.getElementById('remDiasAntes').value,10) || 3,
-      whatsappTemplate: document.getElementById('remWhatsapp').value,
-      emailSubjectTemplate: document.getElementById('remEmailSubject').value,
-      emailBodyTemplate: document.getElementById('remEmailBody').value,
-    };
-    persist();
-  });
-  const grid = document.getElementById('configGrid');
-  if(grid){
-    CATEGORY_ORDER.forEach(cat=>{
-      const wrap = document.createElement('div');
-      wrap.className = 'config-category';
-      wrap.innerHTML = `<div class="config-category-title">${CATEGORY_LABELS[cat]}</div><div class="config-category-block"></div>`;
-      grid.appendChild(wrap);
-      mountManageCategoryBlock(wrap.querySelector('.config-category-block'), cat);
+  const content = document.getElementById('configSubtabContent');
+
+  if(configSubTab==='catalogo'){
+    content.innerHTML = `
+      <div class="sheet-title" style="font-size:1.05rem;">Categorias</div>
+      <div class="sheet-sub">Organizam as obrigações e a aba Obrigações. As categorias padrão do sistema não podem ser editadas ou excluídas; crie novas conforme precisar.</div>
+      <div style="overflow-x:auto; margin-bottom:.8rem;">
+      <table class="obrig-table" id="categoriesTable">
+        <thead><tr><th>Nome</th><th>Tipo de período</th><th></th><th></th></tr></thead>
+        <tbody id="categoriesBody"></tbody>
+      </table>
+      </div>
+      <button class="btn ghost small" id="btnNewCategory" type="button">+ Nova categoria</button>
+
+      <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Esferas e Áreas</div>
+      <div class="sheet-sub">Classificações opcionais usadas nas obrigações abaixo e nos filtros da aba Obrigações.</div>
+      <div class="tag-manager-cols">
+        <div>
+          <div class="tag-manager-title">Esferas</div>
+          <div id="esferaTagList" class="tag-list"></div>
+          <div class="tag-add-row"><input type="text" id="novaEsferaInput" placeholder="Nova esfera…"><button type="button" class="btn ghost small" id="btnAddEsfera">+ Adicionar</button></div>
+        </div>
+        <div>
+          <div class="tag-manager-title">Áreas</div>
+          <div id="areaTagList" class="tag-list"></div>
+          <div class="tag-add-row"><input type="text" id="novaAreaInput" placeholder="Nova área…"><button type="button" class="btn ghost small" id="btnAddArea">+ Adicionar</button></div>
+        </div>
+      </div>
+
+      <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Obrigações</div>
+      <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
+      <div style="overflow-x:auto; margin-bottom:.8rem;">
+      <table class="obrig-table" id="obligCatalogTable">
+        <thead><tr><th>Nome</th><th>Categoria</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
+        <tbody id="obligCatalogBody"></tbody>
+      </table>
+      </div>
+      <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
+    `;
+    renderCategoriesList();
+    document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
+    renderEsferaAreaLists();
+    document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
+    document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
+    renderObligationCatalogList();
+    document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
+  }
+
+  else if(configSubTab==='equipe'){
+    content.innerHTML = `
+      <div class="sheet-title" style="font-size:1.05rem;">Responsáveis</div>
+      <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda ou obrigação.</div>
+      <div id="usersList"></div>
+      <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
+    `;
+    renderUsersList();
+    document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
+  }
+
+  else if(configSubTab==='documentos'){
+    content.innerHTML = `
+      <div class="sheet-title" style="font-size:1.05rem;">Tipos de documento (envio automático)</div>
+      <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
+      <div id="docTypesList"></div>
+      <button class="btn ghost small" id="btnNewDocType" type="button">+ Novo tipo de documento</button>
+    `;
+    renderDocTypesList();
+    document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
+  }
+
+  else if(configSubTab==='lembretes'){
+    content.innerHTML = `
+      <div class="sheet-title" style="font-size:1.05rem;">Lembretes de vencimento</div>
+      <div class="sheet-sub">Configure com quantos dias de antecedência avisar, e os modelos de mensagem usados na aba "Lembretes". Use {empresa}, {obrigacao} e {vencimento} nos modelos.</div>
+      <div class="form-grid" style="max-width:520px;">
+        <div class="form-row"><label>Avisar com quantos dias de antecedência</label><input id="remDiasAntes" type="number" min="0" max="30" value="${(state.reminderSettings&&state.reminderSettings.diasAntes)||3}"></div>
+        <div class="form-row"><label>Modelo de mensagem — WhatsApp</label><textarea id="remWhatsapp" rows="3" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.whatsappTemplate)||'')}</textarea></div>
+        <div class="form-row"><label>Modelo de assunto — E-mail</label><input id="remEmailSubject" type="text" value="${((state.reminderSettings&&state.reminderSettings.emailSubjectTemplate)||'').replace(/"/g,'&quot;')}"></div>
+        <div class="form-row"><label>Modelo de corpo — E-mail</label><textarea id="remEmailBody" rows="5" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.emailBodyTemplate)||'')}</textarea></div>
+        <div><button class="btn accent small" id="btnSaveReminders" type="button">Salvar lembretes</button></div>
+      </div>
+    `;
+    document.getElementById('btnSaveReminders').addEventListener('click', ()=>{
+      state.reminderSettings = {
+        diasAntes: parseInt(document.getElementById('remDiasAntes').value,10) || 3,
+        whatsappTemplate: document.getElementById('remWhatsapp').value,
+        emailSubjectTemplate: document.getElementById('remEmailSubject').value,
+        emailBodyTemplate: document.getElementById('remEmailBody').value,
+      };
+      persist();
     });
   }
-  renderCategoriesList();
-  document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
-  renderEsferaAreaLists();
-  document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
-  document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
-  renderObligationCatalogList();
-  document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
-  renderDocTypesList();
-  document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
-  renderUsersList();
-  document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
+
+  else if(configSubTab==='conexoes'){
+    content.innerHTML = renderDrivePanel();
+    document.getElementById('btnSaveClientId').addEventListener('click', ()=>{
+      const val = document.getElementById('driveClientIdInput').value.trim();
+      setDriveClientId(val);
+      driveTokenClient = null;
+      document.getElementById('driveActions').innerHTML = renderDriveActions();
+      wireDriveActions();
+    });
+    wireDriveActions();
+    updateDriveStatusUI();
+  }
 }
 
 function renderUsersList(){
@@ -3856,7 +3919,7 @@ function renderObligationCatalogList(){
     return ci !== 0 ? ci : a.label.localeCompare(b.label);
   });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="9"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
     return;
   }
   const adjustLabels = {antecipar:'Antecipa', postergar:'Posterga', nenhum:'Não ajusta'};
@@ -3869,6 +3932,7 @@ function renderObligationCatalogList(){
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
       <td>${o.esfera||'—'}</td>
       <td>${o.area||'—'}</td>
+      <td>${o.orgao? escapeHtml(o.orgao) : '—'}</td>
       <td class="mono">${vencTxt}</td>
       <td class="mono">${o.metaDay ? 'dia ' + o.metaDay : '—'}</td>
       <td>${adjustLabels[o.weekendAdjust] || 'Não ajusta'}</td>
@@ -3893,7 +3957,7 @@ function renderObligationCatalogList(){
 
 function openObligationCatalogModal(obligId){
   const editing = !!obligId;
-  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null, dueDayRule:'fixo', metaDay:null, weekendAdjust:'postergar', esfera:'', area:''};
+  const o = editing ? state.obligations.find(x=>x.id===obligId) : {label:'', category:CATEGORY_ORDER[0], dueDay:null, dueDayRule:'fixo', metaDay:null, weekendAdjust:'postergar', esfera:'', area:'', orgao:'', referenciaLegal:''};
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay">
@@ -3919,6 +3983,10 @@ function openObligationCatalogModal(obligId){
                 ${state.areaOptions.map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
               </select>
             </div>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Órgão responsável (opcional)</label><input id="obligCatOrgao" type="text" value="${(o.orgao||'').replace(/"/g,'&quot;')}" placeholder="Ex: Receita Federal, SEFAZ, Prefeitura"></div>
+            <div class="form-row"><label>Referência legal (opcional)</label><input id="obligCatReferenciaLegal" type="text" value="${(o.referenciaLegal||'').replace(/"/g,'&quot;')}" placeholder="Ex: Lei Complementar 123/2006"></div>
           </div>
           <div class="form-row"><label>Tipo de vencimento</label>
             <select id="obligCatRule">
@@ -3983,6 +4051,8 @@ function openObligationCatalogModal(obligId){
     const weekendAdjust = document.getElementById('obligCatWeekendAdjust').value;
     const esfera = document.getElementById('obligCatEsfera').value;
     const area = document.getElementById('obligCatArea').value;
+    const orgao = document.getElementById('obligCatOrgao').value.trim();
+    const referenciaLegal = document.getElementById('obligCatReferenciaLegal').value.trim();
     if(editing){
       o.label = label;
       o.dueDayRule = rule;
@@ -3991,6 +4061,8 @@ function openObligationCatalogModal(obligId){
       o.weekendAdjust = weekendAdjust;
       o.esfera = esfera;
       o.area = area;
+      o.orgao = orgao;
+      o.referenciaLegal = referenciaLegal;
     } else {
       const category = document.getElementById('obligCatCategory').value;
       const prefix = category.slice(0,4);
@@ -4004,6 +4076,8 @@ function openObligationCatalogModal(obligId){
         weekendAdjust,
         esfera,
         area,
+        orgao,
+        referenciaLegal,
       });
     }
     persist();
