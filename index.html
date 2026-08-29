@@ -4019,9 +4019,10 @@ function openObligationCatalogModal(obligId){
         <div class="form-grid">
           <div class="form-row"><label>Nome da obrigação</label><input id="obligCatName" type="text" value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: PGDAS-D / DAS"><div id="obligCatNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
           <div class="form-row"><label>Categoria</label>
-            <select id="obligCatCategory" ${editing? 'disabled title="Não é possível trocar a categoria de uma obrigação já cadastrada — exclua e crie uma nova se precisar."':''}>
+            <select id="obligCatCategory">
               ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${o.category===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
             </select>
+            ${editing ? '<div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Se mudar pra uma categoria com período diferente (mensal/trimestral/anual), os registros de meses/anos anteriores não se movem sozinhos.</div>' : ''}
           </div>
           <div class="form-cols">
             <div class="form-row"><label>Esfera (opcional)</label>
@@ -4108,6 +4109,7 @@ function openObligationCatalogModal(obligId){
     const referenciaLegal = document.getElementById('obligCatReferenciaLegal').value.trim();
     if(editing){
       o.label = label;
+      o.category = document.getElementById('obligCatCategory').value;
       o.dueDayRule = rule;
       o.dueDay = rule==='fixo' ? dueDay : null;
       o.metaDay = metaDay;
