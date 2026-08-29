@@ -870,6 +870,58 @@ function migrateState(){
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
   if(!state.customCategories){ state.customCategories = []; changed = true; }
+  // Divide a categoria antiga "Presumido e Real" em duas categorias separadas: "Lucro Presumido"
+  // e "Lucro Real". As obrigações que já existiam viram "Lucro Presumido" (mantendo o mesmo id,
+  // pra não quebrar nada de quem já usa Presumido), e uma cópia de cada uma é criada em "Lucro
+  // Real" com um id novo. Empresas com tributação REAL são realocadas pra usar essas cópias novas.
+  if(!state.presumidoRealSplitDone){
+    const oldToNewRealId = {};
+    const toDuplicate = state.obligations.filter(o=>o.category==='presumido_real');
+    toDuplicate.forEach(o=>{
+      o.category = 'lucro_presumido';
+      // Usa o mesmo padrão de id dos itens padrão novos (pr__apuracao -> real__apuracao) quando
+      // possível, pra não duplicar caso esse id já tenha sido criado por outro caminho.
+      let newId = o.id.startsWith('pr__') ? ('real__' + o.id.slice(4)) : ('real__split_' + o.id.replace(/[^a-zA-Z0-9_]/g,'') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6));
+      if(!state.obligations.find(x=>x.id===newId)){
+        state.obligations.push({...o, id:newId, category:'lucro_real'});
+      }
+      oldToNewRealId[o.id] = newId;
+    });
+    if(Object.keys(oldToNewRealId).length){
+      state.companies.forEach(comp=>{
+        if(comp.trib!=='REAL') return;
+        comp.obligations = (comp.obligations||[]).map(id=> oldToNewRealId[id] || id);
+        if(comp.obligationOverrides){
+          const newOverrides = {};
+          Object.keys(comp.obligationOverrides).forEach(id=>{
+            newOverrides[oldToNewRealId[id] || id] = comp.obligationOverrides[id];
+          });
+          comp.obligationOverrides = newOverrides;
+        }
+      });
+      function remapPeriodBucketForReal(store){
+        Object.keys(store||{}).forEach(pk=>{
+          Object.keys(store[pk]||{}).forEach(companyId=>{
+            const comp = state.companies.find(x=>x.id===companyId);
+            if(!comp || comp.trib!=='REAL') return;
+            const itemsBucket = store[pk][companyId];
+            Object.keys(itemsBucket||{}).forEach(itemId=>{
+              const newId = oldToNewRealId[itemId];
+              if(newId && newId!==itemId && itemsBucket[newId]===undefined){
+                itemsBucket[newId] = itemsBucket[itemId];
+                delete itemsBucket[itemId];
+              }
+            });
+          });
+        });
+      }
+      remapPeriodBucketForReal(state.monthly);
+      remapPeriodBucketForReal(state.quarterly);
+      remapPeriodBucketForReal(state.annual);
+    }
+    state.presumidoRealSplitDone = true;
+    changed = true;
+  }
   if(!state.esferaOptions){ state.esferaOptions = DEFAULT_ESFERA_OPTIONS.slice(); changed = true; }
   if(!state.areaOptions){ state.areaOptions = DEFAULT_AREA_OPTIONS.slice(); changed = true; }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
@@ -1632,11 +1684,12 @@ function updateDriveStatusUI(){
 }
 
 /* ---------- Obligations catalog ---------- */
-const CATEGORY_ORDER = ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos','anual'];
+const CATEGORY_ORDER = ['simples','mei','lucro_presumido','lucro_real','folha','suframa','contabil','parcelamentos','anual'];
 const CATEGORY_LABELS = {
   simples:'Simples Nacional',
   mei:'MEI',
-  presumido_real:'Presumido e Real',
+  lucro_presumido:'Lucro Presumido',
+  lucro_real:'Lucro Real',
   folha:'Folha de Pagamento',
   suframa:'SUFRAMA',
   contabil:'Contábil',
@@ -1649,10 +1702,14 @@ const DEFAULT_OBLIGATIONS = [
   {id:'simples__semef', category:'simples', label:'SEMEF (XML)'},
   {id:'mei__das', category:'mei', label:'DAS-MEI (mensal)'},
   {id:'mei__nfe', category:'mei', label:'Emissão de Nota Fiscal'},
-  {id:'pr__apuracao', category:'presumido_real', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
-  {id:'pr__dctf', category:'presumido_real', label:'DCTFWeb'},
-  {id:'pr__sefaz', category:'presumido_real', label:'SEFAZ (XML)'},
-  {id:'pr__semef', category:'presumido_real', label:'SEMEF (XML)'},
+  {id:'pr__apuracao', category:'lucro_presumido', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
+  {id:'pr__dctf', category:'lucro_presumido', label:'DCTFWeb'},
+  {id:'pr__sefaz', category:'lucro_presumido', label:'SEFAZ (XML)'},
+  {id:'pr__semef', category:'lucro_presumido', label:'SEMEF (XML)'},
+  {id:'real__apuracao', category:'lucro_real', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
+  {id:'real__dctf', category:'lucro_real', label:'DCTFWeb'},
+  {id:'real__sefaz', category:'lucro_real', label:'SEFAZ (XML)'},
+  {id:'real__semef', category:'lucro_real', label:'SEMEF (XML)'},
   {id:'folha__semef', category:'folha', label:'SEMEF (XML)'},
   {id:'folha__ativa', category:'folha', label:'Ativa'},
   {id:'folha__ponto', category:'folha', label:'Ponto'},
@@ -1839,6 +1896,10 @@ function computeDefaultObligations(c){
     ids.push('simples__pgdas');
     if(c.ativ.includes('COMÉRCIO')) ids.push('simples__sefaz');
     if(c.ativ.includes('SERVIÇO')) ids.push('simples__semef');
+  } else if(c.trib==='REAL'){
+    ids.push('real__apuracao','real__dctf');
+    if(c.ativ.includes('COMÉRCIO')) ids.push('real__sefaz');
+    if(c.ativ.includes('SERVIÇO')) ids.push('real__semef');
   } else {
     ids.push('pr__apuracao','pr__dctf');
     if(c.ativ.includes('COMÉRCIO')) ids.push('pr__sefaz');
@@ -2040,7 +2101,7 @@ function renderStats(){
 
   // overall progress across monthly obligation tabs for current month
   let total=0, done=0;
-  ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos'].forEach(tid=>{
+  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(tid=>{
     const def = TAB_DEFS[tid];
     companies.filter(def.filter).forEach(c=>{
       const p = companyProgress(tid, c);
@@ -2054,7 +2115,7 @@ function renderStats(){
     <div class="stat clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
     <div class="stat clickable" data-jump="painel"><div class="num accent">${pct}%</div><div class="lbl">Concluído no mês</div></div>
     <div class="stat clickable" data-jump="obrigacoes" data-jump-cat="simples"><div class="num">${byTrib.SIMPLES||0}${byTrib.SIMEI?('+'+byTrib.SIMEI):''}</div><div class="lbl">Simples/SIMEI</div></div>
-    <div class="stat clickable" data-jump="obrigacoes" data-jump-cat="presumido_real"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
+    <div class="stat clickable" data-jump="obrigacoes"><div class="num">${(byTrib.PRESUMIDO||0)+(byTrib.REAL||0)}</div><div class="lbl">Presumido/Real</div></div>
   `;
   el.querySelectorAll('[data-jump]').forEach(card=>{
     card.addEventListener('click', ()=>{
@@ -2615,7 +2676,7 @@ function openNovaObrigacaoModal(){
 function renderPainel(){
   const companies = activeCompanies();
   const rows = [];
-  ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos'].forEach(tid=>{
+  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(tid=>{
     const def = TAB_DEFS[tid];
     companies.filter(def.filter).forEach(c=>{
       const p = companyProgress(tid, c);
@@ -2635,7 +2696,7 @@ function renderPainel(){
     .sort((a,b)=> (a.done/a.total) - (b.done/b.total))
     .slice(0,10);
 
-  const tabLabel = {simples:'Simples Nacional', presumido_real:'Presumido e Real', folha:'Folha', suframa:'SUFRAMA', contabil:'Contábil', parcelamentos:'Parcelamentos'};
+  const tabLabel = CATEGORY_LABELS;
 
   const demandasAbertas = state.demandas.filter(d=>d.status==='aberta').length;
   const demandasAndamento = state.demandas.filter(d=>d.status==='andamento').length;
@@ -3849,7 +3910,7 @@ function computeObligationDueDate(ob, company, year, month){
   return adjustToBusinessDay(new Date(year, month-1, dueDay), weekendAdjust);
 }
 
-const BUILT_IN_CATEGORY_IDS = ['simples','mei','presumido_real','folha','suframa','contabil','parcelamentos','anual'];
+const BUILT_IN_CATEGORY_IDS = ['simples','mei','lucro_presumido','lucro_real','folha','suframa','contabil','parcelamentos','anual'];
 
 function renderCategoriesList(){
   const el = document.getElementById('categoriesBody');
@@ -4312,12 +4373,13 @@ function openCompanyModal(companyId){
   function regimeCategoryFor(trib){
     if(trib==='SIMEI') return 'mei';
     if(trib==='SIMPLES') return 'simples';
-    return 'presumido_real';
+    if(trib==='REAL') return 'lucro_real';
+    return 'lucro_presumido';
   }
 
   const gridEl = document.getElementById('obligCategoryGrid');
   const FLAG_FIELD_MAP = {folha:'folha', suframa:'suframa', contabil:'contab', parcelamentos:'parcelamentos', anual:'anual'};
-  const OTHER_CATEGORIES = CATEGORY_ORDER.filter(cat=>!['simples','mei','presumido_real'].includes(cat));
+  const OTHER_CATEGORIES = CATEGORY_ORDER.filter(cat=>!['simples','mei','lucro_presumido','lucro_real'].includes(cat));
 
   // Cartão do regime (Simples/MEI/Presumido-Real): sempre visível, muda de acordo com a Tributação
   // selecionada acima. Os demais viram cartões com um alternador (Faz parte desta empresa?) que,
@@ -4348,7 +4410,7 @@ function openCompanyModal(companyId){
   refreshRegimeBlock();
   document.getElementById('fTrib').addEventListener('change', ()=>{
     const newCat = regimeCategoryFor(document.getElementById('fTrib').value);
-    const regimeCats = ['simples','mei','presumido_real'];
+    const regimeCats = ['simples','mei','lucro_presumido','lucro_real'];
     [...selectedObligations].forEach(id=>{
       const cat = obligationCategory(id);
       if(regimeCats.includes(cat) && cat!==newCat) selectedObligations.delete(id);
@@ -4414,7 +4476,7 @@ function openCompanyModal(companyId){
     const finalRegimeCat = regimeCategoryFor(document.getElementById('fTrib').value);
     const prunedObligations = [...selectedObligations].filter(id=>{
       const cat = obligationCategory(id);
-      if(cat==='simples' || cat==='mei' || cat==='presumido_real') return cat===finalRegimeCat;
+      if(cat==='simples' || cat==='mei' || cat==='lucro_presumido' || cat==='lucro_real') return cat===finalRegimeCat;
       if(OTHER_CATEGORIES.includes(cat)) return !!categoryToggleState[cat];
       return true;
     });
