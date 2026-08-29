@@ -2088,6 +2088,7 @@ let obrigViewMode = 'month'; // month | quarter | year — alterna dentro da aba
 let obrigFilterCategoria = 'todas';
 let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
+let obrigFilterCompany = 'todas';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
@@ -2243,7 +2244,7 @@ function peekObligationEntry(period, companyId, itemKey){
 
 function computeObrigacoesRows(){
   const cats = CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode);
-  const companies = activeCompanies().filter(matchesSearch);
+  const companies = activeCompanies().filter(matchesSearch).filter(c=> obrigFilterCompany==='todas' || c.id===obrigFilterCompany);
   const rows = [];
   companies.forEach(c=>{
     cats.forEach(cat=>{
@@ -2342,6 +2343,10 @@ function renderObrigacoes(){
         <button type="button" class="obrig-mode-btn ${obrigViewMode==='quarter'?'active':''}" data-obrig-mode="quarter">Trimestral</button>
         <button type="button" class="obrig-mode-btn ${obrigViewMode==='year'?'active':''}" data-obrig-mode="year">Anual</button>
       </div>
+      <select id="obrigFilterCompanySelect">
+        <option value="todas" ${obrigFilterCompany==='todas'?'selected':''}>Todas as empresas</option>
+        ${activeCompanies().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.id}" ${obrigFilterCompany===c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}
+      </select>
       <select id="obrigFilterCategoriaSelect">
         <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
         ${CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
@@ -2402,6 +2407,8 @@ function wireObrigacoesHandlers(rows){
     });
   });
   const catSel = document.getElementById('obrigFilterCategoriaSelect');
+  const companySel = document.getElementById('obrigFilterCompanySelect');
+  if(companySel) companySel.addEventListener('change', ()=>{ obrigFilterCompany = companySel.value; renderObrigacoes(); });
   if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; renderObrigacoes(); });
   const esferaSel = document.getElementById('obrigFilterEsferaSelect');
   if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; renderObrigacoes(); });
@@ -2458,6 +2465,7 @@ function wireObrigacoesHandlers(rows){
 }
 
 function openVencimentoOverrideModal(row){
+  const companyId = row.company.id;
   const company = row.company;
   const ob = row.ob;
   const override = (company.obligationOverrides && company.obligationOverrides[ob.id]) || {};
@@ -2506,7 +2514,9 @@ function openVencimentoOverrideModal(row){
   document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
   const removeBtn = document.getElementById('btnRemoveOverride');
   if(removeBtn) removeBtn.onclick = ()=>{
-    delete company.obligationOverrides[ob.id];
+    const freshCompany = state.companies.find(c=>c.id===companyId);
+    if(!freshCompany){ root.innerHTML=''; return; }
+    if(freshCompany.obligationOverrides) delete freshCompany.obligationOverrides[ob.id];
     persist();
     root.innerHTML = '';
     renderObrigacoes();
@@ -2520,11 +2530,13 @@ function openVencimentoOverrideModal(row){
     if(rule) newOverride.dueDayRule = rule;
     if(rule==='fixo' && dueDay) newOverride.dueDay = dueDay;
     if(weekendAdjust) newOverride.weekendAdjust = weekendAdjust;
-    if(!company.obligationOverrides) company.obligationOverrides = {};
+    const freshCompany = state.companies.find(c=>c.id===companyId);
+    if(!freshCompany){ root.innerHTML=''; return; }
+    if(!freshCompany.obligationOverrides) freshCompany.obligationOverrides = {};
     if(Object.keys(newOverride).length===0){
-      delete company.obligationOverrides[ob.id];
+      delete freshCompany.obligationOverrides[ob.id];
     } else {
-      company.obligationOverrides[ob.id] = newOverride;
+      freshCompany.obligationOverrides[ob.id] = newOverride;
     }
     persist();
     root.innerHTML = '';
@@ -3475,7 +3487,9 @@ function openDemandaModal(demandaId){
     const responsavelId = document.getElementById('demResponsavel').value || null;
     const nowIso = new Date().toISOString();
     if(editing){
-      Object.assign(d, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
+      const freshD = state.demandas.find(x=>x.id===demandaId);
+      if(!freshD){ root.innerHTML=''; return; }
+      Object.assign(freshD, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
     } else {
       state.demandas.push({
         id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
@@ -3737,7 +3751,9 @@ function openUserModal(userId){
       ativo: document.getElementById('userAtivo').checked,
     };
     if(editing){
-      Object.assign(u, data);
+      const freshU = state.users.find(x=>x.id===userId);
+      if(!freshU){ root.innerHTML=''; return; }
+      Object.assign(freshU, data);
     } else {
       state.users.push({id:'user_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
     }
@@ -4108,16 +4124,20 @@ function openObligationCatalogModal(obligId){
     const orgao = document.getElementById('obligCatOrgao').value.trim();
     const referenciaLegal = document.getElementById('obligCatReferenciaLegal').value.trim();
     if(editing){
-      o.label = label;
-      o.category = document.getElementById('obligCatCategory').value;
-      o.dueDayRule = rule;
-      o.dueDay = rule==='fixo' ? dueDay : null;
-      o.metaDay = metaDay;
-      o.weekendAdjust = weekendAdjust;
-      o.esfera = esfera;
-      o.area = area;
-      o.orgao = orgao;
-      o.referenciaLegal = referenciaLegal;
+      // Busca o objeto de novo, agora, em vez de usar a referência capturada quando o modal abriu —
+      // evita perder a edição se os dados sincronizarem em tempo real enquanto o modal estava aberto.
+      const freshO = state.obligations.find(x=>x.id===obligId);
+      if(!freshO){ root.innerHTML=''; return; }
+      freshO.label = label;
+      freshO.category = document.getElementById('obligCatCategory').value;
+      freshO.dueDayRule = rule;
+      freshO.dueDay = rule==='fixo' ? dueDay : null;
+      freshO.metaDay = metaDay;
+      freshO.weekendAdjust = weekendAdjust;
+      freshO.esfera = esfera;
+      freshO.area = area;
+      freshO.orgao = orgao;
+      freshO.referenciaLegal = referenciaLegal;
     } else {
       const category = document.getElementById('obligCatCategory').value;
       const prefix = category.slice(0,4);
@@ -4217,7 +4237,9 @@ function openDocTypeModal(docTypeId){
     const emailSubject = document.getElementById('dtSubject').value.trim() || 'Documento - {empresa}';
     const emailBody = document.getElementById('dtBody').value;
     if(editing){
-      Object.assign(dt, {name, keywords, excludeKeywords, emailSubject, emailBody});
+      const freshDt = state.docTypes.find(d=>d.id===docTypeId);
+      if(!freshDt){ root.innerHTML=''; return; }
+      Object.assign(freshDt, {name, keywords, excludeKeywords, emailSubject, emailBody});
     } else {
       state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody });
     }
@@ -4415,7 +4437,9 @@ function openCompanyModal(companyId){
       obligations: prunedObligations,
     };
     if(editing){
-      Object.assign(c, data);
+      const freshC = state.companies.find(x=>x.id===companyId);
+      if(!freshC){ root.innerHTML=''; return; }
+      Object.assign(freshC, data);
     } else {
       state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
     }
