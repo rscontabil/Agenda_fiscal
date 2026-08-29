@@ -343,12 +343,25 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 
 .oblig-section-title{font-family:'Fraunces',serif; font-size:1rem; font-weight:600; margin:.4rem 0 0;}
 .oblig-section-sub{font-size:.76rem; color:var(--muted); margin:.1rem 0 .3rem;}
-.oblig-regime-label{font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--accent-2); margin:.2rem 0 .35rem;}
-.oblig-toggles{display:flex; gap:1.2rem; flex-wrap:wrap; margin:.9rem 0 .2rem; padding-top:.7rem; border-top:1px dashed var(--line-strong);}
-.oblig-toggle{display:flex; align-items:center; gap:.4rem; font-size:.83rem; font-weight:600; color:var(--ink); cursor:pointer; text-transform:none;}
-.oblig-toggle input{width:15px; height:15px; accent-color:var(--accent); cursor:pointer;}
-.oblig-toggle-block{margin-top:.2rem; margin-bottom:.2rem;}
 .oblig-group{border:1px solid var(--line); border-radius:8px; padding:.65rem .75rem; margin-bottom:.55rem; background:#FCFCFA;}
+
+.oblig-category-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:.8rem;
+  margin:.6rem 0 .2rem; padding-top:.8rem; border-top:1px dashed var(--line-strong);
+}
+.oblig-category-card{
+  border:1px solid var(--line); border-radius:10px; padding:.7rem .8rem; background:#FCFCFA;
+  transition:border-color .15s, background .15s;
+}
+.oblig-category-card.is-active{border-color:var(--accent); background:#FDF9F3;}
+.oblig-category-card-regime{border-color:var(--accent-2); background:#F5F8F7;}
+.oblig-category-card-header{
+  font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--accent-2);
+  margin-bottom:.5rem; display:flex; align-items:center; gap:.4rem;
+}
+.oblig-category-card-toggle{cursor:pointer; text-transform:none; font-size:.83rem; color:var(--ink);}
+.oblig-category-card-toggle input{width:15px; height:15px; accent-color:var(--accent); cursor:pointer; flex-shrink:0;}
+.oblig-category-card-body:empty{display:none;}
 
 .config-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:1rem;}
 
@@ -655,6 +668,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
         <input id="searchInput" type="text" placeholder="Buscar empresa ou CNPJ…">
       </div>
       <input id="monthInput" type="month">
+      <select id="quarterInput" style="display:none;"></select>
       <select id="yearInput" style="display:none;"></select>
     </div>
   </div>
@@ -848,6 +862,7 @@ function migrateState(){
   let changed = false;
   state.monthly = state.monthly || {};
   state.annual = state.annual || {};
+  state.quarterly = state.quarterly || {};
   state.obligations = state.obligations || [];
   state.docTypes = state.docTypes || [];
   state.demandas = state.demandas || [];
@@ -889,6 +904,7 @@ function migrateState(){
   }
   migrateObligationBucket(state.monthly);
   migrateObligationBucket(state.annual);
+  migrateObligationBucket(state.quarterly);
   if(!state.reminderSettings){
     state.reminderSettings = {
       diasAntes: 3,
@@ -998,6 +1014,7 @@ async function loadState(){
         // desatualizado (ex: computador que não abre o app há um tempo) grave por cima dados mais
         // recentes que outra pessoa da equipe já salvou, antes de sincronizar de verdade.
         const fromCache = snap.metadata && snap.metadata.fromCache;
+        const hasPendingWrites = snap.metadata && snap.metadata.hasPendingWrites;
         if(!snap.exists){
           if(fromCache){
             // Ainda não sabemos se o documento existe de verdade — só o servidor pode confirmar isso.
@@ -1052,7 +1069,10 @@ async function loadState(){
           resolve(true);
         }
       } else {
-        if(state) renderAll(); // atualização em tempo real (própria ou de outro usuário da equipe); ignora se a resposta chegou tarde demais (depois do tempo esgotado) e ainda não há dados
+        // Ignora o eco imediato da própria escrita local (hasPendingWrites) — só re-renderiza quando
+        // a mudança já está confirmada pelo servidor. Isso evita que a tela seja reconstruída bem no
+        // instante em que a pessoa está com um menu (ex: filtro) aberto, fechando ele sem querer.
+        if(state && !hasPendingWrites) renderAll();
       }
     }, (err)=>{
       console.error('Erro de conexão com o Firestore', err);
@@ -1865,7 +1885,7 @@ function registerCategoryRuntime(cat){
   CATEGORY_LABELS[cat.id] = cat.label;
   TAB_DEFS[cat.id] = {
     category: cat.id,
-    period: cat.period==='year' ? 'year' : 'month',
+    period: (cat.period==='year' || cat.period==='quarter') ? cat.period : 'month',
     filter: c => (c.obligations||[]).some(id=>obligationCategory(id)===cat.id),
     items: (c,pk) => companyItemsForCategory(c, cat.id, pk),
   };
@@ -1884,11 +1904,19 @@ function rebuildCustomCategoriesFromState(){
 function activeCompanies(){
   return state.companies.filter(c=>c.ativa!==false);
 }
+let selectedQuarter = `${now.getFullYear()}-Q${Math.floor(now.getMonth()/3)+1}`;
 function periodBucket(period){
-  const pk = period==='year' ? selectedYear : selectedMonth;
-  const store = period==='year' ? state.annual : state.monthly;
+  const pk = period==='year' ? selectedYear : (period==='quarter' ? selectedQuarter : selectedMonth);
+  const store = period==='year' ? state.annual : (period==='quarter' ? state.quarterly : state.monthly);
   if(!store[pk]) store[pk] = {};
   return {pk, obj:store[pk]};
+}
+// Para obrigações trimestrais, usa o último mês do trimestre como referência pro cálculo do
+// dia de vencimento (ex: 3º trimestre → setembro). Simplificação inicial; dá pra refinar depois
+// se precisar de um mês de referência diferente.
+function lastMonthOfQuarter(quarterKey){
+  const [year, q] = quarterKey.split('-Q').map(Number);
+  return {year, month: q*3}; // Q1->3(mar), Q2->6(jun), Q3->9(set), Q4->12(dez)
 }
 const OBRIG_STATUS_LABELS = {
   nao_iniciada:'Não iniciada', andamento:'Em andamento', enviada:'Enviada',
@@ -1936,7 +1964,7 @@ function computeUpcomingReminders(){
   const results = [];
   activeCompanies().forEach(c=>{
     CATEGORY_ORDER.forEach(cat=>{
-      if(cat==='anual') return; // obrigações anuais ficam fora do escopo dos lembretes por enquanto
+      if(TAB_DEFS[cat].period !== 'month') return; // lembretes cobrem só obrigações mensais por enquanto (anuais e trimestrais ficam de fora)
       if(!TAB_DEFS[cat].filter(c)) return;
       const items = companyItemsForCategory(c, cat, todayKey);
       items.forEach(item=>{
@@ -2056,7 +2084,7 @@ function renderTabs(){
   });
 }
 
-let obrigViewMode = 'mensal'; // mensal | anual — alterna dentro da aba Obrigações
+let obrigViewMode = 'month'; // month | quarter | year — alterna dentro da aba Obrigações
 let obrigFilterCategoria = 'todas';
 let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
@@ -2069,12 +2097,14 @@ const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenci�
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
   const yearInput = document.getElementById('yearInput');
+  const quarterInput = document.getElementById('quarterInput');
   if(activeTab==='empresas' || activeTab==='config' || activeTab==='envio' || activeTab==='demandas'){
-    monthInput.style.display='none'; yearInput.style.display='none';
+    monthInput.style.display='none'; yearInput.style.display='none'; quarterInput.style.display='none';
     return;
   }
-  if(activeTab==='obrigacoes' && obrigViewMode==='anual'){
+  if(activeTab==='obrigacoes' && obrigViewMode==='year'){
     monthInput.style.display='none';
+    quarterInput.style.display='none';
     yearInput.style.display='inline-block';
     if(!yearInput.dataset.filled){
       const y0 = now.getFullYear()-3;
@@ -2084,8 +2114,20 @@ function renderPeriodControl(){
       yearInput.dataset.filled = '1';
     }
     yearInput.value = selectedYear;
+  } else if(activeTab==='obrigacoes' && obrigViewMode==='quarter'){
+    monthInput.style.display='none';
+    yearInput.style.display='none';
+    quarterInput.style.display='inline-block';
+    const y0 = now.getFullYear()-2;
+    let opts='';
+    for(let y=y0; y<=now.getFullYear()+1; y++){
+      for(let q=1; q<=4; q++) opts += `<option value="${y}-Q${q}">${q}º trimestre / ${y}</option>`;
+    }
+    quarterInput.innerHTML = opts;
+    quarterInput.value = selectedQuarter;
   } else {
     yearInput.style.display='none';
+    quarterInput.style.display='none';
     monthInput.style.display='inline-block';
     monthInput.value = selectedMonth;
   }
@@ -2200,7 +2242,7 @@ function peekObligationEntry(period, companyId, itemKey){
 }
 
 function computeObrigacoesRows(){
-  const cats = CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual'));
+  const cats = CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode);
   const companies = activeCompanies().filter(matchesSearch);
   const rows = [];
   companies.forEach(c=>{
@@ -2208,7 +2250,7 @@ function computeObrigacoesRows(){
       if(obrigFilterCategoria!=='todas' && obrigFilterCategoria!==cat) return;
       if(!TAB_DEFS[cat].filter(c)) return;
       const period = TAB_DEFS[cat].period;
-      const pk = period==='year' ? selectedYear : selectedMonth;
+      const pk = period==='year' ? selectedYear : (period==='quarter' ? selectedQuarter : selectedMonth);
       const items = TAB_DEFS[cat].items(c, pk);
       items.forEach(item=>{
         const ob = state.obligations.find(o=>o.id===item.id);
@@ -2222,6 +2264,9 @@ function computeObrigacoesRows(){
         if(ob && period==='month'){
           const [y,m] = selectedMonth.split('-').map(Number);
           vencimento = computeObligationDueDate(ob, c, y, m);
+        } else if(ob && period==='quarter'){
+          const {year, month} = lastMonthOfQuarter(selectedQuarter);
+          vencimento = computeObligationDueDate(ob, c, year, month);
         }
         const hasOverride = !!(c.obligationOverrides && c.obligationOverrides[item.id]);
         rows.push({company:c, category:cat, period, item, entry, vencimento, ob, hasOverride});
@@ -2250,7 +2295,7 @@ function obrigRowHtml(row){
     <td class="obrig-td-empresa">${escapeHtml(row.company.nome)}</td>
     <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}${row.ob&&row.ob.esfera?' · '+row.ob.esfera:''}${row.ob&&row.ob.area?' · '+row.ob.area:''}</div></td>
     <td class="mono">
-      ${vencFmt}${row.period==='month' ? `<button type="button" class="obrig-venc-edit-btn ${row.hasOverride?'has-override':''}" data-obrig-venc-edit="${key}" title="${row.hasOverride? 'Vencimento personalizado pra essa empresa (clique pra editar)' : 'Personalizar vencimento pra essa empresa'}">✎</button>` : ''}
+      ${vencFmt}${(row.period==='month'||row.period==='quarter') ? `<button type="button" class="obrig-venc-edit-btn ${row.hasOverride?'has-override':''}" data-obrig-venc-edit="${key}" title="${row.hasOverride? 'Vencimento personalizado pra essa empresa (clique pra editar)' : 'Personalizar vencimento pra essa empresa'}">✎</button>` : ''}
     </td>
     <td>
       <select class="obrig-status-select status-${row.entry.status}" data-obrig-status="${key}">
@@ -2272,6 +2317,12 @@ function obrigRowHtml(row){
   </tr>`;
 }
 
+function obrigPeriodDescription(){
+  if(obrigViewMode==='year') return 'Ano-base ' + selectedYear;
+  if(obrigViewMode==='quarter'){ const [y,q] = selectedQuarter.split('-Q'); return `${q}º trimestre de ${y}`; }
+  return fmtMonthLabel(selectedMonth);
+}
+
 function renderObrigacoes(){
   const container = document.getElementById('sheetContent');
   const rows = computeObrigacoesRows();
@@ -2281,18 +2332,19 @@ function renderObrigacoes(){
     <div class="painel-header-row">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Obrigações</div>
-        <div class="sheet-sub" style="margin-bottom:0;">Vencimento, responsável e status de cada obrigação por empresa. ${obrigViewMode==='mensal' ? fmtMonthLabel(selectedMonth) : 'Ano-base ' + selectedYear}.</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Vencimento, responsável e status de cada obrigação por empresa. ${obrigPeriodDescription()}.</div>
       </div>
       <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
     </div>
     <div class="obrig-filters">
       <div class="obrig-mode-toggle">
-        <button type="button" class="obrig-mode-btn ${obrigViewMode==='mensal'?'active':''}" data-obrig-mode="mensal">Mensal</button>
-        <button type="button" class="obrig-mode-btn ${obrigViewMode==='anual'?'active':''}" data-obrig-mode="anual">Anual</button>
+        <button type="button" class="obrig-mode-btn ${obrigViewMode==='month'?'active':''}" data-obrig-mode="month">Mensal</button>
+        <button type="button" class="obrig-mode-btn ${obrigViewMode==='quarter'?'active':''}" data-obrig-mode="quarter">Trimestral</button>
+        <button type="button" class="obrig-mode-btn ${obrigViewMode==='year'?'active':''}" data-obrig-mode="year">Anual</button>
       </div>
       <select id="obrigFilterCategoriaSelect">
         <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
-        ${CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual')).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+        ${CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
       </select>
       <select id="obrigFilterStatusSelect">
         <option value="todos" ${obrigFilterStatus==='todos'?'selected':''}>Todos os status</option>
@@ -2481,7 +2533,7 @@ function openVencimentoOverrideModal(row){
 }
 
 function openNovaObrigacaoModal(){
-  const cats = CATEGORY_ORDER.filter(c=> (TAB_DEFS[c].period==='year') === (obrigViewMode==='anual'));
+  const cats = CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode);
   const companies = activeCompanies().sort((a,b)=>a.nome.localeCompare(b.nome));
   const obligations = state.obligations.filter(o=>cats.includes(o.category)).sort((a,b)=>{
     const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
@@ -2501,7 +2553,7 @@ function openNovaObrigacaoModal(){
           </div>
           <div class="form-row"><label>Obrigação</label>
             <select id="novaObrigItem">
-              ${obligations.length? obligations.map(o=>`<option value="${o.id}">${CATEGORY_LABELS[o.category]} — ${escapeHtml(o.label)}</option>`).join('') : '<option disabled>Nenhuma obrigação cadastrada nessa visão (Mensal/Anual)</option>'}
+              ${obligations.length? obligations.map(o=>`<option value="${o.id}">${CATEGORY_LABELS[o.category]} — ${escapeHtml(o.label)}</option>`).join('') : '<option disabled>Nenhuma obrigação cadastrada nessa visão (Mensal/Trimestral/Anual)</option>'}
             </select>
           </div>
           <div class="form-cols">
@@ -2536,7 +2588,7 @@ function openNovaObrigacaoModal(){
     if(!company || !ob) return;
     if(!company.obligations) company.obligations = [];
     if(!company.obligations.includes(obligId)) company.obligations.push(obligId);
-    const period = ob.category==='anual' ? 'year' : 'month';
+    const period = TAB_DEFS[ob.category].period;
     const entry = getObligationEntry(period, companyId, obligId);
     entry.status = document.getElementById('novaObrigStatus').value;
     entry.responsavelId = document.getElementById('novaObrigResp').value || null;
@@ -3791,7 +3843,7 @@ function renderCategoriesList(){
     const period = TAB_DEFS[id] ? TAB_DEFS[id].period : 'month';
     return `<tr>
       <td>${escapeHtml(CATEGORY_LABELS[id]||id)}</td>
-      <td>${period==='year' ? 'Anual' : 'Mensal'}</td>
+      <td>${period==='year' ? 'Anual' : (period==='quarter' ? 'Trimestral' : 'Mensal')}</td>
       <td>${isCustom ? '' : '<span style="color:var(--muted);font-size:.72rem;">Padrão do sistema</span>'}</td>
       <td>
         ${isCustom ? `<div class="oblig-row-actions">
@@ -3834,7 +3886,8 @@ function openCategoryModal(catId){
           <div class="form-row"><label>Nome da categoria</label><input id="categoryName" type="text" value="${(existing.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: Trabalhista"><div id="categoryNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
           <div class="form-row"><label>Tipo de período</label>
             <select id="categoryPeriod" ${editing? 'disabled title="Não é possível mudar o período de uma categoria já cadastrada — exclua e crie uma nova se precisar."':''}>
-              <option value="month" ${existing.period!=='year'?'selected':''}>Mensal</option>
+              <option value="month" ${(!existing.period || existing.period==='month')?'selected':''}>Mensal</option>
+              <option value="quarter" ${existing.period==='quarter'?'selected':''}>Trimestral</option>
               <option value="year" ${existing.period==='year'?'selected':''}>Anual</option>
             </select>
           </div>
@@ -4217,11 +4270,7 @@ function openCompanyModal(companyId){
           <div class="oblig-section-title">Obrigações desta empresa</div>
           <div class="oblig-section-sub">As tarefas de cada categoria são definidas em <a href="#" id="gotoConfigLink" style="color:var(--accent);font-weight:600;">Configurações</a>. Aqui você só marca quais delas essa empresa tem.</div>
 
-          <div class="oblig-regime-label" id="obligRegimeLabel"></div>
-          <div id="regimeBlock"></div>
-
-          <div class="oblig-toggles" id="dynamicCategoryToggles"></div>
-          <div id="dynamicCategoryBlocks"></div>
+          <div class="oblig-category-grid" id="obligCategoryGrid"></div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -4241,6 +4290,29 @@ function openCompanyModal(companyId){
     if(trib==='SIMPLES') return 'simples';
     return 'presumido_real';
   }
+
+  const gridEl = document.getElementById('obligCategoryGrid');
+  const FLAG_FIELD_MAP = {folha:'folha', suframa:'suframa', contabil:'contab', parcelamentos:'parcelamentos', anual:'anual'};
+  const OTHER_CATEGORIES = CATEGORY_ORDER.filter(cat=>!['simples','mei','presumido_real'].includes(cat));
+
+  // Cartão do regime (Simples/MEI/Presumido-Real): sempre visível, muda de acordo com a Tributação
+  // selecionada acima. Os demais viram cartões com um alternador (Faz parte desta empresa?) que,
+  // ligado, mostra a lista de tarefas daquela categoria — tudo agrupado visualmente, categoria por
+  // categoria, em vez de uma lista longa e solta.
+  gridEl.innerHTML = `
+    <div class="oblig-category-card oblig-category-card-regime">
+      <div class="oblig-category-card-header"><span id="obligRegimeLabel"></span></div>
+      <div id="regimeBlock" class="oblig-category-card-body"></div>
+    </div>
+    ${OTHER_CATEGORIES.map(cat=>`
+      <div class="oblig-category-card">
+        <label class="oblig-category-card-header oblig-category-card-toggle">
+          <input type="checkbox" id="flag_${cat}"> <span>${CATEGORY_LABELS[cat]}</span>
+        </label>
+        <div id="block_${cat}" class="oblig-category-card-body"></div>
+      </div>
+    `).join('')}
+  `;
 
   const regimeBlockEl = document.getElementById('regimeBlock');
   const regimeLabelEl = document.getElementById('obligRegimeLabel');
@@ -4263,10 +4335,11 @@ function openCompanyModal(companyId){
   function setupToggle(checkboxId, blockElId, category, initialOn){
     const chk = document.getElementById(checkboxId);
     const blockEl = document.getElementById(blockElId);
+    const cardEl = chk.closest('.oblig-category-card');
     chk.checked = initialOn;
     function sync(){
-      if(chk.checked){ blockEl.style.display=''; mountSelectCategoryBlock(blockEl, category, selectedObligations); }
-      else { blockEl.style.display='none'; }
+      if(chk.checked){ blockEl.style.display=''; cardEl.classList.add('is-active'); mountSelectCategoryBlock(blockEl, category, selectedObligations); }
+      else { blockEl.style.display='none'; cardEl.classList.remove('is-active'); }
     }
     chk.addEventListener('change', sync);
     sync();
@@ -4274,12 +4347,6 @@ function openCompanyModal(companyId){
   // Categorias fora do regime tributário (folha, suframa, contábil, parcelamentos, anual + qualquer
   // categoria personalizada criada em Configurações) — geradas dinamicamente, então categorias novas
   // aparecem aqui automaticamente, sem precisar mexer neste modal de novo.
-  const FLAG_FIELD_MAP = {folha:'folha', suframa:'suframa', contabil:'contab', parcelamentos:'parcelamentos', anual:'anual'};
-  const OTHER_CATEGORIES = CATEGORY_ORDER.filter(cat=>!['simples','mei','presumido_real'].includes(cat));
-  const togglesContainer = document.getElementById('dynamicCategoryToggles');
-  const blocksContainer = document.getElementById('dynamicCategoryBlocks');
-  togglesContainer.innerHTML = OTHER_CATEGORIES.map(cat=>`<label class="oblig-toggle"><input type="checkbox" id="flag_${cat}"> ${CATEGORY_LABELS[cat]}</label>`).join('');
-  blocksContainer.innerHTML = OTHER_CATEGORIES.map(cat=>`<div id="block_${cat}" class="oblig-toggle-block"></div>`).join('');
   OTHER_CATEGORIES.forEach(cat=>{
     const flagField = FLAG_FIELD_MAP[cat];
     let initialOn;
@@ -4753,6 +4820,10 @@ document.getElementById('monthInput').addEventListener('change', (e)=>{
 });
 document.getElementById('yearInput').addEventListener('change', (e)=>{
   selectedYear = e.target.value;
+  renderAll();
+});
+document.getElementById('quarterInput').addEventListener('change', (e)=>{
+  selectedQuarter = e.target.value;
   renderAll();
 });
 document.getElementById('searchInput').addEventListener('input', (e)=>{
