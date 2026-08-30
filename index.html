@@ -928,6 +928,8 @@ function migrateState(){
   }
   if(!state.esferaOptions){ state.esferaOptions = DEFAULT_ESFERA_OPTIONS.slice(); changed = true; }
   if(!state.areaOptions){ state.areaOptions = DEFAULT_AREA_OPTIONS.slice(); changed = true; }
+  if(!state.orgaoOptions){ state.orgaoOptions = DEFAULT_ORGAO_OPTIONS.slice(); changed = true; }
+  if(!state.referenciaLegalOptions){ state.referenciaLegalOptions = []; changed = true; }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
   const OLD_TO_NEW_STATUS_MAP = {pendente:'nao_iniciada', andamento:'andamento', concluida:'transmitida', dispensada:'dispensada', cancelada:'cancelada'};
@@ -2197,6 +2199,7 @@ let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
 const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
 const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
+const DEFAULT_ORGAO_OPTIONS = ['Receita Federal', 'SEFAZ/AM', 'SEMEF (Prefeitura de Manaus)', 'Caixa Econômica Federal', 'Junta Comercial', 'Ministério do Trabalho'];
 
 function renderPeriodControl(){
   const monthInput = document.getElementById('monthInput');
@@ -3736,6 +3739,21 @@ function renderConfiguracoes(){
         </div>
       </div>
 
+      <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Órgãos responsáveis e Referências legais</div>
+      <div class="sheet-sub">Também opcionais, usados no cadastro de obrigações abaixo.</div>
+      <div class="tag-manager-cols">
+        <div>
+          <div class="tag-manager-title">Órgãos responsáveis</div>
+          <div id="orgaoTagList" class="tag-list"></div>
+          <div class="tag-add-row"><input type="text" id="novoOrgaoInput" placeholder="Ex: Receita Federal…"><button type="button" class="btn ghost small" id="btnAddOrgao">+ Adicionar</button></div>
+        </div>
+        <div>
+          <div class="tag-manager-title">Referências legais</div>
+          <div id="referenciaLegalTagList" class="tag-list"></div>
+          <div class="tag-add-row"><input type="text" id="novaReferenciaLegalInput" placeholder="Ex: Lei Complementar 123/2006…"><button type="button" class="btn ghost small" id="btnAddReferenciaLegal">+ Adicionar</button></div>
+        </div>
+      </div>
+
       <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Obrigações</div>
       <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
       <div class="obrig-filters" style="margin-bottom:.8rem;">
@@ -3766,6 +3784,8 @@ function renderConfiguracoes(){
     renderEsferaAreaLists();
     document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
     document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
+    document.getElementById('btnAddOrgao').addEventListener('click', ()=> addTagOption('orgaoOptions','novoOrgaoInput','orgaoTagList'));
+    document.getElementById('btnAddReferenciaLegal').addEventListener('click', ()=> addTagOption('referenciaLegalOptions','novaReferenciaLegalInput','referenciaLegalTagList'));
     renderObligationCatalogList();
     document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
     document.getElementById('catalogFilterCategoriaSelect').addEventListener('change', (e)=>{ catalogFilterCategoria = e.target.value; renderObligationCatalogList(); });
@@ -4100,6 +4120,8 @@ function openCategoryModal(catId){
 function renderEsferaAreaLists(){
   renderTagList('esferaOptions', 'esferaTagList');
   renderTagList('areaOptions', 'areaTagList');
+  renderTagList('orgaoOptions', 'orgaoTagList');
+  renderTagList('referenciaLegalOptions', 'referenciaLegalTagList');
 }
 
 function renderTagList(stateKey, containerId){
@@ -4219,8 +4241,20 @@ function openObligationCatalogModal(obligId){
             </div>
           </div>
           <div class="form-cols">
-            <div class="form-row"><label>Órgão responsável (opcional)</label><input id="obligCatOrgao" type="text" value="${(o.orgao||'').replace(/"/g,'&quot;')}" placeholder="Ex: Receita Federal, SEFAZ, Prefeitura"></div>
-            <div class="form-row"><label>Referência legal (opcional)</label><input id="obligCatReferenciaLegal" type="text" value="${(o.referenciaLegal||'').replace(/"/g,'&quot;')}" placeholder="Ex: Lei Complementar 123/2006"></div>
+            <div class="form-row"><label>Órgão responsável (opcional)</label>
+              <select id="obligCatOrgao">
+                <option value="">— não informado —</option>
+                ${(o.orgao && !state.orgaoOptions.includes(o.orgao)) ? `<option value="${o.orgao}" selected>${escapeHtml(o.orgao)} (não está na lista — cadastre em Configurações se quiser reaproveitar)</option>` : ''}
+                ${state.orgaoOptions.map(o2=>`<option value="${o2}" ${o.orgao===o2?'selected':''}>${o2}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-row"><label>Referência legal (opcional)</label>
+              <select id="obligCatReferenciaLegal">
+                <option value="">— não informado —</option>
+                ${(o.referenciaLegal && !state.referenciaLegalOptions.includes(o.referenciaLegal)) ? `<option value="${o.referenciaLegal}" selected>${escapeHtml(o.referenciaLegal)} (não está na lista)</option>` : ''}
+                ${state.referenciaLegalOptions.map(r=>`<option value="${r}" ${o.referenciaLegal===r?'selected':''}>${r}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <div class="form-row"><label>Tipo de vencimento</label>
             <select id="obligCatRule">
