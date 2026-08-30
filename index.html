@@ -2465,7 +2465,7 @@ function renderObrigacoes(){
         ${activeCompanies().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.id}" ${obrigFilterCompany===c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('')}
       </select>
       <select id="obrigFilterCategoriaSelect">
-        <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
+        <option value="todas" ${obrigFilterCategoria==='todas'?'selected':''}>Todas as tributações</option>
         ${CATEGORY_ORDER.filter(c=> TAB_DEFS[c].period === obrigViewMode).map(c=>`<option value="${c}" ${obrigFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
       </select>
       <select id="obrigFilterStatusSelect">
@@ -3758,7 +3758,7 @@ function renderConfiguracoes(){
       <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
       <div class="obrig-filters" style="margin-bottom:.8rem;">
         <select id="catalogFilterCategoriaSelect">
-          <option value="todas" ${catalogFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
+          <option value="todas" ${catalogFilterCategoria==='todas'?'selected':''}>Todas as tributações</option>
           ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${catalogFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
         </select>
         <select id="catalogFilterEsferaSelect">
@@ -3773,7 +3773,7 @@ function renderConfiguracoes(){
       </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="obligCatalogTable">
-        <thead><tr><th>Nome</th><th>Categoria</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Tributação</th><th>Periodicidade</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
         <tbody id="obligCatalogBody"></tbody>
       </table>
       </div>
@@ -4172,19 +4172,22 @@ function renderObligationCatalogList(){
       return ci !== 0 ? ci : a.label.localeCompare(b.label);
     });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="9"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="10"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
     return;
   }
+  const PERIODICIDADE_LABELS = {month:'Mensal', quarter:'Trimestral', year:'Anual'};
   const adjustLabels = {antecipar:'Antecipa', postergar:'Posterga', nenhum:'Não ajusta'};
   el.innerHTML = sorted.map(o=>{
     const rule = o.dueDayRule || 'fixo';
-    const isAnnualCat = TAB_DEFS[o.category] && TAB_DEFS[o.category].period === 'year';
+    const period = TAB_DEFS[o.category] ? TAB_DEFS[o.category].period : 'month';
+    const isAnnualCat = period === 'year';
     let vencTxt = rule==='fixo' ? (o.dueDay ? 'dia ' + o.dueDay : '—') : DUE_DAY_RULE_LABELS[rule];
     if(isAnnualCat && o.dueMonth) vencTxt += ' de ' + MONTH_NAMES[o.dueMonth-1];
     return `
     <tr>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
+      <td>${PERIODICIDADE_LABELS[period]||'—'}</td>
       <td>${o.esfera||'—'}</td>
       <td>${o.area||'—'}</td>
       <td>${o.orgao? escapeHtml(o.orgao) : '—'}</td>
@@ -4220,7 +4223,7 @@ function openObligationCatalogModal(obligId){
         <h3>${editing? 'Editar obrigação' : 'Nova obrigação'}</h3>
         <div class="form-grid">
           <div class="form-row"><label>Nome da obrigação</label><input id="obligCatName" type="text" value="${(o.label||'').replace(/"/g,'&quot;')}" placeholder="Ex: PGDAS-D / DAS"><div id="obligCatNameError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o nome.</div></div>
-          <div class="form-row"><label>Categoria</label>
+          <div class="form-row"><label>Tributação</label>
             <select id="obligCatCategory">
               ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${o.category===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
             </select>
