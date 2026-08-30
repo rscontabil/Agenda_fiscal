@@ -476,6 +476,10 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   padding:.4rem .7rem; border:1px solid var(--line-strong); border-radius:20px; font-size:.78rem;
   font-family:'Public Sans',sans-serif; color:var(--ink); background:#fff;
 }
+.obrig-filters input[type="text"]{
+  padding:.4rem .7rem; border:1px solid var(--line-strong); border-radius:20px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif; color:var(--ink); background:#fff; min-width:160px;
+}
 .obrig-table{width:100%; border-collapse:collapse; font-size:.82rem;}
 .obrig-table th{
   text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
@@ -2184,6 +2188,10 @@ let obrigFilterCategoria = 'todas';
 let obrigFilterStatus = 'todos';
 let obrigFilterResponsavel = 'todos';
 let obrigFilterCompany = 'todas';
+let catalogFilterCategoria = 'todas';
+let catalogFilterEsfera = 'todas';
+let catalogFilterArea = 'todas';
+let catalogFilterSearch = '';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
@@ -3730,6 +3738,21 @@ function renderConfiguracoes(){
 
       <div class="sheet-title" style="font-size:1.05rem; margin-top:1.8rem;">Obrigações</div>
       <div class="sheet-sub">Tarefas que podem ser marcadas no cadastro de cada empresa. O "dia de vencimento" é usado na aba Lembretes e na coluna Vencimento da aba Obrigações.</div>
+      <div class="obrig-filters" style="margin-bottom:.8rem;">
+        <select id="catalogFilterCategoriaSelect">
+          <option value="todas" ${catalogFilterCategoria==='todas'?'selected':''}>Todas as categorias</option>
+          ${CATEGORY_ORDER.map(c=>`<option value="${c}" ${catalogFilterCategoria===c?'selected':''}>${CATEGORY_LABELS[c]}</option>`).join('')}
+        </select>
+        <select id="catalogFilterEsferaSelect">
+          <option value="todas" ${catalogFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
+          ${state.esferaOptions.map(e=>`<option value="${e}" ${catalogFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+        </select>
+        <select id="catalogFilterAreaSelect">
+          <option value="todas" ${catalogFilterArea==='todas'?'selected':''}>Todas as áreas</option>
+          ${state.areaOptions.map(a=>`<option value="${a}" ${catalogFilterArea===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+        <input type="text" id="catalogFilterSearch" placeholder="Buscar por nome…" value="${catalogFilterSearch.replace(/"/g,'&quot;')}">
+      </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="obligCatalogTable">
         <thead><tr><th>Nome</th><th>Categoria</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
@@ -3745,6 +3768,10 @@ function renderConfiguracoes(){
     document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
     renderObligationCatalogList();
     document.getElementById('btnNewObligCatalog').addEventListener('click', ()=> openObligationCatalogModal(null));
+    document.getElementById('catalogFilterCategoriaSelect').addEventListener('change', (e)=>{ catalogFilterCategoria = e.target.value; renderObligationCatalogList(); });
+    document.getElementById('catalogFilterEsferaSelect').addEventListener('change', (e)=>{ catalogFilterEsfera = e.target.value; renderObligationCatalogList(); });
+    document.getElementById('catalogFilterAreaSelect').addEventListener('change', (e)=>{ catalogFilterArea = e.target.value; renderObligationCatalogList(); });
+    document.getElementById('catalogFilterSearch').addEventListener('input', (e)=>{ catalogFilterSearch = e.target.value; renderObligationCatalogList(); });
   }
 
   else if(configSubTab==='equipe'){
@@ -4112,12 +4139,18 @@ function addTagOption(stateKey, inputId, containerId){
 function renderObligationCatalogList(){
   const el = document.getElementById('obligCatalogBody');
   if(!el) return;
-  const sorted = state.obligations.slice().sort((a,b)=>{
-    const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
-    return ci !== 0 ? ci : a.label.localeCompare(b.label);
-  });
+  const search = catalogFilterSearch.trim().toLowerCase();
+  const sorted = state.obligations
+    .filter(o=> catalogFilterCategoria==='todas' || o.category===catalogFilterCategoria)
+    .filter(o=> catalogFilterEsfera==='todas' || o.esfera===catalogFilterEsfera)
+    .filter(o=> catalogFilterArea==='todas' || o.area===catalogFilterArea)
+    .filter(o=> !search || o.label.toLowerCase().includes(search))
+    .sort((a,b)=>{
+      const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+      return ci !== 0 ? ci : a.label.localeCompare(b.label);
+    });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="9"><div class="empty-note">Nenhuma obrigação cadastrada ainda.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="9"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
     return;
   }
   const adjustLabels = {antecipar:'Antecipa', postergar:'Posterga', nenhum:'Não ajusta'};
