@@ -984,7 +984,7 @@ function migrateState(){
     if(o.dueMonth===undefined){ o.dueMonth = null; changed = true; }
     // Obrigações trimestrais: por padrão, vence 1 mês depois do fim do trimestre (regra do
     // IRPJ/CSLL trimestral — no 4º trimestre isso cai automaticamente em janeiro do ano seguinte).
-    if(o.quarterDueOffset===undefined && TAB_DEFS[o.category] && TAB_DEFS[o.category].period==='quarter'){
+    if(o.quarterDueOffset==null && TAB_DEFS[o.category] && TAB_DEFS[o.category].period==='quarter'){
       o.quarterDueOffset = 1;
       changed = true;
     }
@@ -2376,7 +2376,7 @@ function computeObrigacoesRows(){
           // mês depois, como no IRPJ/CSLL trimestral — no 4º trimestre isso vira janeiro do ano
           // seguinte automaticamente).
           const override = c.obligationOverrides && c.obligationOverrides[item.id];
-          const offset = (override && override.quarterDueOffset!==undefined) ? override.quarterDueOffset : (ob.quarterDueOffset!==undefined ? ob.quarterDueOffset : 1);
+          const offset = (override && override.quarterDueOffset!=null) ? override.quarterDueOffset : (ob.quarterDueOffset!=null ? ob.quarterDueOffset : 1);
           const {year, month} = quarterDueReference(selectedQuarter, offset);
           vencimento = computeObligationDueDate(ob, c, year, month);
         } else if(ob && period==='year'){
@@ -2593,7 +2593,7 @@ function openVencimentoOverrideModal(row){
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal">
         <h3>Vencimento personalizado</h3>
-        <div class="sheet-sub" style="margin-bottom:1rem;">${escapeHtml(company.nome)} — ${escapeHtml(ob.label)}. Deixe em branco pra usar o padrão do catálogo (${DUE_DAY_RULE_LABELS[ob.dueDayRule||'fixo']}${ob.dueDayRule==='fixo'&&ob.dueDay? ', dia '+ob.dueDay:''}${isAnnual&&ob.dueMonth? ' de '+MONTH_NAMES[ob.dueMonth-1]:''}${isQuarter? ', '+(ob.quarterDueOffset!==undefined?ob.quarterDueOffset:1)+' mês(es) após o fim do trimestre':''}).</div>
+        <div class="sheet-sub" style="margin-bottom:1rem;">${escapeHtml(company.nome)} — ${escapeHtml(ob.label)}. Deixe em branco pra usar o padrão do catálogo (${DUE_DAY_RULE_LABELS[ob.dueDayRule||'fixo']}${ob.dueDayRule==='fixo'&&ob.dueDay? ', dia '+ob.dueDay:''}${isAnnual&&ob.dueMonth? ' de '+MONTH_NAMES[ob.dueMonth-1]:''}${isQuarter? ', '+(ob.quarterDueOffset!=null?ob.quarterDueOffset:1)+' mês(es) após o fim do trimestre':''}).</div>
         <div class="form-grid">
           ${isAnnual ? `
           <div class="form-row"><label>Mês de vencimento</label>
@@ -2604,7 +2604,7 @@ function openVencimentoOverrideModal(row){
           </div>` : ''}
           ${isQuarter ? `
           <div class="form-row"><label>Vence quantos meses depois do fim do trimestre</label>
-            <input id="ovrQuarterOffset" type="number" min="0" max="6" value="${override.quarterDueOffset!==undefined ? override.quarterDueOffset : ''}" placeholder="Deixe em branco pra usar o padrão">
+            <input id="ovrQuarterOffset" type="number" min="0" max="6" value="${override.quarterDueOffset!=null ? override.quarterDueOffset : ''}" placeholder="Deixe em branco pra usar o padrão">
           </div>` : ''}
           <div class="form-row"><label>Tipo de vencimento</label>
             <select id="ovrRule">
@@ -4277,7 +4277,7 @@ function openObligationCatalogModal(obligId){
           </div>
           <div class="form-row" id="obligCatQuarterOffsetRow" style="display:none;">
             <label>Vence quantos meses depois do fim do trimestre</label>
-            <input id="obligCatQuarterOffset" type="number" min="0" max="6" value="${o.quarterDueOffset!==undefined && o.quarterDueOffset!==null ? o.quarterDueOffset : 1}">
+            <input id="obligCatQuarterOffset" type="number" min="0" max="6" value="${o.quarterDueOffset!=null ? o.quarterDueOffset : 1}">
             <div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Ex: IRPJ/CSLL trimestral vence no mês seguinte ao fim do trimestre → use 1. No 4º trimestre, isso cai automaticamente em janeiro do ano seguinte.</div>
           </div>
           <div class="form-row" id="obligCatWeekendAdjustRow">
@@ -4363,7 +4363,7 @@ function openObligationCatalogModal(obligId){
       freshO.dueDayRule = rule;
       freshO.dueDay = rule==='fixo' ? dueDay : null;
       freshO.dueMonth = isAnnual ? dueMonth : null;
-      freshO.quarterDueOffset = isQuarter ? quarterDueOffset : undefined;
+      freshO.quarterDueOffset = isQuarter ? quarterDueOffset : null;
       freshO.metaDay = metaDay;
       freshO.weekendAdjust = weekendAdjust;
       freshO.esfera = esfera;
@@ -4379,7 +4379,7 @@ function openObligationCatalogModal(obligId){
         dueDayRule: rule,
         dueDay: rule==='fixo' ? dueDay : null,
         dueMonth: isAnnual ? dueMonth : null,
-        quarterDueOffset: isQuarter ? quarterDueOffset : undefined,
+        quarterDueOffset: isQuarter ? quarterDueOffset : null,
         metaDay,
         weekendAdjust,
         esfera,
