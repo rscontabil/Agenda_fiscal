@@ -945,6 +945,38 @@ function migrateState(){
     state.efdMonthlyFixDone = true;
     changed = true;
   }
+  // Preenche o vencimento de obrigações federais que estavam cadastradas sem data (só ajusta se
+  // a pessoa não tiver mexido manualmente — ou seja, se ainda estiver com os valores em branco de
+  // quando foram criadas), e corrige o prazo do ECD (a Receita mudou de maio pra junho).
+  if(!state.federalDatesFixDone2){
+    const setIfBlank = (id, fields) => {
+      const o = state.obligations.find(x=>x.id===id);
+      if(o && !o.dueDay && !o.dueMonth && (!o.dueDayRule || o.dueDayRule==='fixo')){
+        Object.assign(o, fields);
+        changed = true;
+      }
+    };
+    setIfBlank('simples__pgdas', {dueDayRule:'fixo', dueDay:20, monthDueOffset:1, weekendAdjust:'postergar'});
+    setIfBlank('mei__das', {dueDayRule:'fixo', dueDay:20, monthDueOffset:1, weekendAdjust:'postergar'});
+    setIfBlank('pr__apuracao', {dueDayRule:'fixo', dueDay:25, monthDueOffset:1, weekendAdjust:'postergar'});
+    setIfBlank('real__apuracao', {dueDayRule:'fixo', dueDay:25, monthDueOffset:1, weekendAdjust:'postergar'});
+    const setDctf = (id) => {
+      const o = state.obligations.find(x=>x.id===id);
+      if(o && !o.dueDay && (!o.dueDayRule || o.dueDayRule==='fixo')){
+        o.dueDayRule = 'ultimo_dia_util';
+        o.monthDueOffset = 1;
+        changed = true;
+      }
+    };
+    setDctf('pr__dctf');
+    setDctf('real__dctf');
+    const ecd = state.obligations.find(o=>o.id==='anual__ecd');
+    if(ecd && ecd.dueMonth===5){ ecd.dueMonth = 6; changed = true; } // Receita mudou o prazo de maio pra junho
+    const dirf = state.obligations.find(o=>o.id==='anual__dirf');
+    if(dirf && dirf.label==='DIRF'){ dirf.label = 'DIRF (descontinuada desde 2025 — substituída por eSocial/EFD-Reinf)'; changed = true; }
+    state.federalDatesFixDone2 = true;
+    changed = true;
+  }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
   const OLD_TO_NEW_STATUS_MAP = {pendente:'nao_iniciada', andamento:'andamento', concluida:'transmitida', dispensada:'dispensada', cancelada:'cancelada'};
@@ -1747,20 +1779,23 @@ const CATEGORY_LABELS = {
   anual:'Obrigações Anuais',
 };
 const DEFAULT_OBLIGATIONS = [
-  {id:'simples__pgdas', category:'simples', label:'PGDAS-D / DAS'},
+  {id:'simples__pgdas', category:'simples', label:'PGDAS-D / DAS', dueDayRule:'fixo', dueDay:20, monthDueOffset:1, weekendAdjust:'postergar'},
   {id:'simples__sefaz', category:'simples', label:'SEFAZ (XML)'},
   {id:'simples__semef', category:'simples', label:'SEMEF (XML)'},
-  {id:'mei__das', category:'mei', label:'DAS-MEI (mensal)'},
+  {id:'mei__das', category:'mei', label:'DAS-MEI (mensal)', dueDayRule:'fixo', dueDay:20, monthDueOffset:1, weekendAdjust:'postergar'},
   {id:'mei__nfe', category:'mei', label:'Emissão de Nota Fiscal'},
-  {id:'pr__apuracao', category:'lucro_presumido', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
-  {id:'pr__dctf', category:'lucro_presumido', label:'DCTFWeb'},
+  {id:'pr__apuracao', category:'lucro_presumido', label:'Apuração PIS/COFINS/IRPJ/CSLL', dueDayRule:'fixo', dueDay:25, monthDueOffset:1, weekendAdjust:'postergar'},
+  {id:'pr__dctf', category:'lucro_presumido', label:'DCTFWeb', dueDayRule:'ultimo_dia_util', monthDueOffset:1},
   {id:'pr__sefaz', category:'lucro_presumido', label:'SEFAZ (XML)'},
   {id:'pr__semef', category:'lucro_presumido', label:'SEMEF (XML)'},
-  {id:'real__apuracao', category:'lucro_real', label:'Apuração PIS/COFINS/IRPJ/CSLL'},
-  {id:'real__dctf', category:'lucro_real', label:'DCTFWeb'},
+  {id:'real__apuracao', category:'lucro_real', label:'Apuração PIS/COFINS/IRPJ/CSLL', dueDayRule:'fixo', dueDay:25, monthDueOffset:1, weekendAdjust:'postergar'},
+  {id:'real__dctf', category:'lucro_real', label:'DCTFWeb', dueDayRule:'ultimo_dia_util', monthDueOffset:1},
   {id:'real__sefaz', category:'lucro_real', label:'SEFAZ (XML)'},
   {id:'real__semef', category:'lucro_real', label:'SEMEF (XML)'},
   {id:'folha__semef', category:'folha', label:'SEMEF (XML)'},
+  {id:'folha__esocial', category:'folha', label:'eSocial', dueDayRule:'fixo', dueDay:15, monthDueOffset:1, weekendAdjust:'postergar'},
+  {id:'folha__reinf', category:'folha', label:'EFD-Reinf', dueDayRule:'fixo', dueDay:15, monthDueOffset:1, weekendAdjust:'postergar'},
+  {id:'folha__fgtsdigital', category:'folha', label:'FGTS Digital', dueDayRule:'fixo', dueDay:20, monthDueOffset:1, weekendAdjust:'postergar'},
   {id:'folha__ativa', category:'folha', label:'Ativa'},
   {id:'folha__ponto', category:'folha', label:'Ponto'},
   {id:'folha__consignado', category:'folha', label:'Empréstimo Consignado'},
@@ -1777,13 +1812,13 @@ const DEFAULT_OBLIGATIONS = [
   {id:'contabil__banco', category:'contabil', label:'Mov. Banco'},
   {id:'contabil__extratos', category:'contabil', label:'Extratos OFX/PDF'},
   {id:'contabil__impfiscal', category:'contabil', label:'Imposto Fiscal'},
-  {id:'anual__ecd', category:'anual', label:'ECD', dueDayRule:'ultimo_dia_util', dueMonth:5},
+  {id:'anual__ecd', category:'anual', label:'ECD', dueDayRule:'ultimo_dia_util', dueMonth:6},
   {id:'anual__ecf', category:'anual', label:'ECF', dueDayRule:'ultimo_dia_util', dueMonth:7},
   {id:'anual__irpf', category:'anual', label:'IRPF (Imposto de Renda Pessoa Física)', dueDayRule:'fixo', dueDay:29, dueMonth:5, weekendAdjust:'postergar'},
   {id:'anual__dasn', category:'anual', label:'DASN-SIMEI (Declaração Anual MEI)', dueDayRule:'ultimo_dia_util', dueMonth:5},
   {id:'anual__efd', category:'contabil', label:'EFD Contribuições', dueDayRule:'nesimo_dia_util', nthBusinessDay:10, monthDueOffset:2},
   {id:'anual__defis', category:'anual', label:'DEFIS', dueDayRule:'ultimo_dia_util', dueMonth:3},
-  {id:'anual__dirf', category:'anual', label:'DIRF'},
+  {id:'anual__dirf', category:'anual', label:'DIRF (descontinuada desde 2025 — substituída por eSocial/EFD-Reinf)'},
   {id:'anual__rais', category:'anual', label:'RAIS'},
 ];
 
@@ -1958,7 +1993,7 @@ function computeDefaultObligations(c){
     if(c.ativ.includes('SERVIÇO')) ids.push('pr__semef');
   }
   if(c.folha){
-    ids.push('folha__ativa','folha__ponto','folha__consignado','folha__adto','folha__fechamento','folha__adto13','folha__sal13');
+    ids.push('folha__ativa','folha__ponto','folha__consignado','folha__adto','folha__fechamento','folha__adto13','folha__sal13','folha__esocial','folha__reinf','folha__fgtsdigital');
     if(c.ativ.includes('SERVIÇO')) ids.push('folha__semef');
   }
   if(c.suframa){
@@ -1971,7 +2006,7 @@ function computeDefaultObligations(c){
   ids.push('anual__efd');
   if(c.trib==='SIMPLES') ids.push('anual__defis');
   if(c.trib==='SIMEI') ids.push('anual__dasn');
-  ids.push('anual__dirf');
+  // DIRF descontinuada desde 2025 (substituída por eSocial/EFD-Reinf) — não sugere mais por padrão.
   if(c.folha) ids.push('anual__rais');
   return ids;
 }
