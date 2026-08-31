@@ -180,7 +180,8 @@ header.app{
 }
 
 /* ===== Main ===== */
-main{padding:1.4rem;max-width:1180px;margin:0 auto;}
+main{padding:1.4rem;max-width:1180px;margin:0 auto; transition:max-width .15s;}
+main.config-wide{max-width:1520px;}
 .sheet{
   background:var(--surface);
   border:1px solid var(--line-strong);
@@ -5208,6 +5209,7 @@ function renderAll(){
   renderStats();
   renderTabs();
   renderPeriodControl();
+  document.querySelector('main').classList.toggle('config-wide', activeTab==='config');
   if(activeTab==='painel') renderPainel();
   else if(activeTab==='empresas') renderEmpresas();
   else if(activeTab==='obrigacoes') renderObrigacoes();
