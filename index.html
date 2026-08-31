@@ -930,6 +930,21 @@ function migrateState(){
   if(!state.areaOptions){ state.areaOptions = DEFAULT_AREA_OPTIONS.slice(); changed = true; }
   if(!state.orgaoOptions){ state.orgaoOptions = DEFAULT_ORGAO_OPTIONS.slice(); changed = true; }
   if(!state.referenciaLegalOptions){ state.referenciaLegalOptions = []; changed = true; }
+  // EFD-Contribuições estava (erradamente) cadastrada como obrigação anual — na verdade é mensal,
+  // com vencimento no 10º dia útil do 2º mês seguinte à competência. Corrige quem já tinha isso
+  // cadastrado do jeito antigo (só se a pessoa não tiver mexido manualmente na categoria depois).
+  if(!state.efdMonthlyFixDone){
+    const efd = state.obligations.find(o=>o.id==='anual__efd');
+    if(efd && efd.category==='anual'){
+      efd.category = 'contabil';
+      efd.dueDayRule = 'nesimo_dia_util';
+      efd.nthBusinessDay = 10;
+      efd.monthDueOffset = 2;
+      changed = true;
+    }
+    state.efdMonthlyFixDone = true;
+    changed = true;
+  }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
   const OLD_TO_NEW_STATUS_MAP = {pendente:'nao_iniciada', andamento:'andamento', concluida:'transmitida', dispensada:'dispensada', cancelada:'cancelada'};
@@ -982,6 +997,8 @@ function migrateState(){
     if(o.esfera===undefined){ o.esfera = ''; changed = true; }
     if(o.area===undefined){ o.area = ''; changed = true; }
     if(o.dueMonth===undefined){ o.dueMonth = null; changed = true; }
+    if(o.nthBusinessDay===undefined){ o.nthBusinessDay = null; changed = true; }
+    if(o.monthDueOffset===undefined){ o.monthDueOffset = null; changed = true; }
     // Obrigações trimestrais: por padrão, vence 1 mês depois do fim do trimestre (regra do
     // IRPJ/CSLL trimestral — no 4º trimestre isso cai automaticamente em janeiro do ano seguinte).
     if(o.quarterDueOffset==null && TAB_DEFS[o.category] && TAB_DEFS[o.category].period==='quarter'){
@@ -1764,7 +1781,7 @@ const DEFAULT_OBLIGATIONS = [
   {id:'anual__ecf', category:'anual', label:'ECF', dueDayRule:'ultimo_dia_util', dueMonth:7},
   {id:'anual__irpf', category:'anual', label:'IRPF (Imposto de Renda Pessoa Física)', dueDayRule:'fixo', dueDay:29, dueMonth:5, weekendAdjust:'postergar'},
   {id:'anual__dasn', category:'anual', label:'DASN-SIMEI (Declaração Anual MEI)', dueDayRule:'ultimo_dia_util', dueMonth:5},
-  {id:'anual__efd', category:'anual', label:'EFD Contribuições'},
+  {id:'anual__efd', category:'contabil', label:'EFD Contribuições', dueDayRule:'nesimo_dia_util', nthBusinessDay:10, monthDueOffset:2},
   {id:'anual__defis', category:'anual', label:'DEFIS', dueDayRule:'ultimo_dia_util', dueMonth:3},
   {id:'anual__dirf', category:'anual', label:'DIRF'},
   {id:'anual__rais', category:'anual', label:'RAIS'},
@@ -2019,6 +2036,16 @@ function quarterDueReference(quarterKey, offsetMonths){
   while(month < 1){ month += 12; y -= 1; }
   return {year:y, month};
 }
+// Mesma lógica, mas para obrigações mensais que vencem alguns meses depois da própria competência
+// (ex: EFD-Contribuições, cuja competência de janeiro vence no 10º dia útil de março — 2 meses
+// depois). Deslocamento 0 (padrão) mantém o comportamento de sempre: vence no mesmo mês.
+function monthDueReference(year, month, offsetMonths){
+  let m = month + (offsetMonths || 0);
+  let y = year;
+  while(m > 12){ m -= 12; y += 1; }
+  while(m < 1){ m += 12; y -= 1; }
+  return {year:y, month:m};
+}
 const OBRIG_STATUS_LABELS = {
   nao_iniciada:'Não iniciada', andamento:'Em andamento', enviada:'Enviada',
   transmitida:'Transmitida', retificada:'Retificada', dispensada:'Dispensada', cancelada:'Cancelada',
@@ -2061,26 +2088,32 @@ function computeUpcomingReminders(){
   const diasAntes = settings.diasAntes || 3;
   const today = new Date();
   today.setHours(0,0,0,0);
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   const results = [];
   activeCompanies().forEach(c=>{
     CATEGORY_ORDER.forEach(cat=>{
       if(TAB_DEFS[cat].period !== 'month') return; // lembretes cobrem só obrigações mensais por enquanto (anuais e trimestrais ficam de fora)
       if(!TAB_DEFS[cat].filter(c)) return;
-      const items = companyItemsForCategory(c, cat, todayKey);
-      items.forEach(item=>{
-        const ob = state.obligations.find(o=>o.id===item.id);
-        if(!ob) return;
+      const assignedIds = c.obligations || [];
+      catalogByCategory(cat).filter(o=>assignedIds.includes(o.id)).forEach(ob=>{
+        const override = c.obligationOverrides && c.obligationOverrides[ob.id];
+        const offset = (override && override.monthDueOffset!=null) ? override.monthDueOffset : (ob.monthDueOffset!=null ? ob.monthDueOffset : 0);
+        // A competência que vence agora é "hoje menos o deslocamento" (ex: EFD vence 2 meses
+        // depois, então o que vence em março é a competência de janeiro).
+        let compY = today.getFullYear(), compM = today.getMonth()+1-offset;
+        while(compM < 1){ compM += 12; compY -= 1; }
+        while(compM > 12){ compM -= 12; compY += 1; }
+        const compKey = `${compY}-${String(compM).padStart(2,'0')}`;
+        if(ob.seasonalMonth && compM !== ob.seasonalMonth) return; // tarefa sazonal fora do mês de competência certo
         const due = computeObligationDueDate(ob, c, today.getFullYear(), today.getMonth()+1);
         if(!due) return;
         const diffDays = Math.round((due - today) / 86400000);
         if(diffDays > diasAntes) return;
-        const bucket = state.monthly[todayKey] && state.monthly[todayKey][c.id] && state.monthly[todayKey][c.id][item.id];
+        const bucket = state.monthly[compKey] && state.monthly[compKey][c.id] && state.monthly[compKey][c.id][ob.id];
         const done = !!(bucket && isResolvedStatus(bucket.status));
         if(done) return;
         results.push({
           company: c,
-          obligationLabel: item.label,
+          obligationLabel: ob.label,
           due,
           diffDays,
           category: cat,
@@ -2369,8 +2402,13 @@ function computeObrigacoesRows(){
         if(obrigFilterResponsavel!=='todos' && obrigFilterResponsavel!=='none' && entry.responsavelId!==obrigFilterResponsavel) return;
         let vencimento = null;
         if(ob && period==='month'){
+          // Normalmente vence no mesmo mês da competência, mas algumas obrigações (ex: EFD-
+          // Contribuições) vencem alguns meses depois — usa o deslocamento configurado, se houver.
           const [y,m] = selectedMonth.split('-').map(Number);
-          vencimento = computeObligationDueDate(ob, c, y, m);
+          const override = c.obligationOverrides && c.obligationOverrides[item.id];
+          const offset = (override && override.monthDueOffset!=null) ? override.monthDueOffset : (ob.monthDueOffset!=null ? ob.monthDueOffset : 0);
+          const ref = monthDueReference(y, m, offset);
+          vencimento = computeObligationDueDate(ob, c, ref.year, ref.month);
         } else if(ob && period==='quarter'){
           // O vencimento cai um número configurável de meses após o fim do trimestre (padrão: 1
           // mês depois, como no IRPJ/CSLL trimestral — no 4º trimestre isso vira janeiro do ano
@@ -2587,13 +2625,14 @@ function openVencimentoOverrideModal(row){
   const ob = row.ob;
   const isAnnual = row.period === 'year';
   const isQuarter = row.period === 'quarter';
+  const isMonth = row.period === 'month';
   const override = (company.obligationOverrides && company.obligationOverrides[ob.id]) || {};
   const root = document.getElementById('modalRoot');
   root.innerHTML = `
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal">
         <h3>Vencimento personalizado</h3>
-        <div class="sheet-sub" style="margin-bottom:1rem;">${escapeHtml(company.nome)} — ${escapeHtml(ob.label)}. Deixe em branco pra usar o padrão do catálogo (${DUE_DAY_RULE_LABELS[ob.dueDayRule||'fixo']}${ob.dueDayRule==='fixo'&&ob.dueDay? ', dia '+ob.dueDay:''}${isAnnual&&ob.dueMonth? ' de '+MONTH_NAMES[ob.dueMonth-1]:''}${isQuarter? ', '+(ob.quarterDueOffset!=null?ob.quarterDueOffset:1)+' mês(es) após o fim do trimestre':''}).</div>
+        <div class="sheet-sub" style="margin-bottom:1rem;">${escapeHtml(company.nome)} — ${escapeHtml(ob.label)}. Deixe em branco pra usar o padrão do catálogo (${DUE_DAY_RULE_LABELS[ob.dueDayRule||'fixo']}${ob.dueDayRule==='fixo'&&ob.dueDay? ', dia '+ob.dueDay:''}${ob.dueDayRule==='nesimo_dia_util'&&ob.nthBusinessDay? ', '+ob.nthBusinessDay+'º dia útil':''}${isAnnual&&ob.dueMonth? ' de '+MONTH_NAMES[ob.dueMonth-1]:''}${isQuarter? ', '+(ob.quarterDueOffset!=null?ob.quarterDueOffset:1)+' mês(es) após o fim do trimestre':''}${isMonth&&ob.monthDueOffset? ', '+ob.monthDueOffset+' mês(es) após a competência':''}).</div>
         <div class="form-grid">
           ${isAnnual ? `
           <div class="form-row"><label>Mês de vencimento</label>
@@ -2606,15 +2645,21 @@ function openVencimentoOverrideModal(row){
           <div class="form-row"><label>Vence quantos meses depois do fim do trimestre</label>
             <input id="ovrQuarterOffset" type="number" min="0" max="6" value="${override.quarterDueOffset!=null ? override.quarterDueOffset : ''}" placeholder="Deixe em branco pra usar o padrão">
           </div>` : ''}
+          ${isMonth ? `
+          <div class="form-row"><label>Vence quantos meses depois da competência</label>
+            <input id="ovrMonthOffset" type="number" min="0" max="6" value="${override.monthDueOffset!=null ? override.monthDueOffset : ''}" placeholder="Deixe em branco pra usar o padrão">
+          </div>` : ''}
           <div class="form-row"><label>Tipo de vencimento</label>
             <select id="ovrRule">
               <option value="">— usar padrão do catálogo —</option>
               <option value="fixo" ${override.dueDayRule==='fixo'?'selected':''}>Dia fixo do mês</option>
               <option value="ultimo_dia" ${override.dueDayRule==='ultimo_dia'?'selected':''}>Último dia do mês</option>
               <option value="ultimo_dia_util" ${override.dueDayRule==='ultimo_dia_util'?'selected':''}>Último dia útil do mês</option>
+              <option value="nesimo_dia_util" ${override.dueDayRule==='nesimo_dia_util'?'selected':''}>Enésimo dia útil do mês</option>
             </select>
           </div>
           <div class="form-row" id="ovrDueDayRow"><label>Dia de vencimento</label><input id="ovrDueDay" type="number" min="1" max="31" value="${override.dueDay||''}"></div>
+          <div class="form-row" id="ovrNthBusinessDayRow"><label>Qual dia útil</label><input id="ovrNthBusinessDay" type="number" min="1" max="25" value="${override.nthBusinessDay||''}"></div>
           <div class="form-row"><label>Ajuste se cair em fim de semana/feriado</label>
             <select id="ovrWeekendAdjust">
               <option value="">— usar padrão do catálogo —</option>
@@ -2637,6 +2682,7 @@ function openVencimentoOverrideModal(row){
   function syncDueDayVisibility(){
     const rule = document.getElementById('ovrRule').value;
     document.getElementById('ovrDueDayRow').style.display = (rule==='' || rule==='fixo') ? '' : 'none';
+    document.getElementById('ovrNthBusinessDayRow').style.display = rule==='nesimo_dia_util' ? '' : 'none';
   }
   document.getElementById('ovrRule').addEventListener('change', syncDueDayVisibility);
   syncDueDayVisibility();
@@ -2659,6 +2705,10 @@ function openVencimentoOverrideModal(row){
     const newOverride = {};
     if(rule) newOverride.dueDayRule = rule;
     if(rule==='fixo' && dueDay) newOverride.dueDay = dueDay;
+    if(rule==='nesimo_dia_util'){
+      const nthVal = parseInt(document.getElementById('ovrNthBusinessDay').value, 10);
+      if(nthVal>=1 && nthVal<=25) newOverride.nthBusinessDay = nthVal;
+    }
     if(weekendAdjust) newOverride.weekendAdjust = weekendAdjust;
     if(isAnnual){
       const dueMonthEl = document.getElementById('ovrDueMonth');
@@ -2669,6 +2719,11 @@ function openVencimentoOverrideModal(row){
       const offsetEl = document.getElementById('ovrQuarterOffset');
       const offsetVal = offsetEl ? parseInt(offsetEl.value, 10) : NaN;
       if(!isNaN(offsetVal)) newOverride.quarterDueOffset = offsetVal;
+    }
+    if(isMonth){
+      const monthOffsetEl = document.getElementById('ovrMonthOffset');
+      const monthOffsetVal = monthOffsetEl ? parseInt(monthOffsetEl.value, 10) : NaN;
+      if(!isNaN(monthOffsetVal)) newOverride.monthDueOffset = monthOffsetVal;
     }
     const freshCompany = state.companies.find(c=>c.id===companyId);
     if(!freshCompany){ root.innerHTML=''; return; }
@@ -4004,11 +4059,29 @@ function adjustToBusinessDay(date, mode){
   return d;
 }
 
-const DUE_DAY_RULE_LABELS = {fixo:'Dia fixo do mês', ultimo_dia:'Último dia do mês', ultimo_dia_util:'Último dia útil do mês'};
+const DUE_DAY_RULE_LABELS = {fixo:'Dia fixo do mês', ultimo_dia:'Último dia do mês', ultimo_dia_util:'Último dia útil do mês', nesimo_dia_util:'Enésimo dia útil do mês'};
+
+// Retorna a data do N-ésimo dia ÚTIL de um mês (ex: n=10 → 10º dia útil), contando a partir do
+// dia 1 e pulando fins de semana/feriados.
+function nthBusinessDayOfMonth(year, month, n){
+  let date = new Date(year, month-1, 1);
+  let count = 0;
+  let guard = 0;
+  while(guard < 60){
+    if(isBusinessDay(date)){
+      count++;
+      if(count === n) return date;
+    }
+    date = new Date(date.getFullYear(), date.getMonth(), date.getDate()+1);
+    guard++;
+  }
+  return date;
+}
 
 // Calcula o vencimento de uma obrigação num mês/ano, já considerando: a regra de vencimento
-// (dia fixo, último dia do mês, ou último dia útil), o ajuste de fim de semana/feriado, e uma
-// eventual exceção cadastrada especificamente pra essa empresa (company.obligationOverrides).
+// (dia fixo, último dia do mês, último dia útil, ou enésimo dia útil), o ajuste de fim de
+// semana/feriado, e uma eventual exceção cadastrada especificamente pra essa empresa
+// (company.obligationOverrides).
 function computeObligationDueDate(ob, company, year, month){
   const override = company && company.obligationOverrides && company.obligationOverrides[ob.id];
   const rule = (override && override.dueDayRule) || ob.dueDayRule || 'fixo';
@@ -4019,6 +4092,10 @@ function computeObligationDueDate(ob, company, year, month){
       while(!isBusinessDay(date)) date.setDate(date.getDate()-1);
     }
     return date;
+  }
+  if(rule==='nesimo_dia_util'){
+    const n = (override && override.nthBusinessDay) || ob.nthBusinessDay || 1;
+    return nthBusinessDayOfMonth(year, month, n);
   }
   const dueDay = (override && override.dueDay) || ob.dueDay;
   if(!dueDay) return null;
@@ -4182,7 +4259,9 @@ function renderObligationCatalogList(){
     const period = TAB_DEFS[o.category] ? TAB_DEFS[o.category].period : 'month';
     const isAnnualCat = period === 'year';
     let vencTxt = rule==='fixo' ? (o.dueDay ? 'dia ' + o.dueDay : '—') : DUE_DAY_RULE_LABELS[rule];
+    if(rule==='nesimo_dia_util' && o.nthBusinessDay) vencTxt = `${o.nthBusinessDay}º dia útil`;
     if(isAnnualCat && o.dueMonth) vencTxt += ' de ' + MONTH_NAMES[o.dueMonth-1];
+    if(period==='month' && o.monthDueOffset) vencTxt += ` (${o.monthDueOffset} ${o.monthDueOffset===1?'mês':'meses'} depois da competência)`;
     return `
     <tr>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
@@ -4264,11 +4343,23 @@ function openObligationCatalogModal(obligId){
               <option value="fixo" ${(!o.dueDayRule || o.dueDayRule==='fixo')?'selected':''}>Dia fixo do mês</option>
               <option value="ultimo_dia" ${o.dueDayRule==='ultimo_dia'?'selected':''}>Último dia do mês</option>
               <option value="ultimo_dia_util" ${o.dueDayRule==='ultimo_dia_util'?'selected':''}>Último dia útil do mês</option>
+              <option value="nesimo_dia_util" ${o.dueDayRule==='nesimo_dia_util'?'selected':''}>Enésimo dia útil do mês</option>
             </select>
           </div>
           <div class="form-cols">
             <div class="form-row" id="obligCatDueDayRow"><label>Dia de vencimento *</label><input id="obligCatDueDay" type="number" min="1" max="31" value="${o.dueDay||''}" placeholder="Ex: 20"><div id="obligCatDueDayError" style="color:var(--bad);font-size:.74rem;display:none;">Informe o dia de vencimento.</div></div>
             <div class="form-row"><label>Dia meta (opcional)</label><input id="obligCatMetaDay" type="number" min="1" max="31" value="${o.metaDay||''}" placeholder="Ex: 15"></div>
+          </div>
+          <div class="form-row" id="obligCatNthBusinessDayRow" style="display:none;">
+            <label>Qual dia útil (contando desde o dia 1) *</label>
+            <input id="obligCatNthBusinessDay" type="number" min="1" max="25" value="${o.nthBusinessDay||10}">
+            <div id="obligCatNthBusinessDayError" style="color:var(--bad);font-size:.74rem;display:none;">Informe qual dia útil.</div>
+            <div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Ex: EFD-Contribuições vence no 10º dia útil → use 10.</div>
+          </div>
+          <div class="form-row" id="obligCatMonthOffsetRow" style="display:none;">
+            <label>Vence quantos meses depois da competência</label>
+            <input id="obligCatMonthOffset" type="number" min="0" max="6" value="${o.monthDueOffset!=null ? o.monthDueOffset : 0}">
+            <div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Ex: EFD-Contribuições de janeiro vence em março → use 2. Deixe 0 se vence no mesmo mês da competência (a maioria dos casos).</div>
           </div>
           <div class="form-row" id="obligCatDueMonthRow" style="display:none;">
             <label>Mês de vencimento *</label>
@@ -4302,13 +4393,17 @@ function openObligationCatalogModal(obligId){
   function syncRuleVisibility(){
     const rule = document.getElementById('obligCatRule').value;
     const isFixo = rule==='fixo';
+    const isNthBusinessDay = rule==='nesimo_dia_util';
     const category = document.getElementById('obligCatCategory').value;
     const isAnnual = TAB_DEFS[category] && TAB_DEFS[category].period === 'year';
     const isQuarter = TAB_DEFS[category] && TAB_DEFS[category].period === 'quarter';
+    const isMonth = TAB_DEFS[category] && TAB_DEFS[category].period === 'month';
     document.getElementById('obligCatDueDayRow').style.display = isFixo ? '' : 'none';
     document.getElementById('obligCatWeekendAdjustRow').style.display = isFixo ? '' : 'none';
+    document.getElementById('obligCatNthBusinessDayRow').style.display = isNthBusinessDay ? '' : 'none';
     document.getElementById('obligCatDueMonthRow').style.display = isAnnual ? '' : 'none';
     document.getElementById('obligCatQuarterOffsetRow').style.display = isQuarter ? '' : 'none';
+    document.getElementById('obligCatMonthOffsetRow').style.display = isMonth ? '' : 'none';
   }
   document.getElementById('obligCatRule').addEventListener('change', syncRuleVisibility);
   document.getElementById('obligCatCategory').addEventListener('change', syncRuleVisibility);
@@ -4321,10 +4416,12 @@ function openObligationCatalogModal(obligId){
     const category = document.getElementById('obligCatCategory').value;
     const isAnnual = TAB_DEFS[category] && TAB_DEFS[category].period === 'year';
     const isQuarter = TAB_DEFS[category] && TAB_DEFS[category].period === 'quarter';
+    const isMonth = TAB_DEFS[category] && TAB_DEFS[category].period === 'month';
     let hasError = false;
     document.getElementById('obligCatNameError').style.display = 'none';
     document.getElementById('obligCatDueDayError').style.display = 'none';
     document.getElementById('obligCatDueMonthError').style.display = 'none';
+    document.getElementById('obligCatNthBusinessDayError').style.display = 'none';
     if(!label){
       document.getElementById('obligCatNameError').style.display = 'block';
       hasError = true;
@@ -4333,6 +4430,12 @@ function openObligationCatalogModal(obligId){
     const dueDay = (dueDayVal>=1 && dueDayVal<=31) ? dueDayVal : null;
     if(rule==='fixo' && !dueDay){
       document.getElementById('obligCatDueDayError').style.display = 'block';
+      hasError = true;
+    }
+    const nthBusinessDayVal = parseInt(document.getElementById('obligCatNthBusinessDay').value, 10);
+    const nthBusinessDay = (nthBusinessDayVal>=1 && nthBusinessDayVal<=25) ? nthBusinessDayVal : null;
+    if(rule==='nesimo_dia_util' && !nthBusinessDay){
+      document.getElementById('obligCatNthBusinessDayError').style.display = 'block';
       hasError = true;
     }
     const dueMonthVal = parseInt(document.getElementById('obligCatDueMonth').value, 10);
@@ -4344,6 +4447,7 @@ function openObligationCatalogModal(obligId){
     if(hasError){
       if(!label) document.getElementById('obligCatName').focus();
       else if(rule==='fixo' && !dueDay) document.getElementById('obligCatDueDay').focus();
+      else if(rule==='nesimo_dia_util' && !nthBusinessDay) document.getElementById('obligCatNthBusinessDay').focus();
       else document.getElementById('obligCatDueMonth').focus();
       return;
     }
@@ -4356,6 +4460,8 @@ function openObligationCatalogModal(obligId){
     const referenciaLegal = document.getElementById('obligCatReferenciaLegal').value.trim();
     const quarterOffsetVal = parseInt(document.getElementById('obligCatQuarterOffset').value, 10);
     const quarterDueOffset = isNaN(quarterOffsetVal) ? 1 : quarterOffsetVal;
+    const monthOffsetVal = parseInt(document.getElementById('obligCatMonthOffset').value, 10);
+    const monthDueOffset = isNaN(monthOffsetVal) ? 0 : monthOffsetVal;
     if(editing){
       // Busca o objeto de novo, agora, em vez de usar a referência capturada quando o modal abriu —
       // evita perder a edição se os dados sincronizarem em tempo real enquanto o modal estava aberto.
@@ -4365,8 +4471,10 @@ function openObligationCatalogModal(obligId){
       freshO.category = category;
       freshO.dueDayRule = rule;
       freshO.dueDay = rule==='fixo' ? dueDay : null;
+      freshO.nthBusinessDay = rule==='nesimo_dia_util' ? nthBusinessDay : null;
       freshO.dueMonth = isAnnual ? dueMonth : null;
       freshO.quarterDueOffset = isQuarter ? quarterDueOffset : null;
+      freshO.monthDueOffset = isMonth ? monthDueOffset : null;
       freshO.metaDay = metaDay;
       freshO.weekendAdjust = weekendAdjust;
       freshO.esfera = esfera;
@@ -4381,8 +4489,10 @@ function openObligationCatalogModal(obligId){
         label,
         dueDayRule: rule,
         dueDay: rule==='fixo' ? dueDay : null,
+        nthBusinessDay: rule==='nesimo_dia_util' ? nthBusinessDay : null,
         dueMonth: isAnnual ? dueMonth : null,
         quarterDueOffset: isQuarter ? quarterDueOffset : null,
+        monthDueOffset: isMonth ? monthDueOffset : null,
         metaDay,
         weekendAdjust,
         esfera,
