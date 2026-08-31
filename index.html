@@ -978,6 +978,21 @@ function migrateState(){
     state.federalDatesFixDone2 = true;
     changed = true;
   }
+  // 13º salário e adiantamento têm vencimento fixo por lei (20/12 e 30/11) — preenche pra quem
+  // já tinha essas duas cadastradas sem data.
+  if(!state.decimoTerceiroDatesFixDone){
+    const setIfBlank2 = (id, fields) => {
+      const o = state.obligations.find(x=>x.id===id);
+      if(o && !o.dueDay && (!o.dueDayRule || o.dueDayRule==='fixo')){
+        Object.assign(o, fields);
+        changed = true;
+      }
+    };
+    setIfBlank2('folha__adto13', {dueDayRule:'fixo', dueDay:30, weekendAdjust:'postergar'});
+    setIfBlank2('folha__sal13', {dueDayRule:'fixo', dueDay:20, weekendAdjust:'postergar'});
+    state.decimoTerceiroDatesFixDone = true;
+    changed = true;
+  }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
   // Agora vira um registro completo: status (pendente/andamento/concluida), responsável e detalhes.
   const OLD_TO_NEW_STATUS_MAP = {pendente:'nao_iniciada', andamento:'andamento', concluida:'transmitida', dispensada:'dispensada', cancelada:'cancelada'};
@@ -1802,8 +1817,8 @@ const DEFAULT_OBLIGATIONS = [
   {id:'folha__consignado', category:'folha', label:'Empréstimo Consignado'},
   {id:'folha__adto', category:'folha', label:'Adiantamento'},
   {id:'folha__fechamento', category:'folha', label:'Fechamento Fopag'},
-  {id:'folha__adto13', category:'folha', label:'Adiantamento 13º', seasonalMonth:11},
-  {id:'folha__sal13', category:'folha', label:'13º Salário', seasonalMonth:12},
+  {id:'folha__adto13', category:'folha', label:'Adiantamento 13º', seasonalMonth:11, dueDayRule:'fixo', dueDay:30, weekendAdjust:'postergar'},
+  {id:'folha__sal13', category:'folha', label:'13º Salário', seasonalMonth:12, dueDayRule:'fixo', dueDay:20, weekendAdjust:'postergar'},
   {id:'suframa__insc', category:'suframa', label:'Insc. Suframa'},
   {id:'suframa__venc', category:'suframa', label:'Vencimento Insc.'},
   {id:'suframa__gru', category:'suframa', label:'Gerar GRU'},
