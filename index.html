@@ -489,6 +489,28 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .obrig-table td{padding:.55rem .6rem; border-bottom:1px solid var(--line); vertical-align:middle;}
 .obrig-tr:hover{background:#FBFAF5;}
 .obrig-tr.overdue{background:var(--bad-bg);}
+.obrig-tr.is-selected{background:#EAF1FB;}
+.obrig-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+.obrig-table th.sortable:hover{color:var(--ink);}
+.obrig-summary{display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem;}
+.obrig-summary-chip{
+  background:#fff; border:1px solid var(--line-strong); border-radius:20px; padding:.35rem .8rem;
+  font-size:.78rem; color:var(--muted);
+}
+.obrig-summary-chip .num{font-weight:700; color:var(--ink); margin-right:.25rem;}
+.obrig-summary-chip.chip-overdue{border-color:#E3A0A0; background:var(--bad-bg);}
+.obrig-summary-chip.chip-overdue .num{color:var(--bad);}
+.obrig-summary-chip.chip-done{border-color:#BFE0CD; background:var(--good-bg);}
+.obrig-summary-chip.chip-done .num{color:var(--good);}
+.obrig-bulk-bar{
+  display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; background:#F5F1E6; border:1px solid var(--line-strong);
+  border-radius:10px; padding:.6rem .8rem; margin-bottom:.8rem;
+}
+.obrig-bulk-bar select{
+  padding:.35rem .6rem; border:1px solid var(--line-strong); border-radius:7px; font-size:.78rem;
+  font-family:'Public Sans',sans-serif;
+}
+.obrig-row-checkbox, #obrigSelectAll{width:15px; height:15px; accent-color:var(--accent); cursor:pointer;}
 .obrig-td-empresa{font-weight:600; min-width:160px;}
 .obrig-cat-tag{font-size:.68rem; color:var(--muted); margin-top:.1rem;}
 .obrig-status-select{
@@ -2290,6 +2312,9 @@ let docTypesFilterSearch = '';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
+let obrigSortColumn = 'vencimento';
+let obrigSortDirection = 'asc';
+let obrigSelectedKeys = new Set();
 const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
 const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 const DEFAULT_ORGAO_OPTIONS = ['Receita Federal', 'SEFAZ/AM', 'SEMEF (Prefeitura de Manaus)', 'Caixa Econômica Federal', 'Junta Comercial', 'Ministério do Trabalho'];
@@ -2490,10 +2515,25 @@ function computeObrigacoesRows(){
     });
   });
   rows.sort((a,b)=>{
-    if(a.vencimento && b.vencimento) return a.vencimento - b.vencimento;
-    if(a.vencimento) return -1;
-    if(b.vencimento) return 1;
-    return a.company.nome.localeCompare(b.company.nome);
+    let cmp = 0;
+    if(obrigSortColumn==='empresa'){
+      cmp = a.company.nome.localeCompare(b.company.nome);
+    } else if(obrigSortColumn==='obrigacao'){
+      cmp = a.item.label.localeCompare(b.item.label);
+    } else if(obrigSortColumn==='status'){
+      cmp = a.entry.status.localeCompare(b.entry.status);
+    } else if(obrigSortColumn==='responsavel'){
+      const an = a.entry.responsavelId ? (state.users.find(u=>u.id===a.entry.responsavelId)||{}).nome||'' : '';
+      const bn = b.entry.responsavelId ? (state.users.find(u=>u.id===b.entry.responsavelId)||{}).nome||'' : '';
+      cmp = an.localeCompare(bn);
+    } else { // vencimento (padrão)
+      if(a.vencimento && b.vencimento) cmp = a.vencimento - b.vencimento;
+      else if(a.vencimento) cmp = -1;
+      else if(b.vencimento) cmp = 1;
+      else cmp = a.company.nome.localeCompare(b.company.nome);
+    }
+    if(cmp===0) cmp = a.company.nome.localeCompare(b.company.nome);
+    return obrigSortDirection==='desc' ? -cmp : cmp;
   });
   return rows;
 }
@@ -2507,7 +2547,9 @@ function obrigRowHtml(row){
   const responsavel = row.entry.responsavelId ? state.users.find(u=>u.id===row.entry.responsavelId) : null;
   const vencFmt = row.vencimento ? row.vencimento.toLocaleDateString('pt-BR') : '—';
   const overdue = row.vencimento && !isResolvedStatus(row.entry.status) && row.vencimento < new Date(new Date().setHours(0,0,0,0));
-  return `<tr class="obrig-tr ${overdue?'overdue':''}" data-obrig-key="${key}">
+  const checked = obrigSelectedKeys.has(key);
+  return `<tr class="obrig-tr ${overdue?'overdue':''} ${checked?'is-selected':''}" data-obrig-key="${key}">
+    <td><input type="checkbox" class="obrig-row-checkbox" data-obrig-select="${key}" ${checked?'checked':''}></td>
     <td class="obrig-td-empresa">${escapeHtml(row.company.nome)}</td>
     <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}${row.ob&&row.ob.esfera?' · '+row.ob.esfera:''}${row.ob&&row.ob.area?' · '+row.ob.area:''}</div></td>
     <td class="mono">
@@ -2544,13 +2586,28 @@ function renderObrigacoes(){
   const rows = computeObrigacoesRows();
   const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(u=>`<option value="${u.id}" ${obrigFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
+  const today = new Date(new Date().setHours(0,0,0,0));
+  const totalCount = rows.length;
+  const overdueCount = rows.filter(r=>r.vencimento && !isResolvedStatus(r.entry.status) && r.vencimento < today).length;
+  const doneCount = rows.filter(r=>isResolvedStatus(r.entry.status)).length;
+  const pendingCount = totalCount - doneCount - overdueCount;
+  function sortArrow(col){ return obrigSortColumn===col ? (obrigSortDirection==='asc'?' ▲':' ▼') : ''; }
   container.innerHTML = `
     <div class="painel-header-row">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Obrigações</div>
         <div class="sheet-sub" style="margin-bottom:0;">Vencimento, responsável e status de cada obrigação por empresa. ${obrigPeriodDescription()}.</div>
       </div>
-      <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
+      <div style="display:flex; gap:.5rem;">
+        <button type="button" class="btn ghost small" id="btnExportarObrigacoes">Exportar</button>
+        <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
+      </div>
+    </div>
+    <div class="obrig-summary">
+      <div class="obrig-summary-chip"><span class="num">${totalCount}</span> total</div>
+      <div class="obrig-summary-chip chip-pending"><span class="num">${pendingCount}</span> pendente${pendingCount===1?'':'s'}</div>
+      <div class="obrig-summary-chip chip-overdue"><span class="num">${overdueCount}</span> atrasada${overdueCount===1?'':'s'}</div>
+      <div class="obrig-summary-chip chip-done"><span class="num">${doneCount}</span> concluída${doneCount===1?'':'s'}</div>
     </div>
     <div class="obrig-filters">
       <div class="obrig-mode-toggle">
@@ -2588,21 +2645,36 @@ function renderObrigacoes(){
         ${state.areaOptions.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
       </select>
     </div>` : ''}
+    <div id="obrigBulkBar" class="obrig-bulk-bar" style="display:none;">
+      <span id="obrigBulkCount"></span>
+      <select id="obrigBulkStatus">
+        <option value="">Mudar status para…</option>
+        ${statusOptionsHtml(null)}
+      </select>
+      <select id="obrigBulkResp">
+        <option value="">Mudar responsável para…</option>
+        <option value="__none__">— sem responsável —</option>
+        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
+      </select>
+      <button type="button" class="btn accent small" id="btnAplicarLote">Aplicar</button>
+      <button type="button" class="btn ghost small" id="btnLimparSelecao">Limpar seleção</button>
+    </div>
     <div style="overflow-x:auto;">
     <table class="obrig-table">
       <thead>
         <tr>
-          <th>Empresa</th>
-          <th>Obrigação</th>
-          <th>Vencimento</th>
-          <th>Status</th>
-          <th>Responsável</th>
+          <th><input type="checkbox" id="obrigSelectAll"></th>
+          <th class="sortable" data-obrig-sort="empresa">Empresa${sortArrow('empresa')}</th>
+          <th class="sortable" data-obrig-sort="obrigacao">Obrigação${sortArrow('obrigacao')}</th>
+          <th class="sortable" data-obrig-sort="vencimento">Vencimento${sortArrow('vencimento')}</th>
+          <th class="sortable" data-obrig-sort="status">Status${sortArrow('status')}</th>
+          <th class="sortable" data-obrig-sort="responsavel">Responsável${sortArrow('responsavel')}</th>
           <th>Detalhes</th>
           <th>Comprovante</th>
         </tr>
       </thead>
       <tbody id="obrigTbody">
-        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="7"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
+        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
       </tbody>
     </table>
     </div>
@@ -2636,6 +2708,91 @@ function wireObrigacoesHandlers(rows){
   document.getElementById('btnToggleMaisFiltros').addEventListener('click', ()=>{
     obrigShowMoreFilters = !obrigShowMoreFilters;
     renderObrigacoes();
+  });
+
+  // Ordenação por coluna: clicar alterna asc/desc; trocar de coluna começa em asc.
+  container.querySelectorAll('[data-obrig-sort]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const col = th.dataset.obrigSort;
+      if(obrigSortColumn===col) obrigSortDirection = obrigSortDirection==='asc' ? 'desc' : 'asc';
+      else { obrigSortColumn = col; obrigSortDirection = 'asc'; }
+      renderObrigacoes();
+    });
+  });
+
+  // Seleção de linhas (pra ações em lote)
+  function updateBulkBar(){
+    const bar = document.getElementById('obrigBulkBar');
+    const count = obrigSelectedKeys.size;
+    bar.style.display = count>0 ? 'flex' : 'none';
+    document.getElementById('obrigBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
+  }
+  const selectAllChk = document.getElementById('obrigSelectAll');
+  selectAllChk.addEventListener('change', ()=>{
+    if(selectAllChk.checked){ rows.forEach(r=> obrigSelectedKeys.add(obrigRowKey(r))); }
+    else { rows.forEach(r=> obrigSelectedKeys.delete(obrigRowKey(r))); }
+    renderObrigacoes();
+  });
+  container.querySelectorAll('[data-obrig-select]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const key = chk.dataset.obrigSelect;
+      if(chk.checked) obrigSelectedKeys.add(key); else obrigSelectedKeys.delete(key);
+      chk.closest('tr').classList.toggle('is-selected', chk.checked);
+      updateBulkBar();
+    });
+  });
+  document.getElementById('btnLimparSelecao').addEventListener('click', ()=>{
+    obrigSelectedKeys.clear();
+    renderObrigacoes();
+  });
+  document.getElementById('btnAplicarLote').addEventListener('click', async ()=>{
+    const newStatus = document.getElementById('obrigBulkStatus').value;
+    const newResp = document.getElementById('obrigBulkResp').value;
+    if(!newStatus && !newResp){
+      await showConfirm('Escolha um novo status e/ou um novo responsável antes de aplicar.', 'Ok');
+      return;
+    }
+    const selectedRows = rows.filter(r=> obrigSelectedKeys.has(obrigRowKey(r)));
+    selectedRows.forEach(r=>{
+      if(newStatus) setObligationField(r.period, r.company.id, r.item.id, 'status', newStatus);
+      if(newResp) setObligationField(r.period, r.company.id, r.item.id, 'responsavelId', newResp==='__none__' ? null : newResp);
+    });
+    obrigSelectedKeys.clear();
+    renderObrigacoes();
+    renderTabs();
+  });
+  updateBulkBar();
+
+  // Exportar a lista filtrada/ordenada atual pra uma planilha .xlsx
+  document.getElementById('btnExportarObrigacoes').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnExportarObrigacoes');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Gerando…';
+    try{
+      await ensureXlsx();
+      const data = rows.map(r=>({
+        'Empresa': r.company.nome,
+        'Obrigação': r.item.label,
+        'Tributação': CATEGORY_LABELS[r.category] || r.category,
+        'Vencimento': r.vencimento ? r.vencimento.toLocaleDateString('pt-BR') : '',
+        'Status': OBRIG_STATUS_LABELS[r.entry.status] || r.entry.status,
+        'Responsável': r.entry.responsavelId ? ((state.users.find(u=>u.id===r.entry.responsavelId)||{}).nome || '') : '',
+        'Detalhes': r.entry.detalhes || '',
+        'Comprovante': r.entry.comprovante || '',
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Obrigações');
+      const periodoTxt = obrigPeriodDescription().replace(/[^a-zA-Z0-9]+/g,'_');
+      XLSX.writeFile(wb, `Obrigacoes_${periodoTxt}.xlsx`);
+    }catch(e){
+      console.error(e);
+      await showConfirm('Não foi possível gerar o arquivo. Verifique sua conexão e tente de novo.', 'Ok');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = original;
+    }
   });
 
   function findRow(key){ return rows.find(r=>obrigRowKey(r)===key); }
