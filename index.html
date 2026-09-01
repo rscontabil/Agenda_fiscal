@@ -427,6 +427,7 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 }
 .envio-remove-btn{flex-shrink:0; font-size:1.1rem;}
 .envio-footer{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem;}
+.envio-progress-wrap{margin:.8rem 0;}
 .envio-footer-info{font-size:.8rem; color:var(--muted);}
 
 .modal-wide{max-width:760px;}
@@ -757,6 +758,7 @@ let selectedYear = String(now.getFullYear());
 let saveTimer = null;
 let envioItems = [];
 let envioSending = false;
+let envioShowHistory = false;
 let importItems = [];
 
 /* ---------- Firebase (login por pessoa + banco de dados em tempo real) ---------- */
@@ -917,6 +919,7 @@ function migrateState(){
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
   if(!state.customCategories){ state.customCategories = []; changed = true; }
   if(!state.silencedReminders){ state.silencedReminders = {}; changed = true; }
+  if(!state.sentDocuments){ state.sentDocuments = []; changed = true; }
   // Divide a categoria antiga "Presumido e Real" em duas categorias separadas: "Lucro Presumido"
   // e "Lucro Real". As obrigações que já existiam viram "Lucro Presumido" (mantendo o mesmo id,
   // pra não quebrar nada de quem já usa Presumido), e uma cópia de cada uma é criada em "Lucro
@@ -2156,6 +2159,18 @@ function getObligationEntry(period, companyId, itemKey){
     obj[companyId][itemKey] = {status:'nao_iniciada', responsavelId:null, detalhes:'', comprovante:''};
   }
   return obj[companyId][itemKey];
+}
+// Igual à getObligationEntry, mas pra uma chave de período ESPECÍFICA (ex: "2026-01"), em vez do
+// mês/ano/trimestre atualmente selecionado na tela — usado quando a competência vem de outro lugar
+// (como a leitura de um PDF), não da navegação do usuário.
+function getObligationEntryForKey(period, pk, companyId, itemKey){
+  const store = period==='year' ? state.annual : (period==='quarter' ? state.quarterly : state.monthly);
+  if(!store[pk]) store[pk] = {};
+  if(!store[pk][companyId]) store[pk][companyId] = {};
+  if(!store[pk][companyId][itemKey]){
+    store[pk][companyId][itemKey] = {status:'nao_iniciada', responsavelId:null, detalhes:'', comprovante:''};
+  }
+  return store[pk][companyId][itemKey];
 }
 function setObligationField(period, companyId, itemKey, field, value){
   const entry = getObligationEntry(period, companyId, itemKey);
@@ -3635,9 +3650,15 @@ function mountSelectCategoryBlock(containerEl, category, selectedSet){
 function renderEnvioDocumentos(){
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
-    <div class="sheet-title">Envio de Documentos</div>
-    <div class="sheet-sub">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
+    <div class="painel-header-row">
+      <div>
+        <div class="sheet-title" style="margin-bottom:0;">Envio de Documentos</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
+      </div>
+      <button type="button" class="btn ghost small" id="btnToggleHistorico">${envioShowHistory? 'Voltar ao envio' : `📜 Histórico (${state.sentDocuments.length})`}</button>
+    </div>
     ${driveStatus!=='connected' ? `<div class="envio-warn">Conecte o Gmail em <a href="#" id="envioGotoConfig">Configurações</a> antes de enviar (a leitura dos PDFs funciona sem conectar, só o envio precisa).</div>` : ''}
+    ${envioShowHistory ? `<div id="envioHistorico"></div>` : `
     <div class="envio-dropzone" id="envioDropzone">
       <input type="file" id="envioFileInput" multiple accept="application/pdf" style="display:none;">
       <div class="envio-dropzone-inner">
@@ -3645,9 +3666,48 @@ function renderEnvioDocumentos(){
       </div>
     </div>
     <div id="envioResults"></div>
+    `}
   `;
-  wireEnvioDropzone();
-  renderEnvioResults();
+  document.getElementById('btnToggleHistorico').addEventListener('click', ()=>{
+    envioShowHistory = !envioShowHistory;
+    renderEnvioDocumentos();
+  });
+  const gotoLink2 = document.getElementById('envioGotoConfig');
+  if(gotoLink2) gotoLink2.addEventListener('click', (e)=>{ e.preventDefault(); activeTab='config'; renderAll(); });
+  if(envioShowHistory){
+    renderEnvioHistorico();
+  } else {
+    wireEnvioDropzone();
+    renderEnvioResults();
+  }
+}
+
+function renderEnvioHistorico(){
+  const el = document.getElementById('envioHistorico');
+  if(!el) return;
+  const list = state.sentDocuments.filter(matchesSearch2);
+  function matchesSearch2(d){
+    if(!searchQuery) return true;
+    return (d.companyNome||'').toLowerCase().includes(searchQuery.toLowerCase());
+  }
+  el.innerHTML = `
+    <div class="obrig-table-wrap" style="overflow-x:auto;">
+    <table class="obrig-table">
+      <thead><tr><th>Empresa</th><th>Documento</th><th>Competência</th><th>Vencimento</th><th>Enviado em</th></tr></thead>
+      <tbody>
+        ${list.length? list.map(d=>`
+          <tr>
+            <td class="obrig-td-empresa">${escapeHtml(d.companyNome)}</td>
+            <td>${escapeHtml(d.docTypeName)}<div class="obrig-cat-tag">${escapeHtml(d.nome)}</div></td>
+            <td class="mono">${escapeHtml(d.competencia||'—')}</td>
+            <td class="mono">${escapeHtml(d.vencimento||'—')}</td>
+            <td class="mono">${new Date(d.sentAt).toLocaleString('pt-BR')}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="5"><div class="empty-note">${state.sentDocuments.length===0 ? 'Nenhum documento enviado ainda.' : 'Nenhum documento encontrado com essa busca.'}</div></td></tr>`}
+      </tbody>
+    </table>
+    </div>
+  `;
 }
 
 function wireEnvioDropzone(){
@@ -3661,8 +3721,6 @@ function wireEnvioDropzone(){
     e.preventDefault(); dz.classList.remove('dragover');
     handleEnvioFiles(e.dataTransfer.files);
   });
-  const gotoLink = document.getElementById('envioGotoConfig');
-  if(gotoLink) gotoLink.addEventListener('click', (e)=>{ e.preventDefault(); activeTab='config'; renderAll(); });
 }
 
 async function handleEnvioFiles(fileList){
@@ -3720,7 +3778,7 @@ function envioRowHtml(item){
   if(item.status==='processing') statusBadge = `<span class="envio-badge envio-badge-processing">Lendo…</span>`;
   else if(item.status==='error') statusBadge = `<span class="envio-badge envio-badge-error">${item.error}</span>`;
   else if(item.status==='sent') statusBadge = `<span class="envio-badge envio-badge-sent">✓ Enviado</span>`;
-  else if(item.status==='send-error') statusBadge = `<span class="envio-badge envio-badge-error">${item.sendError}</span>`;
+  else if(item.status==='send-error') statusBadge = `<span class="envio-badge envio-badge-error">${item.sendError}</span> <button type="button" class="btn ghost small" data-envio-retry="${item.id}" style="margin-left:.4rem;">Tentar novamente</button>`;
   else if(!company) statusBadge = `<span class="envio-badge envio-badge-warn">Cliente não identificado</span>`;
   else if(!hasEmail) statusBadge = `<span class="envio-badge envio-badge-warn">Empresa sem e-mail cadastrado</span>`;
   else if(!docType) statusBadge = `<span class="envio-badge envio-badge-warn">Tipo não identificado</span>`;
@@ -3753,6 +3811,11 @@ function renderEnvioResults(){
   const readyCount = envioItems.filter(i=> i.include && i.status==='ready').length;
   el.innerHTML = `
     <div class="envio-list">${envioItems.map(envioRowHtml).join('')}</div>
+    ${envioSending ? `
+    <div class="envio-progress-wrap">
+      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${envioSendProgress.total? Math.round(envioSendProgress.current/envioSendProgress.total*100):0}%;"></div></div>
+      <div class="painel-progress-sub">Enviando ${envioSendProgress.current} de ${envioSendProgress.total}…</div>
+    </div>` : ''}
     <div class="envio-footer">
       <div class="envio-footer-info">${readyCount} documento(s) selecionado(s) para envio</div>
       <div style="display:flex; gap:.6rem;">
@@ -3825,10 +3888,76 @@ function wireEnvioResultHandlers(){
       renderEnvioResults();
     });
   });
+  el.querySelectorAll('[data-envio-retry]').forEach(btn=>{
+    btn.addEventListener('click', ()=> retryEnvioItem(btn.dataset.envioRetry));
+  });
   const clearBtn = document.getElementById('envioClearBtn');
   if(clearBtn) clearBtn.addEventListener('click', ()=>{ envioItems = []; renderEnvioResults(); });
   const sendBtn = document.getElementById('envioSendBtn');
   if(sendBtn) sendBtn.addEventListener('click', sendEnvioSelected);
+}
+
+// Tenta extrair a competência de um texto livre (ex: "01/2026", "2026-01") e devolve a chave de
+// mês "YYYY-MM"; se não conseguir reconhecer, usa o mês informado como reserva.
+function parseCompetenciaToMonthKey(competencia, fallbackMonthKey){
+  if(!competencia) return fallbackMonthKey;
+  let m = competencia.match(/(\d{1,2})[\/\-](\d{4})/);
+  if(m){
+    const mm = String(parseInt(m[1],10)).padStart(2,'0');
+    if(parseInt(m[1],10)>=1 && parseInt(m[1],10)<=12) return `${m[2]}-${mm}`;
+  }
+  m = competencia.match(/(\d{4})[\/\-](\d{1,2})/);
+  if(m){
+    const mm = String(parseInt(m[2],10)).padStart(2,'0');
+    if(parseInt(m[2],10)>=1 && parseInt(m[2],10)<=12) return `${m[1]}-${mm}`;
+  }
+  return fallbackMonthKey;
+}
+
+let envioSendProgress = {current:0, total:0};
+
+// Envia um único item (usado tanto no envio em lote quanto no "tentar novamente"). Se o tipo de
+// documento tiver uma obrigação vinculada, marca ela como "Enviada" pra essa empresa/competência.
+async function sendSingleEnvioItem(item){
+  const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+  const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+  if(!company || !company.email || !docType){
+    item.status = 'send-error';
+    item.sendError = 'Falta cliente, e-mail ou tipo de documento.';
+    return;
+  }
+  try{
+    const buffer = await item.file.arrayBuffer();
+    const base64 = arrayBufferToBase64(buffer);
+    const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
+    const subject = fillTemplate(docType.emailSubject, vars);
+    const body = fillTemplate(docType.emailBody, vars);
+    await sendGmailWithAttachment({ to: company.email, subject, body, attachmentName: item.name, attachmentBase64: base64 });
+    item.status = 'sent';
+    if(!state.sentDocuments) state.sentDocuments = [];
+    state.sentDocuments.unshift({
+      id: 'sent_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      nome: item.name, companyId: company.id, companyNome: company.nome, docTypeName: docType.name,
+      competencia: item.competencia||'', vencimento: item.vencimento||'', sentAt: new Date().toISOString(), subject,
+    });
+    if(docType.linkedObligationId){
+      const ob = state.obligations.find(o=>o.id===docType.linkedObligationId);
+      if(ob){
+        const period = TAB_DEFS[ob.category] ? TAB_DEFS[ob.category].period : 'month';
+        let pk;
+        if(period==='year') pk = parseCompetenciaToMonthKey(item.competencia, selectedYear).slice(0,4);
+        else if(period==='quarter') pk = selectedQuarter; // trimestre não dá pra inferir do texto com segurança — usa o selecionado
+        else pk = parseCompetenciaToMonthKey(item.competencia, selectedMonth);
+        const entry = getObligationEntryForKey(period, pk, company.id, ob.id);
+        entry.status = 'enviada';
+        if(!entry.comprovante) entry.comprovante = `Enviado por e-mail em ${new Date().toLocaleDateString('pt-BR')}`;
+      }
+    }
+    persist();
+  }catch(e){
+    item.status = 'send-error';
+    item.sendError = e.message || 'Erro ao enviar.';
+  }
 }
 
 async function sendEnvioSelected(){
@@ -3838,31 +3967,32 @@ async function sendEnvioSelected(){
     return;
   }
   envioSending = true;
-  renderEnvioResults();
   const toSend = envioItems.filter(i=> i.include && i.status==='ready');
+  envioSendProgress = {current:0, total:toSend.length};
+  renderEnvioResults();
   for(const item of toSend){
-    const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
-    const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
-    if(!company || !company.email || !docType){
-      item.status = 'send-error';
-      item.sendError = 'Falta cliente, e-mail ou tipo de documento.';
-      continue;
-    }
-    try{
-      const buffer = await item.file.arrayBuffer();
-      const base64 = arrayBufferToBase64(buffer);
-      const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
-      const subject = fillTemplate(docType.emailSubject, vars);
-      const body = fillTemplate(docType.emailBody, vars);
-      await sendGmailWithAttachment({ to: company.email, subject, body, attachmentName: item.name, attachmentBase64: base64 });
-      item.status = 'sent';
-    }catch(e){
-      item.status = 'send-error';
-      item.sendError = e.message || 'Erro ao enviar.';
-    }
+    await sendSingleEnvioItem(item);
+    envioSendProgress.current++;
     renderEnvioResults();
   }
   envioSending = false;
+  renderTabs(); // atualiza contadores caso alguma obrigação tenha sido marcada como enviada
+  renderEnvioResults();
+}
+
+async function retryEnvioItem(itemId){
+  const item = envioItems.find(i=>i.id===itemId);
+  if(!item) return;
+  if(driveStatus!=='connected'){
+    const ok = await showConfirm('Você precisa conectar o Gmail primeiro, em Configurações. Ir para lá agora?', 'Ir para Configurações');
+    if(ok){ activeTab='config'; renderAll(); }
+    return;
+  }
+  item.status = 'ready';
+  item.sendError = null;
+  renderEnvioResults();
+  await sendSingleEnvioItem(item);
+  renderTabs();
   renderEnvioResults();
 }
 
@@ -5058,7 +5188,7 @@ function renderDocTypesList(){
 function openDocTypeModal(docTypeId){
   const editing = !!docTypeId;
   const dt = editing ? state.docTypes.find(d=>d.id===docTypeId) : {
-    name:'', keywords:[], excludeKeywords:[],
+    name:'', keywords:[], excludeKeywords:[], linkedObligationId:'',
     emailSubject:'Documento - {empresa}',
     emailBody:'Olá,\n\nSegue em anexo o documento referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nAtenciosamente,\nEquipe Contábil',
   };
@@ -5073,6 +5203,16 @@ function openDocTypeModal(docTypeId){
           <div class="form-row"><label>O PDF NÃO pode conter (opcional, separe por vírgula)</label><input id="dtExclude" type="text" value="${(dt.excludeKeywords||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="Ex: PARCSN, Parcelamento"></div>
           <div class="form-row"><label>Assunto do e-mail</label><input id="dtSubject" type="text" value="${dt.emailSubject.replace(/"/g,'&quot;')}"></div>
           <div class="form-row"><label>Corpo do e-mail</label><textarea id="dtBody" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${dt.emailBody}</textarea></div>
+          <div class="form-row"><label>Ao enviar, marcar esta obrigação como enviada (opcional)</label>
+            <select id="dtLinkedObligation">
+              <option value="">— nenhuma —</option>
+              ${state.obligations.slice().sort((a,b)=>{
+                const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
+                return ci!==0 ? ci : a.label.localeCompare(b.label);
+              }).map(o=>`<option value="${o.id}" ${dt.linkedObligationId===o.id?'selected':''}>${CATEGORY_LABELS[o.category]} — ${escapeHtml(o.label)}</option>`).join('')}
+            </select>
+            <div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Ao enviar um PDF desse tipo pra uma empresa, o status dessa obrigação vira "Enviada" automaticamente pra ela, na competência lida do documento (ou no mês atual, se não conseguir ler).</div>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -5090,12 +5230,13 @@ function openDocTypeModal(docTypeId){
     const excludeKeywords = document.getElementById('dtExclude').value.split(',').map(s=>s.trim()).filter(Boolean);
     const emailSubject = document.getElementById('dtSubject').value.trim() || 'Documento - {empresa}';
     const emailBody = document.getElementById('dtBody').value;
+    const linkedObligationId = document.getElementById('dtLinkedObligation').value || null;
     if(editing){
       const freshDt = state.docTypes.find(d=>d.id===docTypeId);
       if(!freshDt){ root.innerHTML=''; return; }
-      Object.assign(freshDt, {name, keywords, excludeKeywords, emailSubject, emailBody});
+      Object.assign(freshDt, {name, keywords, excludeKeywords, emailSubject, emailBody, linkedObligationId});
     } else {
-      state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody });
+      state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody, linkedObligationId });
     }
     persist();
     root.innerHTML = '';
