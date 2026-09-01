@@ -875,6 +875,7 @@ function migrateState(){
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
   if(!state.customCategories){ state.customCategories = []; changed = true; }
+  if(!state.silencedReminders){ state.silencedReminders = {}; changed = true; }
   // Divide a categoria antiga "Presumido e Real" em duas categorias separadas: "Lucro Presumido"
   // e "Lucro Real". As obrigações que já existiam viram "Lucro Presumido" (mantendo o mesmo id,
   // pra não quebrar nada de quem já usa Presumido), e uma cópia de cada uma é criada em "Lucro
@@ -2162,9 +2163,14 @@ function computeUpcomingReminders(){
         const bucket = state.monthly[compKey] && state.monthly[compKey][c.id] && state.monthly[compKey][c.id][ob.id];
         const done = !!(bucket && isResolvedStatus(bucket.status));
         if(done) return;
+        const silenceKey = `${c.id}::${ob.id}::${compKey}`;
+        if(state.silencedReminders && state.silencedReminders[silenceKey]) return; // marcado como "não enviar" pra essa competência
         results.push({
           company: c,
+          companyId: c.id,
+          obligationId: ob.id,
           obligationLabel: ob.label,
+          compKey,
           due,
           diffDays,
           category: cat,
@@ -3488,6 +3494,7 @@ function lembreteRowHtml(r, idx){
     <div class="lembrete-actions">
       <button type="button" class="btn ghost small" data-lembrete-whatsapp="${idx}" ${r.company.telefone? '' : 'disabled title="Empresa sem telefone cadastrado"'}>WhatsApp</button>
       <button type="button" class="btn ghost small" data-lembrete-email="${idx}" ${r.company.email? '' : 'disabled title="Empresa sem e-mail cadastrado"'}>E-mail</button>
+      <button type="button" class="btn ghost small" data-lembrete-silenciar="${idx}" title="Esconde esse lembrete específico da lista, sem marcar a tarefa como concluída">Não enviar</button>
     </div>
   </div>`;
 }
@@ -3528,6 +3535,17 @@ function wireLembreteHandlers(reminders){
         btn.title = e.message || 'Erro ao enviar';
         setTimeout(()=>{ btn.disabled=false; btn.textContent=originalText; }, 2500);
       }
+    });
+  });
+  listEl.querySelectorAll('[data-lembrete-silenciar]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = reminders[parseInt(btn.dataset.lembreteSilenciar,10)];
+      if(!state.silencedReminders) state.silencedReminders = {};
+      const silenceKey = `${r.companyId}::${r.obligationId}::${r.compKey}`;
+      state.silencedReminders[silenceKey] = true;
+      persist();
+      renderLembretes();
+      renderTabs();
     });
   });
 }
