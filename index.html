@@ -255,6 +255,19 @@ main.config-wide{max-width:1520px;}
 /* ===== Painel ===== */
 .painel-header-row{display:flex; justify-content:space-between; align-items:flex-start; gap:.8rem; flex-wrap:wrap; margin-bottom:1rem;}
 .painel-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem; margin-bottom:1.4rem;}
+.painel-shortcuts{display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.2rem;}
+.painel-progress-card{
+  background:#fff; border:1px solid var(--line-strong); border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.4rem;
+}
+.painel-progress-top{display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; margin-bottom:.5rem;}
+.painel-progress-label{font-family:'Fraunces',serif; font-weight:600; font-size:.95rem; color:var(--ink-2);}
+.painel-progress-pct{font-size:1.6rem; font-weight:700; color:var(--accent);}
+.painel-progress-diff{font-size:.78rem; font-weight:600; padding:.15rem .5rem; border-radius:12px;}
+.painel-progress-diff.up{color:var(--good); background:var(--good-bg);}
+.painel-progress-diff.down{color:var(--bad); background:var(--bad-bg);}
+.painel-progress-bar{width:100%; height:10px; background:#EEF0E9; border-radius:6px; overflow:hidden; margin-bottom:.5rem;}
+.painel-progress-fill{height:100%; background:var(--accent); border-radius:6px; transition:width .3s;}
+.painel-progress-sub{font-size:.76rem; color:var(--muted);}
 .painel-card{
   border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
 }
@@ -2157,9 +2170,9 @@ function buildWhatsAppLink(phone, message){
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
-function computeUpcomingReminders(){
+function computeUpcomingReminders(diasAntesOverride){
   const settings = state.reminderSettings || {diasAntes:3};
-  const diasAntes = settings.diasAntes || 3;
+  const diasAntes = diasAntesOverride!=null ? diasAntesOverride : (settings.diasAntes || 3);
   const today = new Date();
   today.setHours(0,0,0,0);
   const results = [];
@@ -2272,7 +2285,7 @@ function renderStats(){
   el.querySelectorAll('[data-jump]').forEach(card=>{
     card.addEventListener('click', ()=>{
       activeTab = card.dataset.jump;
-      if(card.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = card.dataset.jumpCat; }
+      if(card.dataset.jumpCat){ obrigViewMode = 'month'; obrigFilterCategoria = card.dataset.jumpCat; }
       renderAll();
     });
   });
@@ -3024,6 +3037,31 @@ function openNovaObrigacaoModal(){
   };
 }
 
+// Calcula o progresso (total/concluído) de obrigações mensais pra um mês específico, sem depender
+// do mês atualmente selecionado na tela — usado pra comparar mês atual x mês anterior no Painel.
+function computeMonthProgress(monthKey){
+  const companies = activeCompanies();
+  let total = 0, done = 0;
+  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
+    const def = TAB_DEFS[cat];
+    companies.filter(def.filter).forEach(c=>{
+      const items = def.items(c, monthKey);
+      items.forEach(it=>{
+        total++;
+        const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
+        if(bucket && isResolvedStatus(bucket.status)) done++;
+      });
+    });
+  });
+  return {total, done, pct: total? Math.round(done/total*100) : 0};
+}
+function previousMonthKey(monthKey){
+  let [y,m] = monthKey.split('-').map(Number);
+  m -= 1;
+  if(m < 1){ m = 12; y -= 1; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+
 function renderPainel(){
   const companies = activeCompanies();
   const rows = [];
@@ -3057,6 +3095,11 @@ function renderPainel(){
     .sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm))
     .slice(0,5);
 
+  const currentProgress = computeMonthProgress(selectedMonth);
+  const prevProgress = computeMonthProgress(previousMonthKey(selectedMonth));
+  const pctDiff = currentProgress.pct - prevProgress.pct;
+  const proximosVencimentos = computeUpcomingReminders(7).filter(r=>r.diffDays>=0).slice(0,6);
+
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="painel-header-row">
@@ -3066,11 +3109,42 @@ function renderPainel(){
       </div>
       <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="btn ghost small">💬 Abrir WhatsApp Web ↗</a>
     </div>
+
+    <div class="painel-shortcuts">
+      <button type="button" class="btn ghost small" id="shortcutNovaEmpresa">+ Nova empresa</button>
+      <button type="button" class="btn ghost small" id="shortcutNovaObrigacao">+ Nova obrigação</button>
+      <button type="button" class="btn ghost small" id="shortcutNovaDemanda">+ Nova demanda</button>
+      <button type="button" class="btn ghost small" id="shortcutEnviarDocumento">📎 Enviar documento</button>
+    </div>
+
+    <div class="painel-progress-card">
+      <div class="painel-progress-top">
+        <span class="painel-progress-label">Progresso do mês</span>
+        <span class="painel-progress-pct">${currentProgress.pct}%</span>
+        ${prevProgress.total>0 ? `<span class="painel-progress-diff ${pctDiff>=0?'up':'down'}">${pctDiff>=0?'▲':'▼'} ${Math.abs(pctDiff)}pp vs. mês anterior</span>` : ''}
+      </div>
+      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${currentProgress.pct}%;"></div></div>
+      <div class="painel-progress-sub">${currentProgress.done} de ${currentProgress.total} obrigações concluídas${prevProgress.total>0 ? ` · mês anterior: ${prevProgress.pct}% (${prevProgress.done}/${prevProgress.total})` : ''}</div>
+    </div>
+
     <div class="painel-grid">
       <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
       <div class="painel-card clickable" data-scroll="pendingSection"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
       <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
       <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
+    </div>
+
+    <div class="sheet-title" style="font-size:1rem;">Próximos vencimentos (7 dias)</div>
+    <div class="pending-list" style="margin-bottom:1.4rem;">
+      ${proximosVencimentos.length? proximosVencimentos.map(r=>`
+        <div class="pending-row">
+          <div>
+            <div class="name">${escapeHtml(r.company.nome)}</div>
+            <div class="cnpj mono" style="font-size:.7rem;">${escapeHtml(r.obligationLabel)} · ${reminderStatusLabel(r.diffDays)}</div>
+          </div>
+          <span class="go" data-jump="lembretes">Ver →</span>
+        </div>
+      `).join('') : '<div class="empty-note">Nenhum vencimento nos próximos 7 dias.</div>'}
     </div>
 
     <div class="sheet-title" style="font-size:1rem;">Demandas</div>
@@ -3106,10 +3180,22 @@ function renderPainel(){
       `).join('') : '<div class="empty-note">Nenhuma pendência — tudo em dia! 🎉</div>'}
     </div>
   `;
+  document.getElementById('shortcutNovaEmpresa').addEventListener('click', ()=>{
+    activeTab = 'empresas'; renderAll(); openCompanyModal(null);
+  });
+  document.getElementById('shortcutNovaObrigacao').addEventListener('click', ()=>{
+    activeTab = 'obrigacoes'; renderAll(); openNovaObrigacaoModal();
+  });
+  document.getElementById('shortcutNovaDemanda').addEventListener('click', ()=>{
+    activeTab = 'demandas'; renderAll(); openDemandaModal(null);
+  });
+  document.getElementById('shortcutEnviarDocumento').addEventListener('click', ()=>{
+    activeTab = 'envio'; renderAll();
+  });
   container.querySelectorAll('[data-jump]').forEach(el=>{
     el.addEventListener('click', ()=>{
       activeTab = el.dataset.jump;
-      if(el.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = el.dataset.jumpCat; }
+      if(el.dataset.jumpCat){ obrigViewMode = 'month'; obrigFilterCategoria = el.dataset.jumpCat; }
       if(el.dataset.jumpSearch){
         searchQuery = el.dataset.jumpSearch;
         const searchInput = document.getElementById('searchInput');
