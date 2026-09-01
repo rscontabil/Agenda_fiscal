@@ -294,6 +294,9 @@ main.config-wide{max-width:1520px;}
 .pending-row .go:hover{text-decoration:underline;}
 
 .lembrete-list{display:flex; flex-direction:column; gap:.55rem;}
+.lembrete-group{margin-bottom:1.1rem;}
+.lembrete-group-title{font-family:'Fraunces',serif; font-weight:600; font-size:.92rem; color:var(--ink-2); margin-bottom:.5rem;}
+.lembrete-group-count{color:var(--muted); font-weight:400; font-size:.8rem;}
 .lembrete-row{
   display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
   border:1px solid var(--line); border-radius:10px; padding:.7rem .9rem; background:#FCFCFA;
@@ -2253,6 +2256,7 @@ function computeUpcomingReminders(diasAntesOverride){
           companyId: c.id,
           obligationId: ob.id,
           obligationLabel: ob.label,
+          responsavelId: (bucket && bucket.responsavelId) || null,
           compKey,
           due,
           diffDays,
@@ -4068,37 +4072,76 @@ function escapeHtml(str){
 }
 
 /* ---------- Lembretes tab ---------- */
+let lembreteFilterResponsavel = 'todos';
+
 function renderLembretes(){
   const container = document.getElementById('sheetContent');
-  const reminders = computeUpcomingReminders();
+  const allReminders = computeUpcomingReminders();
   const settings = state.reminderSettings || {diasAntes:3};
+  const reminders = lembreteFilterResponsavel==='todos' ? allReminders
+    : lembreteFilterResponsavel==='none' ? allReminders.filter(r=>!r.responsavelId)
+    : allReminders.filter(r=>r.responsavelId===lembreteFilterResponsavel);
+  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(u=>`<option value="${u.id}" ${lembreteFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
   container.innerHTML = `
     <div class="painel-header-row">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Lembretes</div>
         <div class="sheet-sub" style="margin-bottom:0;">Obrigações do mês atual que ainda não foram concluídas, vencendo nos próximos ${settings.diasAntes||3} dia(s) (ou já vencidas). Os modelos de mensagem são configuráveis em Configurações.</div>
       </div>
+      <button type="button" class="btn accent small" id="btnLembreteEnviarTodos" ${reminders.filter(r=>r.company.email).length===0?'disabled':''}>📧 Enviar e-mail pra todos (${reminders.filter(r=>r.company.email).length})</button>
     </div>
+    <div class="obrig-filters" style="margin-bottom:1rem;">
+      <select id="lembreteFilterRespSelect">
+        <option value="todos" ${lembreteFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
+        <option value="none" ${lembreteFilterResponsavel==='none'?'selected':''}>Sem responsável</option>
+        ${userOptions}
+      </select>
+    </div>
+    <div id="lembreteProgressWrap"></div>
     <div id="lembretesList"></div>
   `;
+  document.getElementById('lembreteFilterRespSelect').addEventListener('change', (e)=>{
+    lembreteFilterResponsavel = e.target.value;
+    renderLembretes();
+  });
+  document.getElementById('btnLembreteEnviarTodos').addEventListener('click', ()=> sendAllLembreteEmails(reminders));
   const listEl = document.getElementById('lembretesList');
   if(reminders.length===0){
     listEl.innerHTML = `<div class="empty-note">Nenhum lembrete pendente — tudo em dia! 🎉</div>`;
     return;
   }
-  listEl.innerHTML = `<div class="lembrete-list">${reminders.map((r,idx)=>lembreteRowHtml(r,idx)).join('')}</div>`;
+  // Agrupa por empresa, mantendo a ordem por urgência (o grupo com o lembrete mais urgente vem primeiro)
+  const groups = [];
+  const groupByCompany = {};
+  reminders.forEach(r=>{
+    if(!groupByCompany[r.companyId]){
+      const g = {company:r.company, items:[]};
+      groupByCompany[r.companyId] = g;
+      groups.push(g);
+    }
+    groupByCompany[r.companyId].items.push(r);
+  });
+  listEl.innerHTML = groups.map(g=>`
+    <div class="lembrete-group">
+      <div class="lembrete-group-title">${escapeHtml(g.company.nome)} <span class="lembrete-group-count">(${g.items.length})</span></div>
+      <div class="lembrete-list">${g.items.map(r=>lembreteRowHtml(r, reminders.indexOf(r))).join('')}</div>
+    </div>
+  `).join('');
   wireLembreteHandlers(reminders);
 }
 
 function lembreteRowHtml(r, idx){
   const overdue = r.diffDays < 0;
   const dueFmt = r.due.toLocaleDateString('pt-BR');
+  const responsavel = r.responsavelId ? state.users.find(u=>u.id===r.responsavelId) : null;
   return `<div class="lembrete-row ${overdue?'overdue':''}" data-lembrete-idx="${idx}">
     <div class="lembrete-info">
-      <div class="name">${escapeHtml(r.company.nome)}</div>
-      <div class="meta">${escapeHtml(r.obligationLabel)} · vencimento ${dueFmt} · <strong>${reminderStatusLabel(r.diffDays)}</strong></div>
+      <div class="name">${escapeHtml(r.obligationLabel)}</div>
+      <div class="meta">vencimento ${dueFmt} · <strong>${reminderStatusLabel(r.diffDays)}</strong>${responsavel ? ` · ${escapeHtml(responsavel.nome)}` : ''}</div>
     </div>
     <div class="lembrete-actions">
+      <button type="button" class="btn ghost small" data-lembrete-concluir="${idx}" title="Marca essa obrigação como concluída">✓ Concluir</button>
       <button type="button" class="btn ghost small" data-lembrete-whatsapp="${idx}" ${r.company.telefone? '' : 'disabled title="Empresa sem telefone cadastrado"'}>WhatsApp</button>
       <button type="button" class="btn ghost small" data-lembrete-email="${idx}" ${r.company.email? '' : 'disabled title="Empresa sem e-mail cadastrado"'}>E-mail</button>
       <button type="button" class="btn ghost small" data-lembrete-silenciar="${idx}" title="Esconde esse lembrete específico da lista, sem marcar a tarefa como concluída">Não enviar</button>
@@ -4106,8 +4149,58 @@ function lembreteRowHtml(r, idx){
   </div>`;
 }
 
+async function sendLembreteEmailFor(r){
+  const settings = state.reminderSettings || {};
+  const vars = {empresa: r.company.nome, obrigacao: r.obligationLabel, vencimento: r.due.toLocaleDateString('pt-BR')};
+  const subject = fillTemplate(settings.emailSubjectTemplate || 'Lembrete', vars);
+  const body = fillTemplate(settings.emailBodyTemplate || '', vars);
+  await sendGmailPlain({to: r.company.email, subject, body});
+}
+
+async function sendAllLembreteEmails(reminders){
+  if(driveStatus!=='connected'){
+    const ok = await showConfirm('Você precisa conectar o Gmail primeiro, em Configurações. Ir para lá agora?', 'Ir para Configurações');
+    if(ok){ activeTab='config'; renderAll(); }
+    return;
+  }
+  const toSend = reminders.filter(r=>r.company.email);
+  if(toSend.length===0) return;
+  const ok = await showConfirm(`Enviar o lembrete por e-mail pra ${toSend.length} obrigação(ões)? Cada empresa pode receber mais de um e-mail se tiver mais de uma obrigação pendente.`, 'Enviar todos');
+  if(!ok) return;
+  const progressWrap = document.getElementById('lembreteProgressWrap');
+  const btn = document.getElementById('btnLembreteEnviarTodos');
+  btn.disabled = true;
+  let sent = 0, failed = 0;
+  for(let i=0;i<toSend.length;i++){
+    progressWrap.innerHTML = `
+      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${Math.round((i/toSend.length)*100)}%;"></div></div>
+      <div class="painel-progress-sub">Enviando ${i+1} de ${toSend.length}…</div>
+    `;
+    try{
+      await sendLembreteEmailFor(toSend[i]);
+      sent++;
+    }catch(e){
+      console.error(e);
+      failed++;
+    }
+  }
+  progressWrap.innerHTML = '';
+  await showConfirm(`Envio concluído: ${sent} enviado(s)${failed? `, ${failed} com erro` : ''}.`, 'Ok');
+  btn.disabled = false;
+}
+
 function wireLembreteHandlers(reminders){
   const listEl = document.getElementById('lembretesList');
+  listEl.querySelectorAll('[data-lembrete-concluir]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = reminders[parseInt(btn.dataset.lembreteConcluir,10)];
+      const entry = getObligationEntryForKey('month', r.compKey, r.companyId, r.obligationId);
+      entry.status = 'transmitida';
+      persist();
+      renderTabs();
+      renderLembretes();
+    });
+  });
   listEl.querySelectorAll('[data-lembrete-whatsapp]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const r = reminders[parseInt(btn.dataset.lembreteWhatsapp,10)];
@@ -4126,15 +4219,11 @@ function wireLembreteHandlers(reminders){
         if(ok){ activeTab='config'; renderAll(); }
         return;
       }
-      const settings = state.reminderSettings || {};
-      const vars = {empresa: r.company.nome, obrigacao: r.obligationLabel, vencimento: r.due.toLocaleDateString('pt-BR')};
-      const subject = fillTemplate(settings.emailSubjectTemplate || 'Lembrete', vars);
-      const body = fillTemplate(settings.emailBodyTemplate || '', vars);
       const originalText = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try{
-        await sendGmailPlain({to: r.company.email, subject, body});
+        await sendLembreteEmailFor(r);
         btn.textContent = '✓ Enviado';
       }catch(e){
         console.error(e);
