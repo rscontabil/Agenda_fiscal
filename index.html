@@ -513,6 +513,8 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .emp-table th.sortable:hover{color:var(--ink);}
 .obrig-table th.sortable:hover{color:var(--ink);}
 .obrig-summary{display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem;}
+.obrig-pagination{display:flex; align-items:center; justify-content:center; gap:1rem; margin-top:1rem;}
+.obrig-pagination-info{font-size:.78rem; color:var(--muted);}
 .obrig-summary-chip{
   background:#fff; border:1px solid var(--line-strong); border-radius:20px; padding:.35rem .8rem;
   font-size:.78rem; color:var(--muted);
@@ -1243,7 +1245,6 @@ async function loadState(){
           }
         } else {
           state = snap.data() || {};
-          window.__debugState = state; // temporário: pra diagnosticar direto no console do navegador
           if(!fromCache){
             const changed = migrateState();
             if(changed) persist();
@@ -2349,6 +2350,8 @@ let obrigShowMoreFilters = false;
 let obrigSortColumn = 'vencimento';
 let obrigSortDirection = 'asc';
 let obrigSelectedKeys = new Set();
+let obrigPage = 1;
+const OBRIG_PAGE_SIZE = 60;
 let empFilterTrib = 'todas';
 let empFilterStatus = 'ativas';
 let empFilterFolha = 'todas';
@@ -2631,6 +2634,13 @@ function renderObrigacoes(){
   const overdueCount = rows.filter(r=>r.vencimento && !isResolvedStatus(r.entry.status) && r.vencimento < today).length;
   const doneCount = rows.filter(r=>isResolvedStatus(r.entry.status)).length;
   const pendingCount = totalCount - doneCount - overdueCount;
+  // Pagina a tabela — com muitas empresas, gerar/renderizar centenas de linhas de uma vez deixa a
+  // tela travada por vários segundos. Os cartões de resumo acima continuam contando TODAS as linhas
+  // filtradas, só a tabela em si é que mostra um pedaço de cada vez.
+  const totalPages = Math.max(1, Math.ceil(totalCount / OBRIG_PAGE_SIZE));
+  if(obrigPage > totalPages) obrigPage = totalPages;
+  if(obrigPage < 1) obrigPage = 1;
+  const pageRows = rows.slice((obrigPage-1)*OBRIG_PAGE_SIZE, obrigPage*OBRIG_PAGE_SIZE);
   function sortArrow(col){ return obrigSortColumn===col ? (obrigSortDirection==='asc'?' ▲':' ▼') : ''; }
   container.innerHTML = `
     <div class="painel-header-row">
@@ -2714,12 +2724,18 @@ function renderObrigacoes(){
         </tr>
       </thead>
       <tbody id="obrigTbody">
-        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
+        ${pageRows.length? pageRows.map(obrigRowHtml).join('') : `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
       </tbody>
     </table>
     </div>
+    ${totalPages>1 ? `
+    <div class="obrig-pagination">
+      <button type="button" class="btn ghost small" id="btnObrigPrevPage" ${obrigPage<=1?'disabled':''}>← Anterior</button>
+      <span class="obrig-pagination-info">Página ${obrigPage} de ${totalPages} · ${totalCount} obrigações no total</span>
+      <button type="button" class="btn ghost small" id="btnObrigNextPage" ${obrigPage>=totalPages?'disabled':''}>Próxima →</button>
+    </div>` : ''}
   `;
-  wireObrigacoesHandlers(rows);
+  wireObrigacoesHandlers(pageRows);
 }
 
 function wireObrigacoesHandlers(rows){
@@ -2729,22 +2745,23 @@ function wireObrigacoesHandlers(rows){
     btn.addEventListener('click', ()=>{
       obrigViewMode = btn.dataset.obrigMode;
       obrigFilterCategoria = 'todas';
+      obrigPage = 1;
       renderPeriodControl();
       renderObrigacoes();
     });
   });
   const catSel = document.getElementById('obrigFilterCategoriaSelect');
   const companySel = document.getElementById('obrigFilterCompanySelect');
-  if(companySel) companySel.addEventListener('change', ()=>{ obrigFilterCompany = companySel.value; renderObrigacoes(); });
-  if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; renderObrigacoes(); });
+  if(companySel) companySel.addEventListener('change', ()=>{ obrigFilterCompany = companySel.value; obrigPage=1; renderObrigacoes(); });
+  if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; obrigPage=1; renderObrigacoes(); });
   const esferaSel = document.getElementById('obrigFilterEsferaSelect');
-  if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; renderObrigacoes(); });
+  if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; obrigPage=1; renderObrigacoes(); });
   const areaSel = document.getElementById('obrigFilterAreaSelect');
-  if(areaSel) areaSel.addEventListener('change', ()=>{ obrigFilterArea = areaSel.value; renderObrigacoes(); });
+  if(areaSel) areaSel.addEventListener('change', ()=>{ obrigFilterArea = areaSel.value; obrigPage=1; renderObrigacoes(); });
   const statusSel = document.getElementById('obrigFilterStatusSelect');
-  if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; renderObrigacoes(); });
+  if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; obrigPage=1; renderObrigacoes(); });
   const respSel = document.getElementById('obrigFilterResponsavelSelect');
-  if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; renderObrigacoes(); });
+  if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; obrigPage=1; renderObrigacoes(); });
   document.getElementById('btnToggleMaisFiltros').addEventListener('click', ()=>{
     obrigShowMoreFilters = !obrigShowMoreFilters;
     renderObrigacoes();
@@ -2792,7 +2809,10 @@ function wireObrigacoesHandlers(rows){
       await showConfirm('Escolha um novo status e/ou um novo responsável antes de aplicar.', 'Ok');
       return;
     }
-    const selectedRows = rows.filter(r=> obrigSelectedKeys.has(obrigRowKey(r)));
+    // Busca em TODAS as linhas filtradas (não só na página atual), já que a seleção pode abranger
+    // mais de uma página.
+    const allMatchingRows = computeObrigacoesRows();
+    const selectedRows = allMatchingRows.filter(r=> obrigSelectedKeys.has(obrigRowKey(r)));
     selectedRows.forEach(r=>{
       if(newStatus) setObligationField(r.period, r.company.id, r.item.id, 'status', newStatus);
       if(newResp) setObligationField(r.period, r.company.id, r.item.id, 'responsavelId', newResp==='__none__' ? null : newResp);
@@ -2803,6 +2823,11 @@ function wireObrigacoesHandlers(rows){
   });
   updateBulkBar();
 
+  const prevPageBtn = document.getElementById('btnObrigPrevPage');
+  if(prevPageBtn) prevPageBtn.addEventListener('click', ()=>{ obrigPage--; renderObrigacoes(); });
+  const nextPageBtn = document.getElementById('btnObrigNextPage');
+  if(nextPageBtn) nextPageBtn.addEventListener('click', ()=>{ obrigPage++; renderObrigacoes(); });
+
   // Exportar a lista filtrada/ordenada atual pra uma planilha .xlsx
   document.getElementById('btnExportarObrigacoes').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnExportarObrigacoes');
@@ -2811,7 +2836,7 @@ function wireObrigacoesHandlers(rows){
     btn.textContent = 'Gerando…';
     try{
       await ensureXlsx();
-      const data = rows.map(r=>({
+      const data = computeObrigacoesRows().map(r=>({
         'Empresa': r.company.nome,
         'Obrigação': r.item.label,
         'Tributação': CATEGORY_LABELS[r.category] || r.category,
