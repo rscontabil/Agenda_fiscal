@@ -2370,6 +2370,7 @@ let catalogFilterSearch = '';
 let categoryFilterSearch = '';
 let usersFilterSearch = '';
 let docTypesFilterSearch = '';
+let catalogSelectedIds = new Set();
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
@@ -3543,11 +3544,9 @@ function renderEmpresas(){
   });
 }
 
-async function deleteObligationFromCatalog(id){
+function removeObligationFromCatalog(id){
   const o = state.obligations.find(x=>x.id===id);
   if(!o) return false;
-  const ok = await showConfirm(`Excluir "${o.label}" do catálogo? Ela será removida de TODAS as empresas que a tinham marcada, e o histórico de check já feito para ela será apagado.`);
-  if(!ok) return false;
   state.obligations = state.obligations.filter(x=>x.id!==id);
   if(DEFAULT_OBLIGATIONS.some(d=>d.id===id) && !state.deletedDefaultObligationIds.includes(id)){
     state.deletedDefaultObligationIds.push(id); // marca como excluída de propósito, pra não voltar sozinha
@@ -3559,6 +3558,17 @@ async function deleteObligationFromCatalog(id){
   Object.values(state.annual).forEach(bucket=>{
     Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
   });
+  Object.values(state.quarterly||{}).forEach(bucket=>{
+    Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
+  });
+  return true;
+}
+async function deleteObligationFromCatalog(id){
+  const o = state.obligations.find(x=>x.id===id);
+  if(!o) return false;
+  const ok = await showConfirm(`Excluir "${o.label}" do catálogo? Ela será removida de TODAS as empresas que a tinham marcada, e o histórico de check já feito para ela será apagado.`);
+  if(!ok) return false;
+  removeObligationFromCatalog(id);
   persist();
   return true;
 }
@@ -4655,13 +4665,28 @@ function renderConfiguracoes(){
         </select>
         <input type="text" id="catalogFilterSearch" placeholder="Buscar por nome…" value="${catalogFilterSearch.replace(/"/g,'&quot;')}">
       </div>
+      <div id="catalogBulkBar" class="obrig-bulk-bar" style="display:none;">
+        <span id="catalogBulkCount"></span>
+        <select id="catalogBulkTrib">
+          <option value="">Mudar tributação para…</option>
+          ${CATEGORY_ORDER.map(c=>`<option value="${c}">${CATEGORY_LABELS[c]}</option>`).join('')}
+        </select>
+        <button type="button" class="btn accent small" id="btnCatalogAplicarLote">Aplicar</button>
+        <button type="button" class="btn danger small" id="btnCatalogExcluirLote">Excluir selecionadas</button>
+        <button type="button" class="btn ghost small" id="btnCatalogLimparSelecao">Limpar seleção</button>
+      </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="obligCatalogTable">
-        <thead><tr><th>Nome</th><th>Tributação</th><th>Periodicidade</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="catalogSelectAll"></th><th>Nome</th><th>Tributação</th><th>Periodicidade</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
         <tbody id="obligCatalogBody"></tbody>
       </table>
       </div>
-      <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
+        <button class="btn ghost small" id="btnExportCatalogo" type="button">Exportar catálogo (backup)</button>
+        <button class="btn ghost small" id="btnImportCatalogo" type="button">Importar catálogo</button>
+        <input type="file" id="importCatalogoInput" accept="application/json" style="display:none;">
+      </div>
     `;
     renderCategoriesList();
     document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
@@ -4677,6 +4702,96 @@ function renderConfiguracoes(){
     document.getElementById('catalogFilterEsferaSelect').addEventListener('change', (e)=>{ catalogFilterEsfera = e.target.value; renderObligationCatalogList(); });
     document.getElementById('catalogFilterAreaSelect').addEventListener('change', (e)=>{ catalogFilterArea = e.target.value; renderObligationCatalogList(); });
     document.getElementById('catalogFilterSearch').addEventListener('input', (e)=>{ catalogFilterSearch = e.target.value; renderObligationCatalogList(); });
+    document.getElementById('catalogSelectAll').addEventListener('change', (e)=>{
+      const visibleIds = [...document.querySelectorAll('[data-catalog-select]')].map(chk=>chk.dataset.catalogSelect);
+      if(e.target.checked) visibleIds.forEach(id=>catalogSelectedIds.add(id));
+      else visibleIds.forEach(id=>catalogSelectedIds.delete(id));
+      renderObligationCatalogList();
+    });
+    document.getElementById('btnCatalogLimparSelecao').addEventListener('click', ()=>{
+      catalogSelectedIds.clear();
+      renderObligationCatalogList();
+    });
+    document.getElementById('btnCatalogAplicarLote').addEventListener('click', ()=>{
+      const newTrib = document.getElementById('catalogBulkTrib').value;
+      if(!newTrib) return;
+      state.obligations.forEach(o=>{ if(catalogSelectedIds.has(o.id)) o.category = newTrib; });
+      persist();
+      catalogSelectedIds.clear();
+      renderObligationCatalogList();
+    });
+    document.getElementById('btnCatalogExcluirLote').addEventListener('click', async ()=>{
+      const ids = [...catalogSelectedIds];
+      if(ids.length===0) return;
+      const ok = await showConfirm(`Excluir ${ids.length} obrigação(ões) do catálogo? Elas serão removidas de todas as empresas que as tinham marcadas, e o histórico de check já feito será apagado.`);
+      if(!ok) return;
+      ids.forEach(id=> removeObligationFromCatalog(id));
+      persist();
+      catalogSelectedIds.clear();
+      renderObligationCatalogList();
+    });
+    document.getElementById('btnExportCatalogo').addEventListener('click', ()=>{
+      const backup = {
+        tipo: 'agenda-fiscal-catalogo-backup',
+        exportadoEm: new Date().toISOString(),
+        obligations: state.obligations,
+        customCategories: state.customCategories||[],
+        esferaOptions: state.esferaOptions||[],
+        areaOptions: state.areaOptions||[],
+        orgaoOptions: state.orgaoOptions||[],
+        referenciaLegalOptions: state.referenciaLegalOptions||[],
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `catalogo_obrigacoes_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    const importInput2 = document.getElementById('importCatalogoInput');
+    document.getElementById('btnImportCatalogo').addEventListener('click', ()=> importInput2.click());
+    importInput2.addEventListener('change', async ()=>{
+      const file = importInput2.files && importInput2.files[0];
+      importInput2.value = '';
+      if(!file) return;
+      try{
+        const text = await file.text();
+        const backup = JSON.parse(text);
+        if(!backup || !Array.isArray(backup.obligations)){
+          await showConfirm('Esse arquivo não parece ser um backup de catálogo válido.', 'Ok');
+          return;
+        }
+        // Restaura categorias personalizadas que ainda não existem
+        (backup.customCategories||[]).forEach(cat=>{
+          if(!state.customCategories.find(c=>c.id===cat.id)){
+            state.customCategories.push(cat);
+            registerCategoryRuntime(cat);
+          }
+        });
+        // Restaura obrigações que ainda não existem (por id) — não sobrescreve as que já tem
+        let added = 0;
+        backup.obligations.forEach(o=>{
+          if(!state.obligations.find(x=>x.id===o.id)){
+            state.obligations.push(o);
+            added++;
+          }
+        });
+        // Junta esferas/áreas/órgãos/referências (sem duplicar)
+        ['esferaOptions','areaOptions','orgaoOptions','referenciaLegalOptions'].forEach(key=>{
+          (backup[key]||[]).forEach(val=>{
+            if(!state[key]) state[key] = [];
+            if(!state[key].includes(val)) state[key].push(val);
+          });
+        });
+        persist();
+        renderConfiguracoes();
+        await showConfirm(`Importação concluída: ${added} obrigação(ões) nova(s) adicionada(s). Itens que já existiam (mesmo id) não foram alterados.`, 'Ok');
+      }catch(e){
+        console.error(e);
+        await showConfirm('Não foi possível ler esse arquivo. Confira se é um backup exportado por aqui mesmo.', 'Ok');
+      }
+    });
   }
 
   else if(configSubTab==='equipe'){
@@ -5096,7 +5211,7 @@ function renderObligationCatalogList(){
       return ci !== 0 ? ci : a.label.localeCompare(b.label);
     });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="10"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="11"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
     return;
   }
   const PERIODICIDADE_LABELS = {month:'Mensal', quarter:'Trimestral', year:'Anual'};
@@ -5109,8 +5224,10 @@ function renderObligationCatalogList(){
     if(rule==='nesimo_dia_util' && o.nthBusinessDay) vencTxt = `${o.nthBusinessDay}º dia útil`;
     if(isAnnualCat && o.dueMonth) vencTxt += ' de ' + MONTH_NAMES[o.dueMonth-1];
     if(period==='month' && o.monthDueOffset) vencTxt += ` (${o.monthDueOffset} ${o.monthDueOffset===1?'mês':'meses'} depois da competência)`;
+    const checked = catalogSelectedIds.has(o.id);
     return `
-    <tr>
+    <tr class="${checked?'is-selected':''}">
+      <td><input type="checkbox" class="obrig-row-checkbox" data-catalog-select="${o.id}" ${checked?'checked':''}></td>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
       <td>${PERIODICIDADE_LABELS[period]||'—'}</td>
@@ -5123,6 +5240,7 @@ function renderObligationCatalogList(){
       <td>
         <div class="oblig-row-actions">
           <button type="button" class="oblig-icon-btn" data-edit-obligcat="${o.id}" title="Editar">✎</button>
+          <button type="button" class="oblig-icon-btn" data-dup-obligcat="${o.id}" title="Duplicar">⧉</button>
           <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-obligcat="${o.id}" title="Excluir">×</button>
         </div>
       </td>
@@ -5131,12 +5249,41 @@ function renderObligationCatalogList(){
   el.querySelectorAll('[data-edit-obligcat]').forEach(btn=>{
     btn.addEventListener('click', ()=> openObligationCatalogModal(btn.dataset.editObligcat));
   });
+  el.querySelectorAll('[data-dup-obligcat]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const original = state.obligations.find(o=>o.id===btn.dataset.dupObligcat);
+      if(!original) return;
+      const prefix = original.category.slice(0,4);
+      const copy = {...original, id:`${prefix}__custom_${Date.now()}`, label: original.label + ' (cópia)'};
+      state.obligations.push(copy);
+      persist();
+      renderObligationCatalogList();
+      openObligationCatalogModal(copy.id); // já abre pra editar/renomear
+    });
+  });
   el.querySelectorAll('[data-del-obligcat]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const ok = await deleteObligationFromCatalog(btn.dataset.delObligcat);
       if(ok) renderObligationCatalogList();
     });
   });
+  el.querySelectorAll('[data-catalog-select]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const id = chk.dataset.catalogSelect;
+      if(chk.checked) catalogSelectedIds.add(id); else catalogSelectedIds.delete(id);
+      chk.closest('tr').classList.toggle('is-selected', chk.checked);
+      updateCatalogBulkBar();
+    });
+  });
+  updateCatalogBulkBar();
+}
+
+function updateCatalogBulkBar(){
+  const bar = document.getElementById('catalogBulkBar');
+  if(!bar) return;
+  const count = catalogSelectedIds.size;
+  bar.style.display = count>0 ? 'flex' : 'none';
+  document.getElementById('catalogBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
 }
 
 function openObligationCatalogModal(obligId){
