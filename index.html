@@ -579,6 +579,28 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   font-family:'Public Sans',sans-serif;
 }
 .demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
+.demanda-card.overdue{border-color:#E3A0A0; background:var(--bad-bg);}
+.demanda-card.is-selected{outline:2px solid var(--accent); outline-offset:-1px;}
+.demanda-prazo-overdue{color:var(--bad); font-weight:600;}
+.demanda-priority-badge{
+  font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+  padding:.1rem .4rem; border-radius:8px; vertical-align:middle;
+}
+.demanda-priority-badge.prio-baixa{background:#EEF0E9; color:var(--muted);}
+.demanda-priority-badge.prio-normal{background:#E5EEF3; color:#2A5F79;}
+.demanda-priority-badge.prio-urgente{background:var(--bad-bg); color:var(--bad);}
+.demanda-select-checkbox{width:15px; height:15px; accent-color:var(--accent); cursor:pointer; margin-top:.2rem;}
+.demanda-kanban{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; align-items:start;}
+.demanda-kanban-col{background:#FAF9F5; border:1px solid var(--line); border-radius:10px; padding:.7rem; min-height:100px;}
+.demanda-kanban-col-title{font-family:'Fraunces',serif; font-weight:600; font-size:.88rem; margin-bottom:.6rem; color:var(--ink-2);}
+.demanda-kanban-col-body{display:flex; flex-direction:column; gap:.6rem; min-height:60px; transition:background .15s;}
+.demanda-kanban-col-body.drag-over{background:#EFE9D8; border-radius:8px;}
+.demanda-kanban-card{
+  background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:.6rem .7rem; cursor:grab;
+}
+.demanda-kanban-card.overdue{border-color:#E3A0A0; background:var(--bad-bg);}
+.demanda-kanban-card.dragging{opacity:.4;}
+@media (max-width:800px){ .demanda-kanban{grid-template-columns:1fr;} }
 .demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
 .demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
 .demanda-card-title{font-weight:600; font-size:.9rem; margin-bottom:.2rem;}
@@ -916,6 +938,10 @@ function migrateState(){
   state.obligations = state.obligations || [];
   state.docTypes = state.docTypes || [];
   state.demandas = state.demandas || [];
+  state.demandas.forEach(d=>{
+    if(d.prioridade===undefined){ d.prioridade = 'normal'; changed = true; }
+    if(d.prazo===undefined){ d.prazo = null; changed = true; }
+  });
   state.users = state.users || [];
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
@@ -4024,6 +4050,8 @@ async function retryEnvioItem(itemId){
 /* ---- Demandas tab ---- */
 let demandaFilter = 'todas'; // todas | aberta | andamento | concluida
 let demandaResponsavelFilter = 'todos'; // todos | 'none' | userId
+let demandaViewMode = 'lista'; // lista | quadro
+let demandaSelectedIds = new Set();
 
 function escapeHtml(str){
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -4128,16 +4156,74 @@ function renderDemandas(){
         <div class="sheet-title" style="margin-bottom:0;">Demandas</div>
         <div class="sheet-sub" style="margin-bottom:0;">Cole a mensagem do cliente (WhatsApp, e-mail, etc.) e transforme em uma demanda a resolver.</div>
       </div>
-      <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
+      <div style="display:flex; gap:.5rem; align-items:center;">
+        <div class="obrig-mode-toggle">
+          <button type="button" class="obrig-mode-btn ${demandaViewMode==='lista'?'active':''}" data-demanda-view="lista">Lista</button>
+          <button type="button" class="obrig-mode-btn ${demandaViewMode==='quadro'?'active':''}" data-demanda-view="quadro">Quadro</button>
+        </div>
+        <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
+      </div>
     </div>
     <div class="demanda-filters" id="demandaFilters"></div>
     <div class="demanda-filters" id="demandaRespFilterWrap" style="margin-top:-.5rem;"></div>
+    <div id="demandaBulkBar" class="obrig-bulk-bar" style="display:none;">
+      <span id="demandaBulkCount"></span>
+      <select id="demandaBulkStatus">
+        <option value="">Mudar status para…</option>
+        <option value="aberta">Aberta</option>
+        <option value="andamento">Em andamento</option>
+        <option value="concluida">Concluída</option>
+      </select>
+      <select id="demandaBulkResp">
+        <option value="">Mudar responsável para…</option>
+        <option value="__none__">— sem responsável —</option>
+        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
+      </select>
+      <button type="button" class="btn accent small" id="btnDemandaAplicarLote">Aplicar</button>
+      <button type="button" class="btn ghost small" id="btnDemandaLimparSelecao">Limpar seleção</button>
+    </div>
     <div id="demandaList"></div>
   `;
   document.getElementById('btnNewDemanda').addEventListener('click', ()=>openDemandaModal(null));
+  container.querySelectorAll('[data-demanda-view]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      demandaViewMode = btn.dataset.demandaView;
+      renderDemandas();
+    });
+  });
+  document.getElementById('btnDemandaLimparSelecao').addEventListener('click', ()=>{
+    demandaSelectedIds.clear();
+    renderDemandaList();
+  });
+  document.getElementById('btnDemandaAplicarLote').addEventListener('click', async ()=>{
+    const newStatus = document.getElementById('demandaBulkStatus').value;
+    const newResp = document.getElementById('demandaBulkResp').value;
+    if(!newStatus && !newResp){
+      await showConfirm('Escolha um novo status e/ou um novo responsável antes de aplicar.', 'Ok');
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    state.demandas.filter(d=>demandaSelectedIds.has(d.id)).forEach(d=>{
+      if(newStatus) d.status = newStatus;
+      if(newResp) d.responsavelId = newResp==='__none__' ? null : newResp;
+      d.atualizadoEm = nowIso;
+    });
+    persist();
+    demandaSelectedIds.clear();
+    renderDemandaFilters();
+    renderDemandaList();
+  });
   renderDemandaFilters();
   renderDemandaResponsavelFilter();
   renderDemandaList();
+}
+
+function updateDemandaBulkBar(){
+  const bar = document.getElementById('demandaBulkBar');
+  if(!bar) return;
+  const count = demandaSelectedIds.size;
+  bar.style.display = count>0 ? 'flex' : 'none';
+  document.getElementById('demandaBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
 }
 
 function renderDemandaResponsavelFilter(){
@@ -4184,11 +4270,21 @@ function demandaCardHtml(d){
   const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
   const dt = new Date(d.criadoEm);
   const dataFmt = isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
-  return `<div class="demanda-card" data-demanda-id="${d.id}">
+  const today = new Date(new Date().setHours(0,0,0,0));
+  const prazoDate = d.prazo ? new Date(d.prazo+'T00:00:00') : null;
+  const overdue = prazoDate && d.status!=='concluida' && prazoDate < today;
+  const prazoFmt = prazoDate ? prazoDate.toLocaleDateString('pt-BR') : null;
+  const prioridade = d.prioridade || 'normal';
+  const prioridadeLabels = {baixa:'Baixa', normal:'Normal', urgente:'Urgente'};
+  const checked = demandaSelectedIds.has(d.id);
+  return `<div class="demanda-card ${overdue?'overdue':''} ${checked?'is-selected':''}" data-demanda-id="${d.id}">
     <div class="demanda-card-top">
-      <div>
-        <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'}</div>
-        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}</div>
+      <div style="display:flex; gap:.5rem; align-items:flex-start;">
+        <input type="checkbox" class="demanda-select-checkbox" data-demanda-select="${d.id}" ${checked?'checked':''}>
+        <div>
+          <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'} <span class="demanda-priority-badge prio-${prioridade}">${prioridadeLabels[prioridade]}</span></div>
+          <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}${prazoFmt ? ` · <span class="${overdue?'demanda-prazo-overdue':''}">Prazo: ${prazoFmt}${overdue?' (atrasada)':''}</span>` : ''}</div>
+        </div>
       </div>
       <select class="demanda-status-select status-${d.status}" data-demanda-status="${d.id}">
         <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
@@ -4227,13 +4323,90 @@ function renderDemandaList(){
   list.sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm));
   if(list.length===0){
     el.innerHTML = `<div class="empty-note">Nenhuma demanda encontrada.</div>`;
+    updateDemandaBulkBar();
     return;
   }
-  el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
-  wireDemandaCardHandlers(el);
+  if(demandaViewMode==='quadro'){
+    const cols = [
+      {status:'aberta', label:'Aberta'},
+      {status:'andamento', label:'Em andamento'},
+      {status:'concluida', label:'Concluída'},
+    ];
+    el.innerHTML = `<div class="demanda-kanban">${cols.map(col=>{
+      const items = list.filter(d=>d.status===col.status);
+      return `<div class="demanda-kanban-col" data-kanban-col="${col.status}">
+        <div class="demanda-kanban-col-title">${col.label} (${items.length})</div>
+        <div class="demanda-kanban-col-body" data-kanban-drop="${col.status}">
+          ${items.map(d=>demandaKanbanCardHtml(d)).join('') || '<div class="empty-note" style="font-size:.76rem;">Vazio</div>'}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+    wireDemandaKanbanHandlers();
+  } else {
+    el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
+    wireDemandaCardHandlers(el);
+  }
+  updateDemandaBulkBar();
+}
+
+function demandaKanbanCardHtml(d){
+  const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
+  const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
+  const today = new Date(new Date().setHours(0,0,0,0));
+  const prazoDate = d.prazo ? new Date(d.prazo+'T00:00:00') : null;
+  const overdue = prazoDate && d.status!=='concluida' && prazoDate < today;
+  const prioridade = d.prioridade || 'normal';
+  const prioridadeLabels = {baixa:'Baixa', normal:'Normal', urgente:'Urgente'};
+  return `<div class="demanda-kanban-card ${overdue?'overdue':''}" draggable="true" data-kanban-card="${d.id}">
+    <div class="demanda-priority-badge prio-${prioridade}" style="margin-bottom:.3rem;display:inline-block;">${prioridadeLabels[prioridade]}</div>
+    <div class="demanda-card-title" style="font-size:.83rem;">${escapeHtml(d.titulo) || '(sem título)'}</div>
+    <div class="demanda-card-meta" style="font-size:.7rem;">${company ? escapeHtml(company.nome) : 'Sem cliente'}${responsavel ? ' · '+escapeHtml(responsavel.nome) : ''}</div>
+    ${prazoDate ? `<div class="${overdue?'demanda-prazo-overdue':''}" style="font-size:.7rem; margin-top:.2rem;">Prazo: ${prazoDate.toLocaleDateString('pt-BR')}${overdue?' (atrasada)':''}</div>` : ''}
+    <div style="display:flex; gap:.2rem; margin-top:.4rem; justify-content:flex-end;">
+      <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
+    </div>
+  </div>`;
+}
+
+function wireDemandaKanbanHandlers(){
+  const el = document.getElementById('demandaList');
+  el.querySelectorAll('[data-edit-demanda]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openDemandaModal(btn.dataset.editDemanda));
+  });
+  let draggedId = null;
+  el.querySelectorAll('[data-kanban-card]').forEach(card=>{
+    card.addEventListener('dragstart', ()=>{ draggedId = card.dataset.kanbanCard; card.classList.add('dragging'); });
+    card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); });
+  });
+  el.querySelectorAll('[data-kanban-drop]').forEach(dropzone=>{
+    dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', ()=>{ dropzone.classList.remove('drag-over'); });
+    dropzone.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      dropzone.classList.remove('drag-over');
+      if(!draggedId) return;
+      const d = state.demandas.find(x=>x.id===draggedId);
+      if(d){
+        d.status = dropzone.dataset.kanbanDrop;
+        d.atualizadoEm = new Date().toISOString();
+        persist();
+      }
+      draggedId = null;
+      renderDemandaFilters();
+      renderDemandaList();
+    });
+  });
 }
 
 function wireDemandaCardHandlers(container){
+  container.querySelectorAll('[data-demanda-select]').forEach(chk=>{
+    chk.addEventListener('change', ()=>{
+      const id = chk.dataset.demandaSelect;
+      if(chk.checked) demandaSelectedIds.add(id); else demandaSelectedIds.delete(id);
+      chk.closest('.demanda-card').classList.toggle('is-selected', chk.checked);
+      updateDemandaBulkBar();
+    });
+  });
   container.querySelectorAll('[data-demanda-status]').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const d = state.demandas.find(x=>x.id===sel.dataset.demandaStatus);
@@ -4268,7 +4441,7 @@ function wireDemandaCardHandlers(container){
 
 function openDemandaModal(demandaId){
   const editing = !!demandaId;
-  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:''};
+  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:'', prazo:'', prioridade:'normal'};
   const root = document.getElementById('modalRoot');
   const companyOptions = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(c=>`<option value="${c.id}" ${c.id===d.companyId?'selected':''}>${c.nome}</option>`).join('');
@@ -4299,6 +4472,16 @@ function openDemandaModal(demandaId){
               </select>
             </div>
           </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Prazo (opcional)</label><input id="demPrazo" type="date" value="${d.prazo||''}"></div>
+            <div class="form-row"><label>Prioridade</label>
+              <select id="demPrioridade">
+                <option value="baixa" ${d.prioridade==='baixa'?'selected':''}>Baixa</option>
+                <option value="normal" ${(!d.prioridade||d.prioridade==='normal')?'selected':''}>Normal</option>
+                <option value="urgente" ${d.prioridade==='urgente'?'selected':''}>Urgente</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -4321,15 +4504,17 @@ function openDemandaModal(demandaId){
     if(!titulo) titulo = mensagem.split('\n')[0].slice(0,60);
     const status = document.getElementById('demStatus').value;
     const responsavelId = document.getElementById('demResponsavel').value || null;
+    const prazo = document.getElementById('demPrazo').value || null;
+    const prioridade = document.getElementById('demPrioridade').value;
     const nowIso = new Date().toISOString();
     if(editing){
       const freshD = state.demandas.find(x=>x.id===demandaId);
       if(!freshD){ root.innerHTML=''; return; }
-      Object.assign(freshD, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
+      Object.assign(freshD, {companyId, titulo, mensagem, status, responsavelId, prazo, prioridade, atualizadoEm: nowIso});
     } else {
       state.demandas.push({
         id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        companyId, titulo, mensagem, status, responsavelId,
+        companyId, titulo, mensagem, status, responsavelId, prazo, prioridade,
         criadoEm: nowIso, atualizadoEm: nowIso,
       });
     }
