@@ -508,7 +508,8 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .obrig-tr:hover{background:#FBFAF5;}
 .obrig-tr.overdue{background:var(--bad-bg);}
 .obrig-tr.is-selected{background:#EAF1FB;}
-.obrig-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+.obrig-table th.sortable, .emp-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
+.emp-table th.sortable:hover{color:var(--ink);}
 .obrig-table th.sortable:hover{color:var(--ink);}
 .obrig-summary{display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem;}
 .obrig-summary-chip{
@@ -2333,6 +2334,12 @@ let obrigShowMoreFilters = false;
 let obrigSortColumn = 'vencimento';
 let obrigSortDirection = 'asc';
 let obrigSelectedKeys = new Set();
+let empFilterTrib = 'todas';
+let empFilterStatus = 'ativas';
+let empFilterFolha = 'todas';
+let empFilterSuframa = 'todas';
+let empSortColumn = 'nome';
+let empSortDirection = 'asc';
 const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
 const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 const DEFAULT_ORGAO_OPTIONS = ['Receita Federal', 'SEFAZ/AM', 'SEMEF (Prefeitura de Manaus)', 'Caixa Econômica Federal', 'Junta Comercial', 'Ministério do Trabalho'];
@@ -3069,6 +3076,23 @@ function previousMonthKey(monthKey){
 
 // Progresso de obrigações mensais agrupado por responsável (quem está com cada tarefa),
 // incluindo um grupo "Sem responsável" pras que não foram atribuídas a ninguém.
+// Progresso (total/concluído) de UMA empresa específica, somando todas as categorias mensais que
+// se aplicam a ela — usado na coluna "Progresso" da tela Empresas.
+function companyMonthProgress(c, monthKey){
+  let total = 0, done = 0;
+  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
+    const def = TAB_DEFS[cat];
+    if(!def.filter(c)) return;
+    const items = def.items(c, monthKey);
+    items.forEach(it=>{
+      total++;
+      const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
+      if(bucket && isResolvedStatus(bucket.status)) done++;
+    });
+  });
+  return {total, done, pct: total? Math.round(done/total*100) : null};
+}
+
 function computeTeamProgress(monthKey){
   const companies = activeCompanies();
   const perUser = {};
@@ -3293,43 +3317,96 @@ function showConfirm(message, confirmLabel){
 
 /* ---------- Empresas (CRUD) ---------- */
 function renderEmpresas(){
-  const companies = state.companies.filter(matchesSearch).sort((a,b)=>a.nome.localeCompare(b.nome));
+  let companies = state.companies.filter(matchesSearch);
+  if(empFilterTrib!=='todas') companies = companies.filter(c=>c.trib===empFilterTrib);
+  if(empFilterStatus==='ativas') companies = companies.filter(c=>c.ativa!==false);
+  else if(empFilterStatus==='inativas') companies = companies.filter(c=>c.ativa===false);
+  if(empFilterFolha==='sim') companies = companies.filter(c=>!!c.folha);
+  else if(empFilterFolha==='nao') companies = companies.filter(c=>!c.folha);
+  if(empFilterSuframa==='sim') companies = companies.filter(c=>!!c.suframa);
+  else if(empFilterSuframa==='nao') companies = companies.filter(c=>!c.suframa);
+
+  const withProgress = companies.map(c=>({c, progress: companyMonthProgress(c, selectedMonth)}));
+  withProgress.sort((a,b)=>{
+    let cmp = 0;
+    if(empSortColumn==='nome') cmp = a.c.nome.localeCompare(b.c.nome);
+    else if(empSortColumn==='trib') cmp = (a.c.trib||'').localeCompare(b.c.trib||'');
+    else if(empSortColumn==='ativ') cmp = (a.c.ativ||'').localeCompare(b.c.ativ||'');
+    else if(empSortColumn==='progresso') cmp = (a.progress.pct==null?-1:a.progress.pct) - (b.progress.pct==null?-1:b.progress.pct);
+    if(cmp===0) cmp = a.c.nome.localeCompare(b.c.nome);
+    return empSortDirection==='desc' ? -cmp : cmp;
+  });
+
+  function sortArrow(col){ return empSortColumn===col ? (empSortDirection==='asc'?' ▲':' ▼') : ''; }
+
+  const totalCount = state.companies.filter(c=>c.ativa!==false).length;
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="emp-toolbar">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Empresas</div>
-        <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists.</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists. ${totalCount} empresa${totalCount===1?'':'s'} ativa${totalCount===1?'':'s'} no total.</div>
       </div>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn ghost" id="btnExportarEmpresas">Exportar</button>
         <button class="btn ghost" id="btnImportCompanies">Importar planilha (Domínio)</button>
         <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
         <button class="btn accent" id="btnNewCompany">+ Nova empresa</button>
       </div>
     </div>
+    <div class="obrig-filters" style="margin-bottom:1rem;">
+      <select id="empFilterTribSelect">
+        <option value="todas" ${empFilterTrib==='todas'?'selected':''}>Todas as tributações</option>
+        <option value="SIMPLES" ${empFilterTrib==='SIMPLES'?'selected':''}>Simples Nacional</option>
+        <option value="SIMEI" ${empFilterTrib==='SIMEI'?'selected':''}>MEI</option>
+        <option value="PRESUMIDO" ${empFilterTrib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
+        <option value="REAL" ${empFilterTrib==='REAL'?'selected':''}>Lucro Real</option>
+      </select>
+      <select id="empFilterStatusSelect">
+        <option value="ativas" ${empFilterStatus==='ativas'?'selected':''}>Só ativas</option>
+        <option value="inativas" ${empFilterStatus==='inativas'?'selected':''}>Só inativas</option>
+        <option value="todas" ${empFilterStatus==='todas'?'selected':''}>Ativas e inativas</option>
+      </select>
+      <select id="empFilterFolhaSelect">
+        <option value="todas" ${empFilterFolha==='todas'?'selected':''}>Folha: todas</option>
+        <option value="sim" ${empFilterFolha==='sim'?'selected':''}>Com folha</option>
+        <option value="nao" ${empFilterFolha==='nao'?'selected':''}>Sem folha</option>
+      </select>
+      <select id="empFilterSuframaSelect">
+        <option value="todas" ${empFilterSuframa==='todas'?'selected':''}>SUFRAMA: todas</option>
+        <option value="sim" ${empFilterSuframa==='sim'?'selected':''}>Com SUFRAMA</option>
+        <option value="nao" ${empFilterSuframa==='nao'?'selected':''}>Sem SUFRAMA</option>
+      </select>
+    </div>
     <div style="overflow-x:auto;">
     <table class="emp-table">
       <thead><tr>
-        <th>Empresa</th><th>CNPJ / Inscrições</th><th>Contato</th><th>Tributação</th><th>Atividade</th><th>Folha</th><th>Contáb.</th><th>Suframa</th><th>Status</th><th></th>
+        <th class="sortable" data-emp-sort="nome">Empresa${sortArrow('nome')}</th><th>CNPJ / Inscrições</th><th>Contato</th><th class="sortable" data-emp-sort="trib">Tributação${sortArrow('trib')}</th><th class="sortable" data-emp-sort="ativ">Atividade${sortArrow('ativ')}</th><th>Folha</th><th>Contáb.</th><th>Suframa</th><th class="sortable" data-emp-sort="progresso">Progresso do mês${sortArrow('progresso')}</th><th>Status</th><th></th>
       </tr></thead>
       <tbody>
-        ${companies.map(c=>`
+        ${withProgress.map(({c,progress})=>`
           <tr data-id="${c.id}">
-            <td>${c.nome}</td>
+            <td>${escapeHtml(c.nome)}</td>
             <td class="mono" style="font-size:.76rem;">
-              ${c.cnpj}
+              ${escapeHtml(c.cnpj||'')}
               ${(c.ie||c.im||c.inscSuframa) ? `<div style="color:var(--muted);font-size:.68rem;margin-top:.2rem;line-height:1.5;">
-                ${c.ie? `IE: ${c.ie}<br>`:''}${c.im? `IM: ${c.im}<br>`:''}${c.inscSuframa? `Suframa: ${c.inscSuframa}`:''}
+                ${c.ie? `IE: ${escapeHtml(c.ie)}<br>`:''}${c.im? `IM: ${escapeHtml(c.im)}<br>`:''}${c.inscSuframa? `Suframa: ${escapeHtml(c.inscSuframa)}`:''}
               </div>` : ''}
             </td>
             <td style="font-size:.74rem;color:var(--muted);">
-              ${c.email? `<div>${c.email}</div>`:''}${c.telefone? `<div>${c.telefone}</div>`:''}${(!c.email && !c.telefone)? '—':''}
+              ${c.email? `<div>${escapeHtml(c.email)}</div>`:''}${c.telefone? `<div>${escapeHtml(c.telefone)}</div>`:''}${(!c.email && !c.telefone)? '—':''}
             </td>
             <td><span class="badge trib-${c.trib}">${c.trib}</span></td>
-            <td style="font-size:.78rem;color:var(--muted);">${c.ativ}</td>
+            <td style="font-size:.78rem;color:var(--muted);">${escapeHtml(c.ativ||'')}</td>
             <td><div class="flag-dot folha ${c.folha?'on':''}">F</div></td>
             <td><div class="flag-dot contab ${c.contab?'on':''}">C</div></td>
             <td><div class="flag-dot suframa ${c.suframa?'on':''}">S</div></td>
+            <td style="min-width:110px;">
+              ${progress.pct===null ? '<span style="color:var(--muted);font-size:.74rem;">—</span>' : `
+                <div class="painel-progress-bar" style="height:6px;margin-bottom:.2rem;"><div class="painel-progress-fill" style="width:${progress.pct}%;"></div></div>
+                <span style="font-size:.72rem;color:var(--muted);">${progress.done}/${progress.total} · ${progress.pct}%</span>
+              `}
+            </td>
             <td>${c.ativa!==false ? '<span style="color:var(--good);font-size:.76rem;font-weight:600;">Ativa</span>' : '<span style="color:var(--muted);font-size:.76rem;">Inativa</span>'}</td>
             <td style="white-space:nowrap;">
               <button class="btn ghost small" data-edit="${c.id}">Editar</button>
@@ -3340,7 +3417,7 @@ function renderEmpresas(){
       </tbody>
     </table>
     </div>
-    ${companies.length===0 ? '<div class="empty-note">Nenhuma empresa cadastrada.</div>' : ''}
+    ${withProgress.length===0 ? '<div class="empty-note">Nenhuma empresa encontrada com esses filtros.</div>' : ''}
   `;
   document.getElementById('btnNewCompany').addEventListener('click', ()=>openCompanyModal(null));
   container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openCompanyModal(b.dataset.edit)));
@@ -3350,6 +3427,53 @@ function renderEmpresas(){
   importInput.addEventListener('change', ()=>{
     if(importInput.files && importInput.files[0]) handleImportFile(importInput.files[0]);
     importInput.value = '';
+  });
+  document.getElementById('empFilterTribSelect').addEventListener('change', (e)=>{ empFilterTrib = e.target.value; renderEmpresas(); });
+  document.getElementById('empFilterStatusSelect').addEventListener('change', (e)=>{ empFilterStatus = e.target.value; renderEmpresas(); });
+  document.getElementById('empFilterFolhaSelect').addEventListener('change', (e)=>{ empFilterFolha = e.target.value; renderEmpresas(); });
+  document.getElementById('empFilterSuframaSelect').addEventListener('change', (e)=>{ empFilterSuframa = e.target.value; renderEmpresas(); });
+  container.querySelectorAll('[data-emp-sort]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const col = th.dataset.empSort;
+      if(empSortColumn===col) empSortDirection = empSortDirection==='asc' ? 'desc' : 'asc';
+      else { empSortColumn = col; empSortDirection = 'asc'; }
+      renderEmpresas();
+    });
+  });
+  document.getElementById('btnExportarEmpresas').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnExportarEmpresas');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Gerando…';
+    try{
+      await ensureXlsx();
+      const data = withProgress.map(({c,progress})=>({
+        'Empresa': c.nome,
+        'CNPJ': c.cnpj||'',
+        'IE': c.ie||'',
+        'IM': c.im||'',
+        'Inscrição SUFRAMA': c.inscSuframa||'',
+        'E-mail': c.email||'',
+        'Telefone': c.telefone||'',
+        'Tributação': c.trib||'',
+        'Atividade': c.ativ||'',
+        'Folha': c.folha? 'Sim':'Não',
+        'Contábil': c.contab? 'Sim':'Não',
+        'SUFRAMA': c.suframa? 'Sim':'Não',
+        'Progresso do mês': progress.pct===null ? '' : `${progress.done}/${progress.total} (${progress.pct}%)`,
+        'Status': c.ativa!==false ? 'Ativa' : 'Inativa',
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Empresas');
+      XLSX.writeFile(wb, `Empresas_${fmtMonthLabel(selectedMonth).replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
+    }catch(e){
+      console.error(e);
+      await showConfirm('Não foi possível gerar o arquivo. Verifique sua conexão e tente de novo.', 'Ok');
+    }finally{
+      btn.disabled = false;
+      btn.textContent = original;
+    }
   });
 }
 
