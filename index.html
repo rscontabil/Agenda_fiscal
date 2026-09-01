@@ -4852,6 +4852,7 @@ function renderConfiguracoes(){
           return;
         }
         // Restaura categorias personalizadas que ainda não existem
+        if(!state.customCategories) state.customCategories = [];
         (backup.customCategories||[]).forEach(cat=>{
           if(!state.customCategories.find(c=>c.id===cat.id)){
             state.customCategories.push(cat);
