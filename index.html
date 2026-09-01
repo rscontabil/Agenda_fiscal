@@ -2278,6 +2278,9 @@ let catalogFilterCategoria = 'todas';
 let catalogFilterEsfera = 'todas';
 let catalogFilterArea = 'todas';
 let catalogFilterSearch = '';
+let categoryFilterSearch = '';
+let usersFilterSearch = '';
+let docTypesFilterSearch = '';
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
@@ -3822,6 +3825,9 @@ function renderConfiguracoes(){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Categorias</div>
       <div class="sheet-sub">Organizam as obrigações e a aba Obrigações. As categorias padrão do sistema não podem ser editadas ou excluídas; crie novas conforme precisar.</div>
+      <div class="obrig-filters" style="margin-bottom:.6rem;">
+        <input type="text" id="categoryFilterSearch" placeholder="Buscar por nome…" value="${categoryFilterSearch.replace(/"/g,'&quot;')}">
+      </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="categoriesTable">
         <thead><tr><th>Nome</th><th>Tipo de período</th><th></th><th></th></tr></thead>
@@ -3887,6 +3893,7 @@ function renderConfiguracoes(){
     `;
     renderCategoriesList();
     document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
+    document.getElementById('categoryFilterSearch').addEventListener('input', (e)=>{ categoryFilterSearch = e.target.value; renderCategoriesList(); });
     renderEsferaAreaLists();
     document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
     document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
@@ -3904,22 +3911,30 @@ function renderConfiguracoes(){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Responsáveis</div>
       <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda ou obrigação.</div>
+      <div class="obrig-filters" style="margin-bottom:.6rem;">
+        <input type="text" id="usersFilterSearch" placeholder="Buscar por nome…" value="${usersFilterSearch.replace(/"/g,'&quot;')}">
+      </div>
       <div id="usersList"></div>
       <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
     `;
     renderUsersList();
     document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
+    document.getElementById('usersFilterSearch').addEventListener('input', (e)=>{ usersFilterSearch = e.target.value; renderUsersList(); });
   }
 
   else if(configSubTab==='documentos'){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Tipos de documento (envio automático)</div>
       <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
+      <div class="obrig-filters" style="margin-bottom:.6rem;">
+        <input type="text" id="docTypesFilterSearch" placeholder="Buscar por nome…" value="${docTypesFilterSearch.replace(/"/g,'&quot;')}">
+      </div>
       <div id="docTypesList"></div>
       <button class="btn ghost small" id="btnNewDocType" type="button">+ Novo tipo de documento</button>
     `;
     renderDocTypesList();
     document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
+    document.getElementById('docTypesFilterSearch').addEventListener('input', (e)=>{ docTypesFilterSearch = e.target.value; renderDocTypesList(); });
   }
 
   else if(configSubTab==='lembretes'){
@@ -3962,11 +3977,13 @@ function renderConfiguracoes(){
 function renderUsersList(){
   const el = document.getElementById('usersList');
   if(!el) return;
-  if(state.users.length===0){
-    el.innerHTML = `<div class="empty-note">Nenhum responsável cadastrado ainda.</div>`;
+  const search = usersFilterSearch.trim().toLowerCase();
+  const filtered = state.users.filter(u=> !search || u.nome.toLowerCase().includes(search));
+  if(filtered.length===0){
+    el.innerHTML = `<div class="empty-note">${state.users.length===0 ? 'Nenhum responsável cadastrado ainda.' : 'Nenhum responsável encontrado com esse nome.'}</div>`;
     return;
   }
-  el.innerHTML = `<div class="doctype-list">${state.users.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
+  el.innerHTML = `<div class="doctype-list">${filtered.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
     <div class="doctype-card">
       <div class="doctype-card-top">
         <div class="doctype-card-name">${escapeHtml(u.nome)} ${u.ativo===false? '<span style="color:var(--muted);font-weight:500;font-size:.76rem;">(inativo)</span>':''}</div>
@@ -4158,7 +4175,13 @@ const BUILT_IN_CATEGORY_IDS = ['simples','mei','lucro_presumido','lucro_real','f
 function renderCategoriesList(){
   const el = document.getElementById('categoriesBody');
   if(!el) return;
-  el.innerHTML = CATEGORY_ORDER.map(id=>{
+  const search = categoryFilterSearch.trim().toLowerCase();
+  const filteredIds = CATEGORY_ORDER.filter(id => !search || (CATEGORY_LABELS[id]||id).toLowerCase().includes(search));
+  if(filteredIds.length===0){
+    el.innerHTML = `<tr><td colspan="4"><div class="empty-note">Nenhuma categoria encontrada.</div></td></tr>`;
+    return;
+  }
+  el.innerHTML = filteredIds.map(id=>{
     const isCustom = !BUILT_IN_CATEGORY_IDS.includes(id);
     const period = TAB_DEFS[id] ? TAB_DEFS[id].period : 'month';
     return `<tr>
@@ -4561,11 +4584,13 @@ function openObligationCatalogModal(obligId){
 function renderDocTypesList(){
   const el = document.getElementById('docTypesList');
   if(!el) return;
-  if(state.docTypes.length===0){
-    el.innerHTML = `<div class="empty-note">Nenhum tipo de documento cadastrado ainda.</div>`;
+  const search = docTypesFilterSearch.trim().toLowerCase();
+  const filtered = state.docTypes.filter(dt=> !search || dt.name.toLowerCase().includes(search));
+  if(filtered.length===0){
+    el.innerHTML = `<div class="empty-note">${state.docTypes.length===0 ? 'Nenhum tipo de documento cadastrado ainda.' : 'Nenhum tipo de documento encontrado com esse nome.'}</div>`;
     return;
   }
-  el.innerHTML = `<div class="doctype-list">${state.docTypes.map(dt=>`
+  el.innerHTML = `<div class="doctype-list">${filtered.map(dt=>`
     <div class="doctype-card">
       <div class="doctype-card-top">
         <div class="doctype-card-name">${dt.name}</div>
