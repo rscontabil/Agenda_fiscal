@@ -2688,11 +2688,11 @@ function renderObrigacoes(){
     <div class="obrig-filters" style="margin-top:-.6rem;">
       <select id="obrigFilterEsferaSelect">
         <option value="todas" ${obrigFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
-        ${state.esferaOptions.map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+        ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
       </select>
       <select id="obrigFilterAreaSelect">
         <option value="todas" ${obrigFilterArea==='todas'?'selected':''}>Todas as áreas</option>
-        ${state.areaOptions.map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
+        ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
       </select>
     </div>` : ''}
     <div id="obrigBulkBar" class="obrig-bulk-bar" style="display:none;">
@@ -3680,7 +3680,7 @@ function renderEnvioDocumentos(){
         <div class="sheet-title" style="margin-bottom:0;">Envio de Documentos</div>
         <div class="sheet-sub" style="margin-bottom:0;">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
       </div>
-      <button type="button" class="btn ghost small" id="btnToggleHistorico">${envioShowHistory? 'Voltar ao envio' : `📜 Histórico (${state.sentDocuments.length})`}</button>
+      <button type="button" class="btn ghost small" id="btnToggleHistorico">${envioShowHistory? 'Voltar ao envio' : `📜 Histórico (${(state.sentDocuments||[]).length})`}</button>
     </div>
     ${driveStatus!=='connected' ? `<div class="envio-warn">Conecte o Gmail em <a href="#" id="envioGotoConfig">Configurações</a> antes de enviar (a leitura dos PDFs funciona sem conectar, só o envio precisa).</div>` : ''}
     ${envioShowHistory ? `<div id="envioHistorico"></div>` : `
@@ -3710,7 +3710,7 @@ function renderEnvioDocumentos(){
 function renderEnvioHistorico(){
   const el = document.getElementById('envioHistorico');
   if(!el) return;
-  const list = state.sentDocuments.filter(matchesSearch2);
+  const list = (state.sentDocuments||[]).filter(matchesSearch2);
   function matchesSearch2(d){
     if(!searchQuery) return true;
     return (d.companyNome||'').toLowerCase().includes(searchQuery.toLowerCase());
@@ -3728,7 +3728,7 @@ function renderEnvioHistorico(){
             <td class="mono">${escapeHtml(d.vencimento||'—')}</td>
             <td class="mono">${new Date(d.sentAt).toLocaleString('pt-BR')}</td>
           </tr>
-        `).join('') : `<tr><td colspan="5"><div class="empty-note">${state.sentDocuments.length===0 ? 'Nenhum documento enviado ainda.' : 'Nenhum documento encontrado com essa busca.'}</div></td></tr>`}
+        `).join('') : `<tr><td colspan="5"><div class="empty-note">${(state.sentDocuments||[]).length===0 ? 'Nenhum documento enviado ainda.' : 'Nenhum documento encontrado com essa busca.'}</div></td></tr>`}
       </tbody>
     </table>
     </div>
@@ -4462,11 +4462,11 @@ function renderConfiguracoes(){
         </select>
         <select id="catalogFilterEsferaSelect">
           <option value="todas" ${catalogFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
-          ${state.esferaOptions.map(e=>`<option value="${e}" ${catalogFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+          ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${catalogFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
         </select>
         <select id="catalogFilterAreaSelect">
           <option value="todas" ${catalogFilterArea==='todas'?'selected':''}>Todas as áreas</option>
-          ${state.areaOptions.map(a=>`<option value="${a}" ${catalogFilterArea===a?'selected':''}>${a}</option>`).join('')}
+          ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${catalogFilterArea===a?'selected':''}>${a}</option>`).join('')}
         </select>
         <input type="text" id="catalogFilterSearch" placeholder="Buscar por nome…" value="${catalogFilterSearch.replace(/"/g,'&quot;')}">
       </div>
@@ -4796,7 +4796,7 @@ function renderCategoriesList(){
       }
       const ok = await showConfirm(`Excluir a categoria "${CATEGORY_LABELS[catId]}"?`);
       if(!ok) return;
-      state.customCategories = state.customCategories.filter(c=>c.id!==catId);
+      state.customCategories = (state.customCategories||[]).filter(c=>c.id!==catId);
       unregisterCategoryRuntime(catId);
       persist();
       renderCategoriesList();
@@ -4840,12 +4840,13 @@ function openCategoryModal(catId){
     }
     if(editing){
       CATEGORY_LABELS[catId] = label;
-      const entry = state.customCategories.find(c=>c.id===catId);
+      const entry = (state.customCategories||[]).find(c=>c.id===catId);
       if(entry) entry.label = label;
     } else {
       const period = document.getElementById('categoryPeriod').value;
       const id = 'custom_' + Date.now();
       const cat = {id, label, period};
+      if(!state.customCategories) state.customCategories = [];
       state.customCategories.push(cat);
       registerCategoryRuntime(cat);
     }
@@ -4973,13 +4974,13 @@ function openObligationCatalogModal(obligId){
             <div class="form-row"><label>Esfera (opcional)</label>
               <select id="obligCatEsfera">
                 <option value="">— não informado —</option>
-                ${state.esferaOptions.map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
+                ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
               </select>
             </div>
             <div class="form-row"><label>Área (opcional)</label>
               <select id="obligCatArea">
                 <option value="">— não informado —</option>
-                ${state.areaOptions.map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
+                ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -4987,15 +4988,15 @@ function openObligationCatalogModal(obligId){
             <div class="form-row"><label>Órgão responsável (opcional)</label>
               <select id="obligCatOrgao">
                 <option value="">— não informado —</option>
-                ${(o.orgao && !state.orgaoOptions.includes(o.orgao)) ? `<option value="${o.orgao}" selected>${escapeHtml(o.orgao)} (não está na lista — cadastre em Configurações se quiser reaproveitar)</option>` : ''}
-                ${state.orgaoOptions.map(o2=>`<option value="${o2}" ${o.orgao===o2?'selected':''}>${o2}</option>`).join('')}
+                ${(o.orgao && !(state.orgaoOptions||[]).includes(o.orgao)) ? `<option value="${o.orgao}" selected>${escapeHtml(o.orgao)} (não está na lista — cadastre em Configurações se quiser reaproveitar)</option>` : ''}
+                ${(state.orgaoOptions||[]).map(o2=>`<option value="${o2}" ${o.orgao===o2?'selected':''}>${o2}</option>`).join('')}
               </select>
             </div>
             <div class="form-row"><label>Referência legal (opcional)</label>
               <select id="obligCatReferenciaLegal">
                 <option value="">— não informado —</option>
-                ${(o.referenciaLegal && !state.referenciaLegalOptions.includes(o.referenciaLegal)) ? `<option value="${o.referenciaLegal}" selected>${escapeHtml(o.referenciaLegal)} (não está na lista)</option>` : ''}
-                ${state.referenciaLegalOptions.map(r=>`<option value="${r}" ${o.referenciaLegal===r?'selected':''}>${r}</option>`).join('')}
+                ${(o.referenciaLegal && !(state.referenciaLegalOptions||[]).includes(o.referenciaLegal)) ? `<option value="${o.referenciaLegal}" selected>${escapeHtml(o.referenciaLegal)} (não está na lista)</option>` : ''}
+                ${(state.referenciaLegalOptions||[]).map(r=>`<option value="${r}" ${o.referenciaLegal===r?'selected':''}>${r}</option>`).join('')}
               </select>
             </div>
           </div>
