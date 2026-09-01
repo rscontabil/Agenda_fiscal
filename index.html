@@ -268,6 +268,11 @@ main.config-wide{max-width:1520px;}
 .painel-progress-bar{width:100%; height:10px; background:#EEF0E9; border-radius:6px; overflow:hidden; margin-bottom:.5rem;}
 .painel-progress-fill{height:100%; background:var(--accent); border-radius:6px; transition:width .3s;}
 .painel-progress-sub{font-size:.76rem; color:var(--muted);}
+.painel-team-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.7rem; margin-bottom:1.4rem;}
+.painel-team-card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:.7rem .85rem;}
+.painel-team-card.no-resp{background:#FAF9F5; border-style:dashed;}
+.painel-team-name{font-size:.83rem; font-weight:600; color:var(--ink); margin-bottom:.4rem;}
+.painel-team-sub{font-size:.74rem; color:var(--muted); margin-top:.35rem;}
 .painel-card{
   border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
 }
@@ -3062,6 +3067,34 @@ function previousMonthKey(monthKey){
   return `${y}-${String(m).padStart(2,'0')}`;
 }
 
+// Progresso de obrigações mensais agrupado por responsável (quem está com cada tarefa),
+// incluindo um grupo "Sem responsável" pras que não foram atribuídas a ninguém.
+function computeTeamProgress(monthKey){
+  const companies = activeCompanies();
+  const perUser = {};
+  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
+    const def = TAB_DEFS[cat];
+    companies.filter(def.filter).forEach(c=>{
+      const items = def.items(c, monthKey);
+      items.forEach(it=>{
+        const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
+        const respId = (bucket && bucket.responsavelId) || null;
+        const key = respId || '__none__';
+        if(!perUser[key]) perUser[key] = {responsavelId: respId, total:0, done:0};
+        perUser[key].total++;
+        if(bucket && isResolvedStatus(bucket.status)) perUser[key].done++;
+      });
+    });
+  });
+  return Object.values(perUser)
+    .map(x=>({...x, pct: x.total? Math.round(x.done/x.total*100) : 0, nome: x.responsavelId ? ((state.users.find(u=>u.id===x.responsavelId)||{}).nome || '—') : 'Sem responsável'}))
+    .sort((a,b)=>{
+      if(a.responsavelId===null) return 1; // "Sem responsável" sempre por último
+      if(b.responsavelId===null) return -1;
+      return b.total - a.total;
+    });
+}
+
 function renderPainel(){
   const companies = activeCompanies();
   const rows = [];
@@ -3099,6 +3132,7 @@ function renderPainel(){
   const prevProgress = computeMonthProgress(previousMonthKey(selectedMonth));
   const pctDiff = currentProgress.pct - prevProgress.pct;
   const proximosVencimentos = computeUpcomingReminders(7).filter(r=>r.diffDays>=0).slice(0,6);
+  const teamProgress = computeTeamProgress(selectedMonth);
 
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
@@ -3126,6 +3160,19 @@ function renderPainel(){
       <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${currentProgress.pct}%;"></div></div>
       <div class="painel-progress-sub">${currentProgress.done} de ${currentProgress.total} obrigações concluídas${prevProgress.total>0 ? ` · mês anterior: ${prevProgress.pct}% (${prevProgress.done}/${prevProgress.total})` : ''}</div>
     </div>
+
+    ${teamProgress.length? `
+    <div class="sheet-title" style="font-size:1rem;">Progresso da equipe — ${fmtMonthLabel(selectedMonth)}</div>
+    <div class="painel-team-grid">
+      ${teamProgress.map(t=>`
+        <div class="painel-team-card ${t.responsavelId===null?'no-resp':''}">
+          <div class="painel-team-name">${escapeHtml(t.nome)}</div>
+          <div class="painel-progress-bar" style="height:7px;"><div class="painel-progress-fill" style="width:${t.pct}%;"></div></div>
+          <div class="painel-team-sub">${t.done}/${t.total} · ${t.pct}%</div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
 
     <div class="painel-grid">
       <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
