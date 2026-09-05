@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emissor de NFS-e</title>
+<link rel="manifest" href="./manifest-nfse.json">
+<meta name="theme-color" content="#132A3A">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --ink:#132A3A; --ink-2:#0B4A45; --paper:#E9EEE6; --surface:#FFFFFF;
+  --line:#D7DCD1; --line-strong:#B9C1B4; --accent:#C1692B; --accent-2:#9C5322;
+  --good:#2E7D5B; --good-bg:#E3F1E9; --bad:#B23A34; --bad-bg:#FBEAE9;
+  --muted:#5C6B67; --gold:#9C7A2E; --gold-bg:#F3ECD9; --radius:10px; font-size:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px); background-size:100% 2.1em; background-position:0 7.2em;}
+.mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+
+header.app{background:var(--ink);color:#F2F0E6;padding:1.1rem 1.4rem 1.3rem;position:sticky;top:0;z-index:30;box-shadow:0 2px 10px rgba(0,0,0,.18);}
+.header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:.7rem;}
+.brand-mark{width:38px;height:38px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif;font-weight:700;font-size:1.1rem;color:#1A140D;flex-shrink:0;transform:rotate(-3deg);}
+.brand h1{font-family:'Fraunces',serif;font-size:1.35rem;margin:0;font-weight:600;}
+.brand p{margin:.15rem 0 0;font-size:.78rem;color:#B9C4BE;}
+.header-user{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:#B9C4BE;}
+.header-user button{background:none;border:1px solid #2C5A5C;border-radius:20px;padding:.25rem .7rem;font-size:.74rem;font-weight:600;color:#B9C4BE;cursor:pointer;}
+.search-box{position:relative;}
+.search-box input{background:#0E3B47;border:1px solid #2C5A5C;color:#F2F0E6;padding:.5rem .7rem .5rem 2rem;border-radius:8px;font-size:.85rem;width:200px;}
+.search-box svg{position:absolute;left:.55rem;top:50%;transform:translateY(-50%);opacity:.6;}
+.stats-strip{display:flex;gap:1.6rem;margin-top:.9rem;flex-wrap:wrap;}
+.stat .num{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:600;color:#F2F0E6;}
+.stat .lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#9FB2AB;}
+.stat .num.accent{color:var(--accent);}
+
+.tabbar{display:flex;gap:2px;padding:0 1.1rem;background:var(--ink);overflow-x:auto;scrollbar-width:none;}
+.tab{position:relative;padding:.6rem 1.15rem .55rem;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer;color:#B9C4BE;background:#0E2836;
+  clip-path:polygon(10% 0,90% 0,100% 100%,0% 100%);}
+.tab.active{background:var(--paper);color:var(--ink);}
+
+main{padding:1.4rem;max-width:1180px;margin:0 auto;}
+.sheet{background:var(--surface);border:1px solid var(--line-strong);border-radius:0 8px 8px 8px;padding:1.3rem;box-shadow:0 1px 3px rgba(20,40,35,.06);}
+.sheet-title{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:600;margin:0 0 .2rem;}
+.sheet-sub{font-size:.82rem;color:var(--muted);margin:0 0 1.1rem;}
+
+.emp-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:.7rem;flex-wrap:wrap;}
+.btn{background:var(--ink);color:#F2F0E6;border:none;padding:.55rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;}
+.btn.accent{background:var(--accent);} .btn.accent:hover{background:var(--accent-2);}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line-strong);}
+.btn.small{padding:.35rem .65rem;font-size:.74rem;}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid #E8C6C4;}
+.btn.solid-danger{background:var(--bad);color:#fff;}
+
+table.emp-table{width:100%;border-collapse:collapse;font-size:.83rem;}
+table.emp-table th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:.5rem .5rem;border-bottom:2px solid var(--line-strong);}
+table.emp-table td{padding:.55rem .5rem;border-bottom:1px solid var(--line);vertical-align:middle;}
+table.emp-table tr:hover td{background:#FBFAF6;}
+
+.badge{font-size:.65rem;font-weight:600;padding:.15rem .5rem;border-radius:20px;text-transform:uppercase;}
+.badge.auth-senha{background:#E5EEF3;color:#2A5F79;} .badge.auth-certificado{background:var(--gold-bg);color:var(--gold);}
+.badge.auth-none{background:#EEF0E9;color:var(--muted);}
+.badge.status-rascunho{background:#EEF0E9;color:var(--muted);}
+.badge.status-pendente_transmissao{background:var(--gold-bg);color:var(--gold);}
+.badge.status-transmitida{background:var(--good-bg);color:var(--good);}
+.badge.status-erro{background:var(--bad-bg);color:var(--bad);}
+
+.empty-note{color:var(--muted);font-size:.85rem;padding:1.5rem 0;text-align:center;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(19,42,58,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem;}
+.modal{background:#fff;border-radius:12px;padding:1.4rem;width:100%;max-width:560px;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:88vh;overflow-y:auto;}
+.modal h3{font-family:'Fraunces',serif;margin:0 0 1rem;font-size:1.1rem;}
+.form-grid{display:flex;flex-direction:column;gap:.7rem;}
+.form-row{display:flex;flex-direction:column;gap:.3rem;}
+.form-row label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;}
+.form-row input, .form-row select, .form-row textarea{padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;}
+.form-cols{display:flex;gap:.7rem;} .form-cols .form-row{flex:1;}
+.modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;}
+.form-hint{font-size:.72rem;color:var(--muted);margin-top:-.35rem;}
+.auth-block{border:1px solid var(--line);border-radius:8px;padding:.7rem .8rem;background:#FCFCFA;margin-top:.2rem;}
+
+.emitir-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
+@media (max-width:800px){.emitir-grid{grid-template-columns:1fr;}}
+.nota-card{border:1px solid var(--line);border-radius:var(--radius);padding:.85rem 1rem;background:#FCFCFA;margin-bottom:.6rem;}
+.nota-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;}
+.nota-name{font-weight:600;font-size:.9rem;}
+.nota-meta{font-size:.76rem;color:var(--muted);margin-top:.2rem;}
+.nota-valor{font-family:'Fraunces',serif;font-weight:600;font-size:1.1rem;color:var(--ink-2);}
+.nota-msg{font-size:.74rem;color:var(--bad);margin-top:.4rem;}
+
+.auth-gate{position:fixed;inset:0;background:#F5F3EC;display:flex;align-items:center;justify-content:center;z-index:300;padding:1rem;}
+.auth-gate-card{background:#fff;border-radius:16px;padding:2.2rem 2rem;max-width:360px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.12);}
+.auth-gate-card h2{font-family:'Fraunces',serif;font-size:1.25rem;margin:.2rem 0 .5rem;}
+.auth-gate-card p{font-size:.86rem;color:var(--muted);line-height:1.5;margin:0 0 1.2rem;}
+.auth-gate-error{color:var(--bad);font-size:.8rem;margin-top:.9rem;min-height:1em;}
+.auth-gate-spinner{width:36px;height:36px;margin:0 auto;border:3px solid var(--line-strong);border-top-color:var(--accent);border-radius:50%;animation:authSpin .8s linear infinite;}
+@keyframes authSpin{to{transform:rotate(360deg);}}
+
+@media (max-width:640px){.header-row{flex-direction:column;} .search-box input{width:100%;} main{padding:.8rem;} .sheet{padding:1rem;}}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
+</head>
+<body>
+
+<div id="authGate" class="auth-gate">
+  <div class="auth-gate-card" id="authGateLoginCard">
+    <div class="brand-mark" style="margin:0 auto .8rem;">NF</div>
+    <h2>Emissor de NFS-e</h2>
+    <p>Entre com a conta Google autorizada da equipe para continuar.</p>
+    <button id="btnGoogleLogin" class="btn accent" type="button">Entrar com Google</button>
+    <div id="authGateError" class="auth-gate-error"></div>
+  </div>
+  <div class="auth-gate-card" id="authGateLoadingCard" style="display:none;">
+    <div class="auth-gate-spinner"></div>
+    <p style="margin-top:1rem;color:var(--muted);font-size:.86rem;" id="authGateLoadingText">Carregando…</p>
+  </div>
+</div>
+
+<header class="app">
+  <div class="header-row">
+    <div class="brand">
+      <div class="brand-mark">NF</div>
+      <div><h1>Emissor de NFS-e</h1><p>Empresas · Clientes · Serviços · Fila de emissão</p></div>
+    </div>
+    <div style="display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;">
+      <div class="header-user" id="headerUser" style="display:none;">
+        <span id="headerUserEmail"></span>
+        <button type="button" id="btnLogout">Sair</button>
+      </div>
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B9C4BE" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Buscar empresa ou cliente…">
+      </div>
+    </div>
+  </div>
+  <div class="stats-strip" id="statsStrip"></div>
+</header>
+
+<nav class="tabbar" id="tabbar"></nav>
+<main><div class="sheet" id="sheetContent"></div></main>
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+
+<script>
+(function(){
+
+/* ---------- Firebase (mesmo projeto do app Agenda de Obrigações) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCiEbHklogJqgUrEUKt7XXvDd-41-A1GR8",
+  authDomain: "agenda-fiscal-rs-v2.firebaseapp.com",
+  projectId: "agenda-fiscal-rs-v2",
+  storageBucket: "agenda-fiscal-rs-v2.firebasestorage.app",
+  messagingSenderId: "618660440598",
+  appId: "1:618660440598:web:986c4dd92438c049f72337"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const functionsClient = firebase.app().functions('southamerica-east1');
+db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+
+// Mesma lista de e-mails autorizados do app principal (a segurança de verdade fica nas regras do Firestore).
+const ALLOWED_EMAILS = ['rscontabilidade79@gmail.com', 'jt.pimentel26@gmail.com'];
+
+let currentUser = null;
+let currentTenantId = null; // vem das custom claims do token, obtido no login
+let empresasMain = []; // lista de empresas vinda do documento appData/main (somente leitura aqui)
+let state = null; // documento tenants/{tenantId}/nfse_data/main: { clientes, servicos, notas, acessosPortal }
+let activeTab = 'empresas';
+let searchQuery = '';
+let unsubMain = null;
+let unsubNfse = null;
+
+function uid(prefix){ return prefix + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+// Escapa texto vindo de dados do usuário/Firestore antes de interpolar em innerHTML,
+// inclusive dentro de atributos com aspas duplas (value="...", data-x="...").
+function escapeHtml(str){
+  return String(str==null ? '' : str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+const DADOS_BANCARIOS_PADRAO = 'BANCO C6: PIX - CNPJ: 11.570.525/0001-89 - RS CONTABILIDADE E CONSULTORIA EMPRESARIAL LTDA.';
+
+function formatarDataBR(d){
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const aaaa = d.getFullYear();
+  return `${dd}/${mm}/${aaaa}`;
+}
+function formatarValorPadrao(num){
+  // Reproduz o formato "000,00" usado na planilha: zero à esquerda, vírgula decimal.
+  const neg = num < 0;
+  const v = Math.abs(Math.round(num * 100) / 100);
+  let inteiro = String(Math.floor(v));
+  while(inteiro.length < 3) inteiro = '0' + inteiro;
+  const dec = String(Math.round((v - Math.floor(v)) * 100)).padStart(2,'0');
+  return (neg? '-':'') + inteiro + ',' + dec;
+}
+function formatarPercentual(num){
+  return num.toFixed(2).replace('.',',') + '%';
+}
+
+/**
+ * Gera o texto de cobrança mensal de contabilidade (equivalente à fórmula
+ * da planilha), a partir da data de competência (string "YYYY-MM-DD") e
+ * do valor da nota.
+ */
+function gerarDescricaoMensal(servico, dataCompetenciaStr, valor){
+  if(!dataCompetenciaStr) return '';
+  const [ano, mes] = dataCompetenciaStr.split('-').map(Number); // mes: 1-12
+  // Período: dia 20 do mês anterior até dia 19 do mês de competência
+  const inicioPeriodo = new Date(ano, mes - 2, 20); // mes-2 = mês anterior (0-indexed)
+  const fimPeriodo = new Date(ano, mes - 1, 19);
+  const vencimento = new Date(ano, mes - 1, servico.diaVencimento || 10);
+
+  const aliquota = servico.aliquotaImpostos || 0;
+  const valorImposto = (valor || 0) * (aliquota / 100);
+
+  return `Referente a serviços de contabilidade no periodo de ${formatarDataBR(inicioPeriodo)} há ${formatarDataBR(fimPeriodo)} `
+    + `*Total dos Impostos: Alq. ${formatarPercentual(aliquota)}, Vlr. R$ ${formatarValorPadrao(valorImposto)}  `
+    + `*Dados Bancários: ${servico.dadosBancarios || DADOS_BANCARIOS_PADRAO} `
+    + `Vencimento: ${formatarDataBR(vencimento)} `
+    + `Código completo do serviço: ${servico.codigoServicoMunicipal || ''}, ${servico.cnae || ''} - Serviços de contabilidade.`;
+}
+
+function showAuthGateLoginCard(message){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('authGateLoginCard').style.display = '';
+  document.getElementById('authGateLoadingCard').style.display = 'none';
+  document.getElementById('headerUser').style.display = 'none';
+  document.getElementById('authGateError').textContent = message || '';
+}
+function showAuthGateLoading(text){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('authGateLoginCard').style.display = 'none';
+  document.getElementById('authGateLoadingCard').style.display = '';
+  document.getElementById('authGateLoadingText').textContent = text || 'Carregando…';
+}
+function hideAuthGate(){ document.getElementById('authGate').style.display = 'none'; }
+
+document.getElementById('btnGoogleLogin').addEventListener('click', async ()=>{
+  showAuthGateLoading('Entrando com o Google…');
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try{ await auth.signInWithPopup(provider); }
+  catch(e){ showAuthGateLoginCard('Não foi possível entrar (' + (e.code || e.message) + ').'); }
+});
+document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  if(unsubMain){ unsubMain(); unsubMain = null; }
+  if(unsubNfse){ unsubNfse(); unsubNfse = null; }
+  await auth.signOut();
+});
+
+let pendingAuthError = null;
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    const email = (user.email || '').toLowerCase();
+    if(!ALLOWED_EMAILS.includes(email)){
+      pendingAuthError = 'Esse e-mail (' + user.email + ') não tem acesso a este aplicativo.';
+      await auth.signOut();
+      return;
+    }
+
+    // Busca o tenantId gravado nas custom claims do token (definido no
+    // backend via Admin SDK). Sem isso, não sabemos de qual escritório
+    // são os dados — bloqueia o acesso em vez de adivinhar.
+    let tenantId = null;
+    try{
+      const tokenResult = await user.getIdTokenResult();
+      tenantId = tokenResult.claims.tenantId || null;
+    }catch(e){
+      console.error('Erro ao ler o token do usuário', e);
+    }
+    if(!tenantId){
+      pendingAuthError = 'Sua conta ainda não está associada a um escritório. Faça logout e login novamente ou contate o suporte.';
+      await auth.signOut();
+      return;
+    }
+    currentTenantId = tenantId;
+
+    currentUser = user;
+    showAuthGateLoading('Carregando dados…');
+    document.getElementById('headerUser').style.display = 'flex';
+    document.getElementById('headerUserEmail').textContent = user.email;
+    await startListening();
+    hideAuthGate();
+  } else {
+    currentUser = null;
+    currentTenantId = null;
+    showAuthGateLoginCard(pendingAuthError);
+    pendingAuthError = null;
+  }
+});
+
+/* ---------- Firestore: le empresas do doc principal (somente leitura), grava dados proprios em tenants/{tenantId}/nfse_data/main ---------- */
+function startListening(){
+  return new Promise((resolve)=>{
+    let mainLoaded = false, nfseLoaded = false;
+    function maybeResolve(){ if(mainLoaded && nfseLoaded) resolve(true); }
+
+    unsubMain = db.collection('appData').doc('main').onSnapshot((snap)=>{
+      const data = snap.exists ? snap.data() : {};
+      empresasMain = (data && data.companies) || [];
+      mainLoaded = true;
+      if(state) renderAll();
+      maybeResolve();
+    }, (err)=>{ console.error('Erro lendo empresas (appData/main)', err); mainLoaded = true; maybeResolve(); });
+
+    unsubNfse = db.collection('tenants').doc(currentTenantId).collection('nfse_data').doc('main').onSnapshot((snap)=>{
+      if(!snap.exists){
+        state = { clientes: [], servicos: [], notas: [], acessosPortal: {}, empresasProprias: [] };
+      } else {
+        state = snap.data() || {};
+        state.clientes = state.clientes || [];
+        state.servicos = state.servicos || [];
+        state.notas = state.notas || [];
+        state.acessosPortal = state.acessosPortal || {};
+        state.empresasProprias = state.empresasProprias || [];
+      }
+      nfseLoaded = true;
+      renderAll();
+      maybeResolve();
+    }, (err)=>{ console.error('Erro lendo dados de NFS-e (tenants/nfse_data)', err); nfseLoaded = true; maybeResolve(); });
+  });
+}
+
+// Grava só as chaves de topo (ex.: 'clientes', 'notas') que realmente mudaram,
+// usando uma transação que relê o documento do servidor antes de gravar —
+// evita que a edição de um usuário apague, por sobrescrita do documento
+// inteiro, o que outro usuário salvou entre a leitura e a gravação.
+// Lança (throw) se a gravação falhar, para quem chamou poder avisar o
+// usuário e não fechar a tela como se tivesse dado certo.
+async function persist(changedKeys){
+  const keys = changedKeys && changedKeys.length ? changedKeys
+    : ['clientes','servicos','notas','acessosPortal','empresasProprias'];
+  const ref = db.collection('tenants').doc(currentTenantId).collection('nfse_data').doc('main');
+  const lastEditedBy = currentUser ? currentUser.email : null;
+  const lastEditedAt = new Date().toISOString();
+  try{
+    await db.runTransaction(async (tx)=>{
+      const snap = await tx.get(ref);
+      const serverData = snap.exists ? (snap.data() || {}) : {};
+      const merged = { ...serverData };
+      keys.forEach(k=>{ merged[k] = state[k]; });
+      merged.lastEditedBy = lastEditedBy;
+      merged.lastEditedAt = lastEditedAt;
+      tx.set(ref, merged);
+    });
+    state.lastEditedBy = lastEditedBy;
+    state.lastEditedAt = lastEditedAt;
+  }catch(e){
+    console.error('Erro ao salvar (tenants/nfse_data)', e);
+    alert('Não foi possível salvar: ' + (e.message || 'erro desconhecido') + '\n\nSua alteração NÃO foi gravada. Verifique sua conexão e tente novamente.');
+    throw e;
+  }
+}
+
+/* ---------- Confirm dialog ---------- */
+function showConfirm(message, confirmLabel){
+  return new Promise((resolve)=>{
+    const root = document.getElementById('confirmRoot');
+    root.innerHTML = `
+      <div class="modal-overlay" id="confirmOverlay" style="z-index:60;">
+        <div class="modal" style="max-width:400px;">
+          <h3>Confirmar</h3>
+          <p style="font-size:.86rem;color:var(--ink);line-height:1.5;margin:0 0 .3rem;">${message}</p>
+          <div class="modal-actions">
+            <button class="btn ghost" id="confirmCancelBtn">Cancelar</button>
+            <button class="btn solid-danger" id="confirmOkBtn">${confirmLabel||'Excluir'}</button>
+          </div>
+        </div>
+      </div>`;
+    const cleanup = (result)=>{ root.innerHTML=''; resolve(result); };
+    document.getElementById('confirmCancelBtn').onclick = ()=>cleanup(false);
+    document.getElementById('confirmOkBtn').onclick = ()=>cleanup(true);
+    document.getElementById('confirmOverlay').addEventListener('click', (e)=>{ if(e.target.id==='confirmOverlay') cleanup(false); });
+  });
+}
+
+/* ---------- Data helpers ---------- */
+// Combina empresas vindas da Agenda de Obrigações (somente leitura) com
+// empresas cadastradas diretamente aqui no módulo NFS-e (para tenants que
+// não usam a Agenda). As duas convivem na mesma lista.
+function todasEmpresas(){ return [...empresasMain, ...(state.empresasProprias||[])]; }
+function empresaAtivaList(){ return todasEmpresas().filter(e=>e.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome)); }
+function empresaById(id){ return todasEmpresas().find(e=>e.id===id); }
+function acessoDaEmpresa(empresaId){ return (state.acessosPortal && state.acessosPortal[empresaId]) || null; }
+function clienteById(id){ return state.clientes.find(c=>c.id===id); }
+function servicoById(id){ return state.servicos.find(s=>s.id===id); }
+function clientesDaEmpresa(empresaId){ return state.clientes.filter(c=>c.empresaId===empresaId); }
+function servicosDoCliente(clienteId){ return state.servicos.filter(s=>s.clienteId===clienteId); }
+
+function matchesSearch(text){
+  if(!searchQuery) return true;
+  const q = searchQuery.toLowerCase().trim();
+  const qDigits = q.replace(/\D/g,'');
+  const textDigits = (text||'').replace(/\D/g,'');
+  return (text||'').toLowerCase().includes(q) || (qDigits.length>0 && textDigits.includes(qDigits));
+}
+
+/* ---------- Stats & tabs ---------- */
+const TABS = [
+  {id:'empresas', label:'Empresas'},
+  {id:'clientes', label:'Clientes'},
+  {id:'servicos', label:'Serviços'},
+  {id:'emitir', label:'Emitir NFS-e'},
+];
+
+function renderStats(){
+  const pendentes = state.notas.filter(n=>n.status==='pendente_transmissao').length;
+  const transmitidas = state.notas.filter(n=>n.status==='transmitida').length;
+  const el = document.getElementById('statsStrip');
+  el.innerHTML = `
+    <div class="stat"><div class="num">${empresaAtivaList().length}</div><div class="lbl">Empresas</div></div>
+    <div class="stat"><div class="num">${state.clientes.length}</div><div class="lbl">Clientes</div></div>
+    <div class="stat"><div class="num accent">${pendentes}</div><div class="lbl">Pendentes de transmissão</div></div>
+    <div class="stat"><div class="num">${transmitidas}</div><div class="lbl">Transmitidas</div></div>
+  `;
+}
+function renderTabs(){
+  const bar = document.getElementById('tabbar');
+  bar.innerHTML = '';
+  TABS.forEach(t=>{
+    const d = document.createElement('div');
+    d.className = 'tab' + (activeTab===t.id ? ' active':'');
+    d.textContent = t.label;
+    d.onclick = ()=>{ activeTab = t.id; renderAll(); };
+    bar.appendChild(d);
+  });
+}
+
+/* ================= EMPRESAS (acesso ao portal) ================= */
+function renderEmpresas(){
+  const list = empresaAtivaList().filter(e=>matchesSearch(e.nome+' '+e.cnpj));
+  const container = document.getElementById('sheetContent');
+  container.innerHTML = `
+    <div class="emp-toolbar">
+      <div><div class="sheet-title" style="margin-bottom:0;">Empresas</div><div class="sheet-sub" style="margin-bottom:0;">Empresas vindas da Agenda de Obrigações aparecem automaticamente (só leitura aqui). Empresas cadastradas neste módulo podem ser editadas.</div></div>
+      <button class="btn accent" id="btnNewEmpresa">+ Nova empresa</button>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="emp-table">
+      <thead><tr><th>Empresa</th><th>CNPJ</th><th>Tributação</th><th>Origem</th><th>Acesso ao portal</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(e=>{
+          const acesso = acessoDaEmpresa(e.id);
+          const tipo = acesso ? acesso.tipoAutenticacao : 'none';
+          const label = tipo==='senha' ? 'Senha' : (tipo==='certificado' ? 'Certificado' : 'Não configurado');
+          const propria = (state.empresasProprias||[]).some(p=>p.id===e.id);
+          return `<tr>
+            <td>${escapeHtml(e.nome)}</td>
+            <td class="mono" style="font-size:.76rem;">${escapeHtml(e.cnpj)}</td>
+            <td><span class="badge trib-${escapeHtml(e.trib)}">${escapeHtml(e.trib)||'—'}</span></td>
+            <td><span class="badge" style="background:${propria?'#E3EEEA':'#EEF0E9'};color:${propria?'var(--ink)':'var(--muted)'};">${propria?'Cadastrada aqui':'Agenda'}</span></td>
+            <td><span class="badge auth-${tipo}">${label}</span></td>
+            <td style="display:flex;gap:.4rem;">
+              <button class="btn ghost small" data-config="${e.id}">Configurar acesso</button>
+              ${propria?`<button class="btn ghost small" data-edit-empresa="${e.id}">Editar</button>`:''}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${list.length===0? '<div class="empty-note">Nenhuma empresa cadastrada ainda. Use "+ Nova empresa" acima, ou cadastre na Agenda de Obrigações Fiscais.</div>' : ''}
+  `;
+  container.querySelectorAll('[data-config]').forEach(b=>b.addEventListener('click', ()=>openAcessoModal(b.dataset.config)));
+  container.querySelectorAll('[data-edit-empresa]').forEach(b=>b.addEventListener('click', ()=>openEmpresaModal(b.dataset.editEmpresa)));
+  document.getElementById('btnNewEmpresa').addEventListener('click', ()=>openEmpresaModal(null));
+}
+
+function openEmpresaModal(empresaId){
+  const editando = !!empresaId;
+  const empresa = editando ? empresaById(empresaId) : { nome:'', cnpj:'', im:'', trib:'SIMPLES', ativa:true, codigoMunicipioIbge:'1302603', municipio:'Manaus/AM' };
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editando ? 'Editar empresa' : 'Nova empresa'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Nome / Razão social</label><input id="fEmpNome" type="text" value="${escapeHtml(empresa.nome)}"></div>
+          <div class="form-cols">
+            <div class="form-row"><label>CNPJ</label><input id="fEmpCnpj" type="text" value="${escapeHtml(empresa.cnpj)}" placeholder="00.000.000/0000-00"></div>
+            <div class="form-row"><label>Inscrição Municipal</label><input id="fEmpIm" type="text" value="${escapeHtml(empresa.im)}"></div>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Município</label><input id="fEmpMunicipio" type="text" value="${escapeHtml(empresa.municipio||'Manaus/AM')}"></div>
+            <div class="form-row"><label>Código IBGE do município</label><input id="fEmpCodigoIbge" type="text" value="${escapeHtml(empresa.codigoMunicipioIbge||'1302603')}" placeholder="1302603"></div>
+          </div>
+          <div class="form-hint" style="margin-top:-.4rem;">O código do município define regras específicas (ex.: prazo de substituição de NFS-e). Deixe 1302603 (Manaus) a menos que a empresa seja de outra cidade.</div>
+          <div class="form-row"><label>Regime tributário</label>
+            <select id="fEmpTrib">
+              <option value="SIMPLES">Simples Nacional</option>
+              <option value="SIMEI">MEI</option>
+              <option value="PRESUMIDO">Lucro Presumido</option>
+              <option value="REAL">Lucro Real</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          ${editando?'<button class="btn danger" id="btnDeleteEmpresa" style="margin-right:auto;">Excluir</button>':''}
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('fEmpTrib').value = empresa.trib || 'SIMPLES';
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+
+  if(editando){
+    document.getElementById('btnDeleteEmpresa').onclick = async ()=>{
+      const ok = await showConfirm(`Excluir a empresa "${escapeHtml(empresa.nome)}" cadastrada aqui? Isso não afeta a Agenda de Obrigações.`, 'Excluir');
+      if(!ok) return;
+      const btnDel = document.getElementById('btnDeleteEmpresa');
+      btnDel.disabled = true;
+      const backup = state.empresasProprias;
+      state.empresasProprias = (state.empresasProprias||[]).filter(e=>e.id!==empresaId);
+      try{
+        await persist(['empresasProprias']);
+      }catch(e){
+        state.empresasProprias = backup;
+        btnDel.disabled = false;
+        return;
+      }
+      root.innerHTML = '';
+      renderAll();
+    };
+  }
+
+  document.getElementById('btnSave').onclick = async ()=>{
+    const btnSave = document.getElementById('btnSave');
+    if(btnSave.disabled) return; // evita duplo clique criando registro duplicado
+    const nome = document.getElementById('fEmpNome').value.trim();
+    if(!nome){ alert('Informe o nome da empresa.'); return; }
+    btnSave.disabled = true;
+    if(!state.empresasProprias) state.empresasProprias = [];
+    const municipio = document.getElementById('fEmpMunicipio').value.trim();
+    const codigoMunicipioIbge = document.getElementById('fEmpCodigoIbge').value.trim();
+    const backup = state.empresasProprias.slice();
+    if(editando){
+      const idx = state.empresasProprias.findIndex(e=>e.id===empresaId);
+      if(idx>=0){
+        state.empresasProprias[idx] = {
+          ...state.empresasProprias[idx],
+          nome, cnpj: document.getElementById('fEmpCnpj').value.trim(),
+          im: document.getElementById('fEmpIm').value.trim(),
+          trib: document.getElementById('fEmpTrib').value,
+          municipio, codigoMunicipioIbge,
+        };
+      }
+    } else {
+      state.empresasProprias.push({
+        id: uid('emp_'), nome, cnpj: document.getElementById('fEmpCnpj').value.trim(),
+        im: document.getElementById('fEmpIm').value.trim(),
+        trib: document.getElementById('fEmpTrib').value,
+        municipio, codigoMunicipioIbge,
+        ativa: true,
+      });
+    }
+    try{
+      await persist(['empresasProprias']);
+    }catch(e){
+      state.empresasProprias = backup;
+      btnSave.disabled = false;
+      return;
+    }
+    root.innerHTML = '';
+    renderAll();
+  };
+}
+
+function openAcessoModal(empresaId){
+  const empresa = empresaById(empresaId);
+  const acesso = acessoDaEmpresa(empresaId) || { tipoAutenticacao:'senha', usuarioPortal:'', senhaPortal:'', caminhoCertificado:'', senhaCertificado:'', codigoIbge:'', cep:'', logradouro:'', numero:'', bairro:'' };
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>Acesso ao portal — ${escapeHtml(empresa.nome)}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Tipo de autenticação</label>
+            <select id="fTipoAuth">
+              <option value="senha">Senha (CNPJ + senha do portal) — usa automação de navegador</option>
+              <option value="certificado">Certificado digital (A1/A3) — usa a API oficial, mais rápido e confiável</option>
+            </select>
+          </div>
+          <div id="authSenhaBlock" class="auth-block">
+            <div class="form-row"><label>Usuário/CNPJ de acesso</label><input id="fUsuarioPortal" type="text" value="${escapeHtml(acesso.usuarioPortal)}"></div>
+            <div class="form-row"><label>Senha do portal</label><input id="fSenhaPortal" type="password" value="${escapeHtml(acesso.senhaPortal)}"></div>
+            <div class="form-hint">Se deixar em branco, o script de emissão pede a senha na hora, em vez de guardar aqui.</div>
+          </div>
+          <div id="authCertBlock" class="auth-block" style="display:none;">
+            <div class="form-row"><label>Caminho do certificado (.pfx)</label><input id="fCaminhoCert" type="text" value="${escapeHtml(acesso.caminhoCertificado)}" placeholder="C:\\Certificados\\empresa.pfx"></div>
+            <div class="form-row"><label>Senha do certificado</label><input id="fSenhaCert" type="password" value="${escapeHtml(acesso.senhaCertificado)}"></div>
+            <div class="form-hint">Com certificado, a transmissão usa a API oficial do Emissor Nacional direto — por isso precisamos do endereço completo da empresa abaixo (exigido pela API).</div>
+            <div class="form-cols">
+              <div class="form-row"><label>Código IBGE do município (7 dígitos)</label><input id="fCodigoIbge" type="text" value="${escapeHtml(acesso.codigoIbge)}" placeholder="ex: 1302603 (Manaus)"></div>
+              <div class="form-row"><label>CEP</label><input id="fCep" type="text" value="${escapeHtml(acesso.cep)}"></div>
+            </div>
+            <div class="form-cols">
+              <div class="form-row"><label>Logradouro</label><input id="fLogradouro" type="text" value="${escapeHtml(acesso.logradouro)}"></div>
+              <div class="form-row"><label>Número</label><input id="fNumero" type="text" value="${escapeHtml(acesso.numero)}"></div>
+            </div>
+            <div class="form-row"><label>Bairro</label><input id="fBairro" type="text" value="${escapeHtml(acesso.bairro)}"></div>
+            <div class="form-row"><label>Série da DPS</label><input id="fSerieDps" type="text" value="${escapeHtml(acesso.serieDps)}" placeholder="ex: 70000">
+              <div class="form-hint">A numeração de série que sua empresa já usa para emitir notas — confira no portal ou com quem configurou a série originalmente.</div>
+            </div>
+            <div class="form-row"><label>Regime especial de tributação</label>
+              <select id="fRegimeEspecial">
+                <option value="nenhum">Nenhum</option>
+                <option value="sociedade_profissionais">Sociedade de Profissionais</option>
+                <option value="profissional_autonomo">Profissional Autônomo</option>
+                <option value="microempresa_municipal">Microempresa Municipal</option>
+                <option value="estimativa">Estimativa</option>
+                <option value="ato_cooperado">Ato Cooperado</option>
+                <option value="notario_registrador">Notário/Registrador</option>
+              </select>
+              <div class="form-hint">Confira esse dado no portal do Emissor Nacional (aba "Emitente" de uma nota) — precisa bater com o que está registrado lá.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('fTipoAuth').value = acesso.tipoAutenticacao || 'senha';
+  function syncBlocks(){
+    const t = document.getElementById('fTipoAuth').value;
+    document.getElementById('authSenhaBlock').style.display = t==='senha' ? '' : 'none';
+    document.getElementById('authCertBlock').style.display = t==='certificado' ? '' : 'none';
+  }
+  syncBlocks();
+  document.getElementById('fTipoAuth').addEventListener('change', syncBlocks);
+  document.getElementById('fRegimeEspecial').value = acesso.regimeEspecial || 'nenhum';
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = async ()=>{
+    const btnSave = document.getElementById('btnSave');
+    if(btnSave.disabled) return;
+    btnSave.disabled = true;
+    if(!state.acessosPortal) state.acessosPortal = {};
+    const backup = { ...state.acessosPortal };
+    state.acessosPortal[empresaId] = {
+      tipoAutenticacao: document.getElementById('fTipoAuth').value,
+      usuarioPortal: document.getElementById('fUsuarioPortal').value.trim(),
+      senhaPortal: document.getElementById('fSenhaPortal').value,
+      caminhoCertificado: document.getElementById('fCaminhoCert').value.trim(),
+      senhaCertificado: document.getElementById('fSenhaCert').value,
+      codigoIbge: document.getElementById('fCodigoIbge').value.trim(),
+      cep: document.getElementById('fCep').value.trim(),
+      logradouro: document.getElementById('fLogradouro').value.trim(),
+      numero: document.getElementById('fNumero').value.trim(),
+      bairro: document.getElementById('fBairro').value.trim(),
+      regimeEspecial: document.getElementById('fRegimeEspecial').value,
+      serieDps: document.getElementById('fSerieDps').value.trim(),
+    };
+    try{
+      await persist(['acessosPortal']);
+    }catch(e){
+      state.acessosPortal = backup;
+      btnSave.disabled = false;
+      return;
+    }
+    root.innerHTML = '';
+    renderAll();
+  };
+}
+
+/* ================= CLIENTES ================= */
+function renderClientes(){
+  const container = document.getElementById('sheetContent');
+  if(todasEmpresas().length===0){
+    container.innerHTML = `<div class="sheet-title">Clientes</div><div class="empty-note">Nenhuma empresa cadastrada ainda. Cadastre uma empresa na aba "Empresas" primeiro.</div>`;
+    return;
+  }
+  const list = state.clientes.filter(c=>matchesSearch(c.nomeRazaoSocial+' '+c.cnpjCpf)).sort((a,b)=>a.nomeRazaoSocial.localeCompare(b.nomeRazaoSocial));
+  container.innerHTML = `
+    <div class="emp-toolbar">
+      <div><div class="sheet-title" style="margin-bottom:0;">Clientes</div><div class="sheet-sub" style="margin-bottom:0;">Tomadores de serviço, vinculados a uma empresa prestadora.</div></div>
+      <button class="btn accent" id="btnNewCliente">+ Novo cliente</button>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="emp-table">
+      <thead><tr><th>Cliente</th><th>CNPJ/CPF</th><th>Empresa</th><th>Contato</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(c=>{
+          const emp = empresaById(c.empresaId);
+          return `<tr>
+            <td>${escapeHtml(c.nomeRazaoSocial)}</td>
+            <td class="mono" style="font-size:.76rem;">${escapeHtml(c.cnpjCpf)}</td>
+            <td style="font-size:.78rem;color:var(--muted);">${emp? escapeHtml(emp.nome) : '—'}</td>
+            <td style="font-size:.74rem;color:var(--muted);">${escapeHtml(c.email)||'—'}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn ghost small" data-edit="${c.id}">Editar</button>
+              <button class="btn danger small" data-del="${c.id}">Excluir</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${list.length===0? '<div class="empty-note">Nenhum cliente cadastrado.</div>' : ''}
+  `;
+  document.getElementById('btnNewCliente').addEventListener('click', ()=>openClienteModal(null));
+  container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openClienteModal(b.dataset.edit)));
+  container.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteCliente(b.dataset.del)));
+}
+
+function openClienteModal(clienteId){
+  const editing = !!clienteId;
+  const c = editing ? clienteById(clienteId) : {
+    empresaId: empresaAtivaList()[0] ? empresaAtivaList()[0].id : '',
+    tipoPessoa:'PJ', nomeRazaoSocial:'', cnpjCpf:'', inscricaoMunicipal:'', email:'', telefone:'', municipio:'', uf:'',
+    codigoIbge:'', cep:'', logradouro:'', numero:'', bairro:'',
+  };
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar cliente' : 'Novo cliente'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Empresa (prestadora)</label>
+            <select id="fEmpresaId">${empresaAtivaList().map(e=>`<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('')}</select>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Tipo</label><select id="fTipoPessoa"><option value="PJ">Pessoa Jurídica</option><option value="PF">Pessoa Física</option></select></div>
+            <div class="form-row"><label>CNPJ/CPF</label><input id="fCnpjCpf" type="text" value="${escapeHtml(c.cnpjCpf)}"></div>
+          </div>
+          <div class="form-row"><label>Nome / Razão social</label><input id="fNome" type="text" value="${escapeHtml(c.nomeRazaoSocial)}"></div>
+          <div class="form-cols">
+            <div class="form-row"><label>E-mail</label><input id="fEmail" type="email" value="${escapeHtml(c.email)}"></div>
+            <div class="form-row"><label>Telefone</label><input id="fTelefone" type="text" value="${escapeHtml(c.telefone)}"></div>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Município</label><input id="fMunicipio" type="text" value="${escapeHtml(c.municipio)}"></div>
+            <div class="form-row"><label>UF</label><input id="fUf" type="text" maxlength="2" value="${escapeHtml(c.uf)}"></div>
+          </div>
+          <div class="form-row"><label>Inscrição Municipal (se houver)</label><input id="fIm" type="text" value="${escapeHtml(c.inscricaoMunicipal)}"></div>
+          <div class="auth-block">
+            <div class="form-hint" style="margin-top:0;">Necessário só se essa empresa emitir pela API oficial (certificado digital).</div>
+            <div class="form-cols">
+              <div class="form-row"><label>Código IBGE do município (7 dígitos)</label><input id="fCodigoIbge" type="text" value="${escapeHtml(c.codigoIbge)}" placeholder="ex: 1302603"></div>
+              <div class="form-row"><label>CEP</label><input id="fCep" type="text" value="${escapeHtml(c.cep)}"></div>
+            </div>
+            <div class="form-cols">
+              <div class="form-row"><label>Logradouro</label><input id="fLogradouro" type="text" value="${escapeHtml(c.logradouro)}"></div>
+              <div class="form-row"><label>Número</label><input id="fNumero" type="text" value="${escapeHtml(c.numero)}"></div>
+            </div>
+            <div class="form-row"><label>Bairro</label><input id="fBairro" type="text" value="${escapeHtml(c.bairro)}"></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('fEmpresaId').value = c.empresaId;
+  document.getElementById('fTipoPessoa').value = c.tipoPessoa;
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = async ()=>{
+    const btnSave = document.getElementById('btnSave');
+    if(btnSave.disabled) return;
+    const nomeRazaoSocial = document.getElementById('fNome').value.trim();
+    const cnpjCpf = document.getElementById('fCnpjCpf').value.trim();
+    if(!nomeRazaoSocial || !cnpjCpf){ alert('Preencha ao menos o nome e o CNPJ/CPF.'); return; }
+    btnSave.disabled = true;
+    const data = {
+      empresaId: document.getElementById('fEmpresaId').value,
+      tipoPessoa: document.getElementById('fTipoPessoa').value,
+      nomeRazaoSocial, cnpjCpf,
+      email: document.getElementById('fEmail').value.trim(),
+      telefone: document.getElementById('fTelefone').value.trim(),
+      municipio: document.getElementById('fMunicipio').value.trim(),
+      uf: document.getElementById('fUf').value.trim().toUpperCase(),
+      inscricaoMunicipal: document.getElementById('fIm').value.trim(),
+      codigoIbge: document.getElementById('fCodigoIbge').value.trim(),
+      cep: document.getElementById('fCep').value.trim(),
+      logradouro: document.getElementById('fLogradouro').value.trim(),
+      numero: document.getElementById('fNumero').value.trim(),
+      bairro: document.getElementById('fBairro').value.trim(),
+    };
+    const backup = state.clientes.slice();
+    if(editing){ Object.assign(c, data); }
+    else { state.clientes.push({id: uid('cli_'), ...data}); }
+    try{
+      await persist(['clientes']);
+    }catch(e){
+      state.clientes = backup;
+      btnSave.disabled = false;
+      return;
+    }
+    root.innerHTML = '';
+    renderAll();
+  };
+}
+
+async function deleteCliente(id){
+  const c = clienteById(id);
+  if(!c) return;
+  const ok = await showConfirm(`Excluir "${escapeHtml(c.nomeRazaoSocial)}"? Isso também excluirá os serviços cadastrados para ele.`);
+  if(!ok) return;
+  const backupServicos = state.servicos, backupNotas = state.notas, backupClientes = state.clientes;
+  state.servicos = state.servicos.filter(s=>s.clienteId!==id);
+  state.notas = state.notas.filter(n=>n.clienteId!==id);
+  state.clientes = state.clientes.filter(x=>x.id!==id);
+  try{
+    await persist(['clientes','servicos','notas']);
+  }catch(e){
+    state.servicos = backupServicos; state.notas = backupNotas; state.clientes = backupClientes;
+    return;
+  }
+  renderAll();
+}
+
+/* ================= SERVIÇOS ================= */
+function renderServicos(){
+  const container = document.getElementById('sheetContent');
+  if(state.clientes.length===0){
+    container.innerHTML = `<div class="sheet-title">Serviços</div><div class="empty-note">Cadastre um cliente primeiro na aba Clientes.</div>`;
+    return;
+  }
+  const list = state.servicos.filter(s=>{
+    const cli = clienteById(s.clienteId);
+    return matchesSearch((cli?cli.nomeRazaoSocial:'')+' '+s.descricao);
+  });
+  container.innerHTML = `
+    <div class="emp-toolbar">
+      <div><div class="sheet-title" style="margin-bottom:0;">Serviços por cliente</div><div class="sheet-sub" style="margin-bottom:0;">Descrições recorrentes, para agilizar a emissão.</div></div>
+      <button class="btn accent" id="btnNewServico">+ Novo serviço</button>
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="emp-table">
+      <thead><tr><th>Cliente</th><th>Descrição</th><th>Cód. serviço</th><th>Valor padrão</th><th>ISS</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(s=>{
+          const cli = clienteById(s.clienteId);
+          return `<tr>
+            <td style="font-size:.82rem;">${cli? escapeHtml(cli.nomeRazaoSocial) : '—'}</td>
+            <td style="font-size:.82rem;">${s.tipoDescricao==='mensal' ? '<span class="badge auth-certificado">Automática (mensal)</span>' : escapeHtml(s.descricao)}</td>
+            <td class="mono" style="font-size:.76rem;">${s.codigoServicoMunicipal||'—'}</td>
+            <td class="mono" style="font-size:.8rem;">${s.valorPadrao!=null? 'R$ '+Number(s.valorPadrao).toFixed(2) : '—'}</td>
+            <td style="font-size:.78rem;">${s.aliquotaIss!=null? s.aliquotaIss+'%' : '—'}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn ghost small" data-edit="${s.id}">Editar</button>
+              <button class="btn danger small" data-del="${s.id}">Excluir</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${list.length===0? '<div class="empty-note">Nenhum serviço cadastrado.</div>' : ''}
+  `;
+  document.getElementById('btnNewServico').addEventListener('click', ()=>openServicoModal(null));
+  container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openServicoModal(b.dataset.edit)));
+  container.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>deleteServico(b.dataset.del)));
+}
+
+function openServicoModal(servicoId){
+  const editing = !!servicoId;
+  const s = editing ? servicoById(servicoId) : {
+    clienteId: state.clientes[0] ? state.clientes[0].id : '',
+    descricao:'', codigoServicoMunicipal:'', cnae:'', valorPadrao:'', aliquotaIss:'', issRetido:false, observacoes:'',
+    tipoDescricao:'manual', aliquotaImpostos:'', diaVencimento:'', dadosBancarios: DADOS_BANCARIOS_PADRAO,
+  };
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3>${editing? 'Editar serviço' : 'Novo serviço'}</h3>
+        <div class="form-grid">
+          <div class="form-row"><label>Cliente</label><select id="fClienteId">${state.clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nomeRazaoSocial)}</option>`).join('')}</select></div>
+
+          <div class="form-row"><label>Tipo de descrição</label>
+            <select id="fTipoDescricao">
+              <option value="manual">Manual (você escreve o texto)</option>
+              <option value="mensal">Automática — cobrança mensal de contabilidade</option>
+            </select>
+          </div>
+
+          <div id="descricaoManualBlock" class="form-row">
+            <label>Descrição do serviço</label><textarea id="fDescricao">${escapeHtml(s.descricao)}</textarea>
+          </div>
+
+          <div id="descricaoMensalBlock" class="auth-block" style="display:none;">
+            <div class="form-hint" style="margin-top:0;">O texto da nota é gerado sozinho na hora de emitir, usando a data de competência e o valor daquela nota. Período: dia 20 do mês anterior até dia 19 do mês de competência.</div>
+            <div class="form-cols">
+              <div class="form-row"><label>Alíquota total de impostos (%)</label><input id="fAliquotaImpostos" type="number" step="0.01" value="${s.aliquotaImpostos||''}"></div>
+              <div class="form-row"><label>Dia de vencimento</label><input id="fDiaVencimento" type="number" min="1" max="31" value="${s.diaVencimento||''}"></div>
+            </div>
+            <div class="form-row"><label>Dados bancários (aparecem no texto da nota)</label><textarea id="fDadosBancarios">${escapeHtml(s.dadosBancarios||DADOS_BANCARIOS_PADRAO)}</textarea></div>
+          </div>
+
+          <div class="form-cols">
+            <div class="form-row"><label>Código do serviço (LC 116)</label><input id="fCodigo" type="text" value="${s.codigoServicoMunicipal||''}"></div>
+            <div class="form-row"><label>CNAE / NBS</label><input id="fCnae" type="text" value="${s.cnae||''}"></div>
+          </div>
+          <div class="form-row"><label>Código de tributação nacional (6 dígitos, exigido pela API)</label><input id="fCodigoTribNac" type="text" maxlength="6" value="${s.codigoTribNac||''}" placeholder="ex: 171901"></div>
+          <div class="form-cols">
+            <div class="form-row"><label>Código de tributação municipal (complemento)</label><input id="fCodigoTribMun" type="text" value="${s.codigoTribMun||''}" placeholder="ex: 100"></div>
+            <div class="form-row"><label>Código NBS</label><input id="fCodigoNbs" type="text" value="${s.codigoNbs||''}" placeholder="ex: 1.1302.21.00"></div>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label>Valor padrão (R$)</label><input id="fValor" type="number" step="0.01" value="${s.valorPadrao||''}"></div>
+            <div class="form-row"><label>Alíquota ISS (%)</label><input id="fAliquota" type="number" step="0.01" value="${s.aliquotaIss||''}"></div>
+          </div>
+          <div class="form-row" style="flex-direction:row; align-items:center; gap:.5rem;">
+            <input type="checkbox" id="fIssRetido" style="width:14px;height:14px;">
+            <label style="text-transform:none; font-weight:500; font-size:.85rem;">ISS retido pelo tomador</label>
+          </div>
+
+          <div class="oblig-section-title" style="font-family:'Fraunces',serif;font-size:1rem;font-weight:600;margin-top:.4rem;">PIS/COFINS</div>
+          <div class="form-cols">
+            <div class="form-row"><label>CST PIS/COFINS</label><input id="fCstPisCofins" type="text" maxlength="2" value="${s.cstPisCofins||''}" placeholder="ex: 01"></div>
+            <div class="form-row"><label>Alíquota PIS (%)</label><input id="fAliquotaPis" type="number" step="0.0001" value="${s.aliquotaPis||''}"></div>
+            <div class="form-row"><label>Alíquota COFINS (%)</label><input id="fAliquotaCofins" type="number" step="0.0001" value="${s.aliquotaCofins||''}"></div>
+          </div>
+          <div class="form-row" style="flex-direction:row; align-items:center; gap:.5rem;">
+            <input type="checkbox" id="fPisCofinsRetido" style="width:14px;height:14px;">
+            <label style="text-transform:none; font-weight:500; font-size:.85rem;">PIS/COFINS retidos na fonte</label>
+          </div>
+
+          <div class="oblig-section-title" style="font-family:'Fraunces',serif;font-size:1rem;font-weight:600;margin-top:.4rem;">Retenções na fonte (IRRF/INSS/CSLL)</div>
+          <div class="form-hint" style="margin-top:0;">Deixe em branco (0%) o que não se aplica. O valor retido é calculado automaticamente sobre o valor da nota, na hora de emitir.</div>
+          <div class="form-cols">
+            <div class="form-row"><label>Alíquota IRRF (%)</label><input id="fAliquotaIrrf" type="number" step="0.01" value="${s.aliquotaIrrf||''}"></div>
+            <div class="form-row"><label>Alíquota INSS (%)</label><input id="fAliquotaInss" type="number" step="0.01" value="${s.aliquotaInss||''}"></div>
+            <div class="form-row"><label>Alíquota CSLL (%)</label><input id="fAliquotaCsll" type="number" step="0.01" value="${s.aliquotaCsll||''}"></div>
+          </div>
+
+          <div class="oblig-section-title" style="font-family:'Fraunces',serif;font-size:1rem;font-weight:600;margin-top:.4rem;">Geração automática mensal</div>
+          <div class="form-row"><label>Dia do mês pra gerar o rascunho automaticamente</label><input id="fDiaGeracao" type="number" min="1" max="31" value="${s.diaGeracao||''}" placeholder="deixe em branco pra não gerar sozinho"></div>
+
+          <div class="form-row"><label>Observações</label><textarea id="fObs">${escapeHtml(s.observacoes)}</textarea></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btnCancel">Cancelar</button>
+          <button class="btn accent" id="btnSave">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('fClienteId').value = s.clienteId;
+  document.getElementById('fTipoDescricao').value = s.tipoDescricao || 'manual';
+  document.getElementById('fIssRetido').checked = !!s.issRetido;
+  document.getElementById('fPisCofinsRetido').checked = !!s.pisCofinsRetido;
+  function syncTipoDescricao(){
+    const t = document.getElementById('fTipoDescricao').value;
+    document.getElementById('descricaoManualBlock').style.display = t==='manual' ? '' : 'none';
+    document.getElementById('descricaoMensalBlock').style.display = t==='mensal' ? '' : 'none';
+    if(t==='mensal'){
+      if(!document.getElementById('fCodigo').value) document.getElementById('fCodigo').value = '17.19.01.100';
+      if(!document.getElementById('fCnae').value) document.getElementById('fCnae').value = 'NBS 113022100';
+    }
+  }
+  syncTipoDescricao();
+  document.getElementById('fTipoDescricao').addEventListener('change', syncTipoDescricao);
+  document.getElementById('btnCancel').onclick = ()=>{ root.innerHTML=''; };
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='modalOverlay') root.innerHTML=''; });
+  document.getElementById('btnSave').onclick = async ()=>{
+    const btnSave = document.getElementById('btnSave');
+    if(btnSave.disabled) return;
+    const tipoDescricao = document.getElementById('fTipoDescricao').value;
+    const descricao = tipoDescricao==='manual' ? document.getElementById('fDescricao').value.trim() : '(gerada automaticamente na emissão)';
+    if(tipoDescricao==='manual' && !descricao){ alert('Descreva o serviço.'); return; }
+    btnSave.disabled = true;
+    const data = {
+      clienteId: document.getElementById('fClienteId').value,
+      tipoDescricao,
+      descricao,
+      codigoServicoMunicipal: document.getElementById('fCodigo').value.trim(),
+      cnae: document.getElementById('fCnae').value.trim(),
+      codigoTribNac: document.getElementById('fCodigoTribNac').value.trim(),
+      codigoTribMun: document.getElementById('fCodigoTribMun').value.trim(),
+      codigoNbs: document.getElementById('fCodigoNbs').value.trim(),
+      valorPadrao: document.getElementById('fValor').value ? parseFloat(document.getElementById('fValor').value) : null,
+      aliquotaIss: document.getElementById('fAliquota').value ? parseFloat(document.getElementById('fAliquota').value) : null,
+      issRetido: document.getElementById('fIssRetido').checked,
+      observacoes: document.getElementById('fObs').value.trim(),
+      aliquotaImpostos: tipoDescricao==='mensal' && document.getElementById('fAliquotaImpostos').value ? parseFloat(document.getElementById('fAliquotaImpostos').value) : null,
+      diaVencimento: tipoDescricao==='mensal' && document.getElementById('fDiaVencimento').value ? parseInt(document.getElementById('fDiaVencimento').value, 10) : null,
+      dadosBancarios: tipoDescricao==='mensal' ? document.getElementById('fDadosBancarios').value.trim() : null,
+      cstPisCofins: document.getElementById('fCstPisCofins').value.trim(),
+      aliquotaPis: document.getElementById('fAliquotaPis').value ? parseFloat(document.getElementById('fAliquotaPis').value) : null,
+      aliquotaCofins: document.getElementById('fAliquotaCofins').value ? parseFloat(document.getElementById('fAliquotaCofins').value) : null,
+      pisCofinsRetido: document.getElementById('fPisCofinsRetido').checked,
+      aliquotaIrrf: document.getElementById('fAliquotaIrrf').value ? parseFloat(document.getElementById('fAliquotaIrrf').value) : null,
+      aliquotaInss: document.getElementById('fAliquotaInss').value ? parseFloat(document.getElementById('fAliquotaInss').value) : null,
+      aliquotaCsll: document.getElementById('fAliquotaCsll').value ? parseFloat(document.getElementById('fAliquotaCsll').value) : null,
+      diaGeracao: document.getElementById('fDiaGeracao').value ? parseInt(document.getElementById('fDiaGeracao').value, 10) : null,
+    };
+    const backup = state.servicos.slice();
+    if(editing){ Object.assign(s, data); }
+    else { state.servicos.push({id: uid('srv_'), ...data}); }
+    try{
+      await persist(['servicos']);
+    }catch(e){
+      state.servicos = backup;
+      btnSave.disabled = false;
+      return;
+    }
+    root.innerHTML = '';
+    renderAll();
+  };
+}
+
+async function deleteServico(id){
+  const ok = await showConfirm('Excluir este serviço do catálogo do cliente?');
+  if(!ok) return;
+  const backup = state.servicos;
+  state.servicos = state.servicos.filter(x=>x.id!==id);
+  try{
+    await persist(['servicos']);
+  }catch(e){
+    state.servicos = backup;
+    return;
+  }
+  renderAll();
+}
+
+/* ================= EMITIR NFS-e ================= */
+function camposFiscaisDoServico(servico){
+  if(!servico) return {};
+  return {
+    codigoTribNac: servico.codigoTribNac, codigoTribMun: servico.codigoTribMun, codigoNbs: servico.codigoNbs,
+    codigoServicoMunicipal: servico.codigoServicoMunicipal, aliquotaIss: servico.aliquotaIss, issRetido: servico.issRetido,
+    cstPisCofins: servico.cstPisCofins, aliquotaPis: servico.aliquotaPis, aliquotaCofins: servico.aliquotaCofins, pisCofinsRetido: servico.pisCofinsRetido,
+    aliquotaIrrf: servico.aliquotaIrrf, aliquotaInss: servico.aliquotaInss, aliquotaCsll: servico.aliquotaCsll,
+  };
+}
+
+function statusLabel(status){ return {rascunho:'Rascunho', pendente_transmissao:'Pendente', transmitida:'Transmitida', erro:'Erro', transmitindo:'Transmitindo…', substituida:'Substituída'}[status] || status; }
+
+function downloadBlob(blob, nomeArquivo){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+
+async function baixarXmlNota(notaId, botao){
+  const nota = state.notas.find(n=>n.id===notaId);
+  if(!nota) return;
+  if(botao){ botao.disabled = true; botao.textContent = 'Buscando…'; }
+  try{
+    const obterXml = functionsClient.httpsCallable('obter_xml_nfse', { timeout: 170000 });
+    const resultado = await obterXml({ notaId });
+    if(resultado.data && resultado.data.sucesso){
+      const blob = new Blob([resultado.data.xml], {type:'application/xml'});
+      downloadBlob(blob, `NFSe_${nota.numeroNfse || notaId}.xml`);
+    } else {
+      alert('Não foi possível obter o XML: ' + (resultado.data ? resultado.data.erro : 'erro desconhecido'));
+    }
+  }catch(e){
+    alert('Erro ao buscar o XML: ' + e.message);
+  } finally {
+    if(botao){ botao.disabled = false; botao.textContent = 'Baixar XML'; }
+  }
+}
+
+async function verPdfNota(notaId, botao){
+  const nota = state.notas.find(n=>n.id===notaId);
+  if(!nota) return;
+  if(botao){ botao.disabled = true; botao.textContent = 'Gerando PDF…'; }
+  try{
+    const obterPdf = functionsClient.httpsCallable('baixar_danfse_pdf', { timeout: 170000 });
+    const resultado = await obterPdf({ notaId });
+    if(resultado.data && resultado.data.sucesso){
+      const byteChars = atob(resultado.data.pdfBase64);
+      const byteNumbers = new Array(byteChars.length);
+      for(let i=0;i<byteChars.length;i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+      const blob = new Blob([new Uint8Array(byteNumbers)], {type:'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(()=>URL.revokeObjectURL(url), 30000);
+    } else {
+      alert('Não foi possível gerar o PDF: ' + (resultado.data ? resultado.data.erro : 'erro desconhecido'));
+    }
+  }catch(e){
+    alert('Erro ao gerar o PDF: ' + e.message);
+  } finally {
+    if(botao){ botao.disabled = false; botao.textContent = 'Ver PDF (DANFSe)'; }
+  }
+}
+
+async function transmitirNota(notaId, botao){
+  const nota = state.notas.find(n=>n.id===notaId);
+  if(!nota) return;
+  const acesso = acessoDaEmpresa(nota.empresaId);
+
+  if(acesso && acesso.tipoAutenticacao === 'certificado'){
+    // Transmissao direta via Cloud Function - nao depende do script local.
+    if(botao){ botao.disabled = true; botao.textContent = 'Transmitindo…'; }
+    try{
+      const transmitir = functionsClient.httpsCallable('transmitir_nfse');
+      const resultado = await transmitir({ notaId });
+      if(!resultado.data || !resultado.data.sucesso){
+        alert('Não foi possível transmitir: ' + (resultado.data ? resultado.data.erro : 'erro desconhecido'));
+      } else if(resultado.data.avisoAmbiente){
+        // Aviso crítico: o portal confirmou um ambiente diferente do configurado
+        // (ex: nota que deveria ser homologação saiu como produção de verdade).
+        alert('⚠️ ' + resultado.data.avisoAmbiente);
+      }
+      // O Firestore listener (onSnapshot) atualiza o card sozinho com o status novo.
+    }catch(e){
+      alert('Erro ao chamar a transmissão: ' + e.message);
+      if(botao){ botao.disabled = false; botao.textContent = 'Transmitir'; }
+    }
+  } else {
+    // Empresa por senha - continua no fluxo antigo (script local com Playwright).
+    nota.status = 'pendente_transmissao';
+    nota.mensagemErro = null;
+    persist(['notas']).catch(()=>{}); // erro já mostrado em alert() dentro de persist()
+    renderAll();
+  }
+}
+
+/* ================= SUBSTITUIÇÃO DE NFS-e ================= */
+// Processo oficial em 2 etapas: (1) a nota nova, corrigida, já precisa ter
+// sido transmitida normalmente antes; (2) esta modal só registra o evento
+// de "cancelamento por substituição" na nota antiga, vinculando as duas.
+/* Substituição agora acontece direto no formulário de emissão (ver iniciarSubstituicao),
+   pré-preenchido com os dados da nota antiga — sem modal separada. */
+
+/* ================= SUBSTITUIÇÃO DE NFS-e ================= */
+// O prazo para cancelamento por substituição VARIA POR MUNICÍPIO (cada
+// município aderente ao Ambiente Nacional define sua própria regra).
+// Manaus/AM: até 9 dias, contados do dia seguinte à emissão (regra da SEMEF).
+// Isso é só um aviso visual na tela — a validação que vale de verdade é a
+// do backend (substituir_nfse), que já considera o município da empresa.
+const PRAZO_DIAS_SUBSTITUICAO_PADRAO = 9; // Manaus, hoje a única cidade em uso
+
+function diasDesdeEmissao(nota){
+  const dataStr = nota.transmitidaEm || nota.criadaEm;
+  if(!dataStr) return null;
+  const diffMs = new Date() - new Date(dataStr);
+  return Math.floor(diffMs / (1000*60*60*24));
+}
+function podeSubstituir(nota){
+  const dias = diasDesdeEmissao(nota);
+  return dias===null || dias <= PRAZO_DIAS_SUBSTITUICAO_PADRAO;
+}
+
+let substituicaoPendente = null; // { notaIdAntiga } enquanto o formulário de emissão está em "modo substituição"
+
+function iniciarSubstituicao(notaIdAntiga){
+  const notaAntiga = state.notas.find(n=>n.id===notaIdAntiga);
+  if(!notaAntiga) return;
+  substituicaoPendente = { notaIdAntiga };
+  activeTab = 'emitir';
+  renderAll();
+}
+
+function cancelarSubstituicao(){
+  substituicaoPendente = null;
+  renderAll();
+}
+
+function renderEmitir(){
+  const container = document.getElementById('sheetContent');
+  if(todasEmpresas().length===0 || state.clientes.length===0){
+    container.innerHTML = `<div class="sheet-title">Emitir NFS-e</div><div class="empty-note">É preciso ao menos uma empresa e um cliente cadastrados.</div>`;
+    return;
+  }
+  const notas = [...state.notas].sort((a,b)=> new Date(b.criadaEm) - new Date(a.criadaEm));
+  const notaAntiga = substituicaoPendente ? state.notas.find(n=>n.id===substituicaoPendente.notaIdAntiga) : null;
+
+  container.innerHTML = `
+    <div class="sheet-title">Emitir NFS-e</div>
+    <div class="sheet-sub">Monta o rascunho da nota. A transmissão real ao portal é feita pelo script local (Playwright ou API, conforme a empresa), que lê esta mesma fila do Firestore.</div>
+    ${notaAntiga ? `
+      <div class="nota-msg" style="background:#E3EEEA;color:var(--ink);border:1px solid var(--line-strong);margin-bottom:1rem;">
+        <strong>Substituindo a NFS-e ${notaAntiga.numeroNfse}</strong> (R$ ${Number(notaAntiga.valor||0).toFixed(2)}, competência ${notaAntiga.dataCompetencia||'—'}).
+        Ajuste os campos abaixo com as informações corretas — ao transmitir, a nota nova é emitida e a antiga é
+        automaticamente cancelada por substituição, vinculando as duas.
+        <button class="btn ghost small" id="btnCancelarSubstituicao" style="margin-left:.6rem;">Cancelar substituição</button>
+      </div>
+    ` : ''}
+    <div class="emp-toolbar" style="margin-bottom:1.1rem;">
+      <div class="form-hint" style="margin-top:0;">Cria um rascunho para cada cliente ativo que tenha um serviço "Automático (mensal)" cadastrado, com a competência do mês atual.</div>
+      ${!notaAntiga ? '<button class="btn ghost" id="btnGerarLote">Gerar rascunhos do mês</button>' : ''}
+    </div>
+    <div class="emitir-grid">
+      <div>
+        <div class="form-grid">
+          <div class="form-row"><label>Empresa (prestadora)</label><select id="fEmpresaId" ${notaAntiga?'disabled':''}>${empresaAtivaList().map(e=>`<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('')}</select></div>
+          <div class="form-row"><label>Cliente (tomador)</label><select id="fClienteId"></select></div>
+          <div class="form-row"><label>Serviço cadastrado (opcional)</label><select id="fServicoId"><option value="">— preencher manualmente —</option></select></div>
+          <div class="form-row"><label>Data de competência</label><input id="fData" type="date"></div>
+          <div class="form-row"><label>Descrição do serviço</label><textarea id="fDescricaoServico"></textarea></div>
+          <div class="form-row"><label>Valor (R$)</label><input id="fValor" type="number" step="0.01"></div>
+          ${notaAntiga ? `
+            <div class="form-row"><label>Motivo da substituição</label>
+              <select id="fMotivoCodigo">
+                <option value="01">01 - Desenquadramento do Simples Nacional</option>
+                <option value="02">02 - Enquadramento no Simples Nacional</option>
+                <option value="03">03 - Inclusão retroativa de imunidade/isenção</option>
+                <option value="04">04 - Exclusão retroativa de imunidade/isenção</option>
+                <option value="05">05 - Rejeição pelo tomador/intermediário</option>
+                <option value="99" selected>99 - Outros</option>
+              </select>
+            </div>
+            <div class="form-row"><label>Detalhe do motivo (opcional)</label><textarea id="fMotivoTexto" rows="2" placeholder="Ex.: erro no valor do serviço."></textarea></div>
+          ` : ''}
+          <button class="btn accent" id="btnCriarNota" style="align-self:flex-start;">${notaAntiga ? 'Transmitir substituição' : 'Salvar rascunho'}</button>
+        </div>
+      </div>
+      <div>
+        <div class="sheet-title" style="font-size:1rem;">Fila de notas</div>
+        <div id="notasList"></div>
+      </div>
+    </div>
+  `;
+  if(notaAntiga){
+    document.getElementById('btnCancelarSubstituicao').addEventListener('click', cancelarSubstituicao);
+  }
+  const empresaSelect = document.getElementById('fEmpresaId');
+  const clienteSelect = document.getElementById('fClienteId');
+  const servicoSelect = document.getElementById('fServicoId');
+
+  function refreshClientes(){
+    const empId = empresaSelect.value;
+    const clientes = clientesDaEmpresa(empId);
+    clienteSelect.innerHTML = clientes.map(c=>`<option value="${c.id}">${escapeHtml(c.nomeRazaoSocial)}</option>`).join('') || '<option value="">— nenhum cliente para esta empresa —</option>';
+    refreshServicos();
+  }
+  function refreshServicos(){
+    const cliId = clienteSelect.value;
+    servicoSelect.innerHTML = '<option value="">— preencher manualmente —</option>' +
+      servicosDoCliente(cliId).map(s=>{ const desc = s.descricao||''; return `<option value="${s.id}">${escapeHtml(desc.slice(0,40))}${desc.length>40?'…':''}</option>`; }).join('');
+  }
+  empresaSelect.addEventListener('change', refreshClientes);
+  clienteSelect.addEventListener('change', refreshServicos);
+  servicoSelect.addEventListener('change', ()=>{
+    const s = servicoById(servicoSelect.value);
+    if(s){
+      if(s.valorPadrao!=null) document.getElementById('fValor').value = s.valorPadrao;
+      if(s.tipoDescricao==='mensal') atualizarDescricaoAutomatica();
+      else document.getElementById('fDescricaoServico').value = s.descricao;
+    }
+  });
+  function atualizarDescricaoAutomatica(){
+    const s = servicoById(servicoSelect.value);
+    if(!s || s.tipoDescricao!=='mensal') return;
+    const valor = parseFloat(document.getElementById('fValor').value) || 0;
+    const dataCompetencia = document.getElementById('fData').value;
+    document.getElementById('fDescricaoServico').value = gerarDescricaoMensal(s, dataCompetencia, valor);
+  }
+  document.getElementById('fData').addEventListener('change', atualizarDescricaoAutomatica);
+  document.getElementById('fValor').addEventListener('input', atualizarDescricaoAutomatica);
+  refreshClientes();
+
+  if(notaAntiga){
+    // Modo substituição: pré-preenche com os dados da nota antiga.
+    empresaSelect.value = notaAntiga.empresaId;
+    refreshClientes();
+    clienteSelect.value = notaAntiga.clienteId;
+    refreshServicos();
+    if(notaAntiga.servicoId) servicoSelect.value = notaAntiga.servicoId;
+    document.getElementById('fData').value = notaAntiga.dataCompetencia || new Date().toISOString().slice(0,10);
+    document.getElementById('fDescricaoServico').value = notaAntiga.descricaoServico || '';
+    document.getElementById('fValor').value = notaAntiga.valor || '';
+  } else {
+    document.getElementById('fData').value = new Date().toISOString().slice(0,10);
+  }
+
+  document.getElementById('btnCriarNota').addEventListener('click', async ()=>{
+    const empresaId = empresaSelect.value;
+    const clienteId = clienteSelect.value;
+    const descricaoServico = document.getElementById('fDescricaoServico').value.trim();
+    const valor = parseFloat(document.getElementById('fValor').value);
+    const dataCompetencia = document.getElementById('fData').value;
+    if(!empresaId || !clienteId){ alert('Selecione empresa e cliente.'); return; }
+    if(!descricaoServico){ alert('Descreva o serviço prestado.'); return; }
+    if(!valor || valor<=0){ alert('Informe um valor válido.'); return; }
+    const servicoEscolhido = servicoById(servicoSelect.value);
+    const novaNota = {
+      id: uid('nota_'), empresaId, clienteId, servicoId: servicoSelect.value || null,
+      descricaoServico, valor, dataCompetencia, status: 'rascunho',
+      ...camposFiscaisDoServico(servicoEscolhido),
+      criadaEm: new Date().toISOString(), transmitidaEm: null, numeroNfse: null, mensagemErro: null,
+      criadaPor: currentUser ? currentUser.email : null,
+    };
+
+    if(!notaAntiga){
+      // Fluxo normal: só salva o rascunho.
+      const backup = state.notas.slice();
+      state.notas.push(novaNota);
+      try{
+        await persist(['notas']);
+      }catch(e){
+        state.notas = backup;
+        return;
+      }
+      renderAll();
+      return;
+    }
+
+    // Fluxo de substituição: cria a nota nova, transmite, e se der certo,
+    // registra o cancelamento-por-substituição vinculando as duas.
+    const motivoCodigo = document.getElementById('fMotivoCodigo').value;
+    const motivoTexto = document.getElementById('fMotivoTexto').value.trim();
+    const btn = document.getElementById('btnCriarNota');
+    btn.disabled = true; btn.textContent = 'Emitindo nota nova…';
+
+    const backupNotas = state.notas.slice();
+    state.notas.push(novaNota);
+    try{
+      await persist(['notas']);
+    }catch(e){
+      state.notas = backupNotas;
+      btn.disabled = false; btn.textContent = 'Transmitir substituição';
+      return;
+    }
+
+    try{
+      const transmitir = functionsClient.httpsCallable('transmitir_nfse', { timeout: 170000 });
+      const resTransmissao = await transmitir({ notaId: novaNota.id });
+      if(!resTransmissao.data || !resTransmissao.data.sucesso){
+        alert('A nota nova não foi transmitida: ' + (resTransmissao.data ? resTransmissao.data.erro : 'erro desconhecido') + '\n\nA substituição não foi registrada. O rascunho da nota nova continua na fila para você tentar de novo.');
+        btn.disabled = false; btn.textContent = 'Transmitir substituição';
+        renderAll();
+        return;
+      }
+      if(resTransmissao.data.avisoAmbiente){
+        alert('⚠️ ' + resTransmissao.data.avisoAmbiente);
+      }
+
+      btn.textContent = 'Vinculando substituição…';
+      const substituir = functionsClient.httpsCallable('substituir_nfse', { timeout: 170000 });
+      const resSubst = await substituir({
+        notaIdAntiga: notaAntiga.id, notaIdNova: novaNota.id, motivoCodigo, motivoTexto,
+      });
+      if(!resSubst.data || !resSubst.data.sucesso){
+        alert('A nota nova foi transmitida com sucesso, mas não foi possível registrar o cancelamento da nota antiga por substituição: ' +
+          (resSubst.data ? resSubst.data.erro : 'erro desconhecido') +
+          '\n\nA nota antiga continua ativa — você pode tentar vincular de novo depois.');
+      }
+
+      substituicaoPendente = null;
+      renderAll();
+    }catch(e){
+      alert('Erro durante a substituição: ' + e.message);
+      btn.disabled = false; btn.textContent = 'Transmitir substituição';
+    }
+  });
+
+  renderNotasList(notas);
+
+  const btnGerarLote = document.getElementById('btnGerarLote');
+  if(btnGerarLote) btnGerarLote.addEventListener('click', async ()=>{
+    const clientesComServicoMensal = state.clientes.filter(c=>{
+      if(c.ativo===false) return false;
+      return state.servicos.some(s=>s.clienteId===c.id && s.tipoDescricao==='mensal');
+    });
+    if(clientesComServicoMensal.length===0){
+      alert('Nenhum cliente com um serviço "Automático (mensal)" cadastrado ainda.');
+      return;
+    }
+    const ok = await showConfirm(`Gerar um rascunho de NFS-e para ${clientesComServicoMensal.length} cliente(s), com competência de ${new Date().toLocaleDateString('pt-BR', {month:'long', year:'numeric'})}?`, 'Gerar rascunhos');
+    if(!ok) return;
+    const hoje = new Date();
+    const dataCompetencia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).toISOString().slice(0,10);
+    let criados = 0;
+    clientesComServicoMensal.forEach(cliente=>{
+      const servico = state.servicos.find(s=>s.clienteId===cliente.id && s.tipoDescricao==='mensal');
+      const valor = servico.valorPadrao || 0;
+      if(!valor){ return; } // pula clientes sem valor padrão definido no serviço
+      const descricaoServico = gerarDescricaoMensal(servico, dataCompetencia, valor);
+      state.notas.push({
+        id: uid('nota_'), empresaId: cliente.empresaId, clienteId: cliente.id, servicoId: servico.id,
+        descricaoServico, valor, dataCompetencia, status: 'rascunho',
+        ...camposFiscaisDoServico(servico),
+        criadaEm: new Date().toISOString(), transmitidaEm: null, numeroNfse: null, mensagemErro: null,
+        criadaPor: currentUser ? currentUser.email : null,
+      });
+      criados++;
+    });
+    try{
+      await persist(['notas']);
+    }catch(e){
+      return;
+    }
+    renderAll();
+    alert(`${criados} rascunho(s) criado(s). Clientes sem "Valor padrão" no serviço foram pulados — configure o valor na aba Serviços.`);
+  });
+}
+
+function renderNotasList(notas){
+  const el = document.getElementById('notasList');
+  if(!el) return;
+  if(notas.length===0){ el.innerHTML = '<div class="empty-note">Nenhuma nota na fila ainda.</div>'; return; }
+  el.innerHTML = notas.map(n=>{
+    const emp = empresaById(n.empresaId);
+    const cli = clienteById(n.clienteId);
+    return `<div class="nota-card">
+      <div class="nota-top">
+        <div>
+          <div class="nota-name">${cli? escapeHtml(cli.nomeRazaoSocial) : '(cliente removido)'}</div>
+          <div class="nota-meta">${emp? escapeHtml(emp.nome) : ''} · ${escapeHtml(n.dataCompetencia)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="nota-valor">R$ ${Number(n.valor).toFixed(2)}</div>
+          <span class="badge status-${n.status}">${statusLabel(n.status)}</span>
+        </div>
+      </div>
+      <div class="nota-meta">${escapeHtml(n.descricaoServico)}</div>
+      ${n.numeroNfse? `<div class="nota-meta">Nº NFS-e: <strong>${escapeHtml(n.numeroNfse)}</strong></div>` : ''}
+      ${n.mensagemErro? `<div class="nota-msg">${escapeHtml(n.mensagemErro)}</div>` : ''}
+      ${n.avisoAmbiente? `<div class="nota-msg" style="background:#FFF3CD;color:#7A5D00;border:1px solid #F0D98C;">⚠️ ${escapeHtml(n.avisoAmbiente)}</div>` : ''}
+      ${n.status==='substituida'? `<div class="nota-meta">Substituída pela nota <strong>${escapeHtml(n.substituidaPorChave)}</strong></div>` : ''}
+      <div style="margin-top:.5rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+        ${n.status==='rascunho' ? `<button class="btn accent small" data-transmitir="${n.id}">Transmitir</button>` : ''}
+        ${n.status==='erro' ? `<button class="btn accent small" data-retransmitir="${n.id}">Tentar de novo</button>` : ''}
+        ${n.status==='transmitida' ? `<button class="btn ghost small" data-baixar-xml="${n.id}">Baixar XML</button>` : ''}
+        ${n.status==='transmitida' ? `<button class="btn ghost small" data-ver-pdf="${n.id}">Ver PDF (DANFSe)</button>` : ''}
+        ${n.status==='transmitida' && podeSubstituir(n) ? `<button class="btn ghost small" data-substituir="${n.id}">Substituir</button>` : ''}
+        ${n.status==='transmitida' && !podeSubstituir(n) ? `<span class="badge" title="Prazo de ${PRAZO_DIAS_SUBSTITUICAO_PADRAO} dias para substituição já passou">Fora do prazo p/ substituir</span>` : ''}
+        <button class="btn danger small" data-del-nota="${n.id}">${n.status==='rascunho' ? 'Excluir rascunho' : 'Remover da fila'}</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-transmitir]').forEach(b=>{
+    b.addEventListener('click', ()=>transmitirNota(b.dataset.transmitir, b));
+  });
+  el.querySelectorAll('[data-retransmitir]').forEach(b=>{
+    b.addEventListener('click', ()=>transmitirNota(b.dataset.retransmitir, b));
+  });
+  el.querySelectorAll('[data-baixar-xml]').forEach(b=>{
+    b.addEventListener('click', ()=>baixarXmlNota(b.dataset.baixarXml, b));
+  });
+  el.querySelectorAll('[data-ver-pdf]').forEach(b=>{
+    b.addEventListener('click', ()=>verPdfNota(b.dataset.verPdf, b));
+  });
+  el.querySelectorAll('[data-substituir]').forEach(b=>{
+    b.addEventListener('click', ()=>iniciarSubstituicao(b.dataset.substituir));
+  });
+  el.querySelectorAll('[data-del-nota]').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      const ok = await showConfirm('Remover esta nota da fila?');
+      if(!ok) return;
+      const backup = state.notas;
+      state.notas = state.notas.filter(n=>n.id!==b.dataset.delNota);
+      try{
+        await persist(['notas']);
+      }catch(e){
+        state.notas = backup;
+        return;
+      }
+      renderAll();
+    });
+  });
+}
+
+/* ---------- Master render ---------- */
+function renderAll(){
+  if(!state) return;
+  renderStats();
+  renderTabs();
+  if(activeTab==='empresas') renderEmpresas();
+  else if(activeTab==='clientes') renderClientes();
+  else if(activeTab==='servicos') renderServicos();
+  else if(activeTab==='emitir') renderEmitir();
+}
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{ searchQuery = e.target.value; renderAll(); });
+
+})();
+</script>
+</body>
+</html>
