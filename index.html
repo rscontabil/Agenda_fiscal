@@ -180,8 +180,7 @@ header.app{
 }
 
 /* ===== Main ===== */
-main{padding:1.4rem;max-width:1180px;margin:0 auto; transition:max-width .15s;}
-main.config-wide{max-width:1520px;}
+main{padding:1.4rem;max-width:1180px;margin:0 auto;}
 .sheet{
   background:var(--surface);
   border:1px solid var(--line-strong);
@@ -255,24 +254,6 @@ main.config-wide{max-width:1520px;}
 /* ===== Painel ===== */
 .painel-header-row{display:flex; justify-content:space-between; align-items:flex-start; gap:.8rem; flex-wrap:wrap; margin-bottom:1rem;}
 .painel-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.9rem; margin-bottom:1.4rem;}
-.painel-shortcuts{display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.2rem;}
-.painel-progress-card{
-  background:#fff; border:1px solid var(--line-strong); border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.4rem;
-}
-.painel-progress-top{display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; margin-bottom:.5rem;}
-.painel-progress-label{font-family:'Fraunces',serif; font-weight:600; font-size:.95rem; color:var(--ink-2);}
-.painel-progress-pct{font-size:1.6rem; font-weight:700; color:var(--accent);}
-.painel-progress-diff{font-size:.78rem; font-weight:600; padding:.15rem .5rem; border-radius:12px;}
-.painel-progress-diff.up{color:var(--good); background:var(--good-bg);}
-.painel-progress-diff.down{color:var(--bad); background:var(--bad-bg);}
-.painel-progress-bar{width:100%; height:10px; background:#EEF0E9; border-radius:6px; overflow:hidden; margin-bottom:.5rem;}
-.painel-progress-fill{height:100%; background:var(--accent); border-radius:6px; transition:width .3s;}
-.painel-progress-sub{font-size:.76rem; color:var(--muted);}
-.painel-team-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.7rem; margin-bottom:1.4rem;}
-.painel-team-card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:.7rem .85rem;}
-.painel-team-card.no-resp{background:#FAF9F5; border-style:dashed;}
-.painel-team-name{font-size:.83rem; font-weight:600; color:var(--ink); margin-bottom:.4rem;}
-.painel-team-sub{font-size:.74rem; color:var(--muted); margin-top:.35rem;}
 .painel-card{
   border:1px solid var(--line); border-radius:var(--radius); padding:1rem; background:#FCFCFA;
 }
@@ -294,9 +275,6 @@ main.config-wide{max-width:1520px;}
 .pending-row .go:hover{text-decoration:underline;}
 
 .lembrete-list{display:flex; flex-direction:column; gap:.55rem;}
-.lembrete-group{margin-bottom:1.1rem;}
-.lembrete-group-title{font-family:'Fraunces',serif; font-weight:600; font-size:.92rem; color:var(--ink-2); margin-bottom:.5rem;}
-.lembrete-group-count{color:var(--muted); font-weight:400; font-size:.8rem;}
 .lembrete-row{
   display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
   border:1px solid var(--line); border-radius:10px; padding:.7rem .9rem; background:#FCFCFA;
@@ -430,7 +408,6 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 }
 .envio-remove-btn{flex-shrink:0; font-size:1.1rem;}
 .envio-footer{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem;}
-.envio-progress-wrap{margin:.8rem 0;}
 .envio-footer-info{font-size:.8rem; color:var(--muted);}
 
 .modal-wide{max-width:760px;}
@@ -511,31 +488,6 @@ table.emp-table tr:hover td{background:#FBFAF6;}
 .obrig-table td{padding:.55rem .6rem; border-bottom:1px solid var(--line); vertical-align:middle;}
 .obrig-tr:hover{background:#FBFAF5;}
 .obrig-tr.overdue{background:var(--bad-bg);}
-.obrig-tr.is-selected{background:#EAF1FB;}
-.obrig-table th.sortable, .emp-table th.sortable{cursor:pointer; user-select:none; white-space:nowrap;}
-.emp-table th.sortable:hover{color:var(--ink);}
-.obrig-table th.sortable:hover{color:var(--ink);}
-.obrig-summary{display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem;}
-.obrig-pagination{display:flex; align-items:center; justify-content:center; gap:1rem; margin-top:1rem;}
-.obrig-pagination-info{font-size:.78rem; color:var(--muted);}
-.obrig-summary-chip{
-  background:#fff; border:1px solid var(--line-strong); border-radius:20px; padding:.35rem .8rem;
-  font-size:.78rem; color:var(--muted);
-}
-.obrig-summary-chip .num{font-weight:700; color:var(--ink); margin-right:.25rem;}
-.obrig-summary-chip.chip-overdue{border-color:#E3A0A0; background:var(--bad-bg);}
-.obrig-summary-chip.chip-overdue .num{color:var(--bad);}
-.obrig-summary-chip.chip-done{border-color:#BFE0CD; background:var(--good-bg);}
-.obrig-summary-chip.chip-done .num{color:var(--good);}
-.obrig-bulk-bar{
-  display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; background:#F5F1E6; border:1px solid var(--line-strong);
-  border-radius:10px; padding:.6rem .8rem; margin-bottom:.8rem;
-}
-.obrig-bulk-bar select{
-  padding:.35rem .6rem; border:1px solid var(--line-strong); border-radius:7px; font-size:.78rem;
-  font-family:'Public Sans',sans-serif;
-}
-.obrig-row-checkbox, #obrigSelectAll{width:15px; height:15px; accent-color:var(--accent); cursor:pointer;}
 .obrig-td-empresa{font-weight:600; min-width:160px;}
 .obrig-cat-tag{font-size:.68rem; color:var(--muted); margin-top:.1rem;}
 .obrig-status-select{
@@ -582,28 +534,6 @@ table.emp-table tr:hover td{background:#FBFAF6;}
   font-family:'Public Sans',sans-serif;
 }
 .demanda-list-wrap{display:flex; flex-direction:column; gap:.7rem;}
-.demanda-card.overdue{border-color:#E3A0A0; background:var(--bad-bg);}
-.demanda-card.is-selected{outline:2px solid var(--accent); outline-offset:-1px;}
-.demanda-prazo-overdue{color:var(--bad); font-weight:600;}
-.demanda-priority-badge{
-  font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
-  padding:.1rem .4rem; border-radius:8px; vertical-align:middle;
-}
-.demanda-priority-badge.prio-baixa{background:#EEF0E9; color:var(--muted);}
-.demanda-priority-badge.prio-normal{background:#E5EEF3; color:#2A5F79;}
-.demanda-priority-badge.prio-urgente{background:var(--bad-bg); color:var(--bad);}
-.demanda-select-checkbox{width:15px; height:15px; accent-color:var(--accent); cursor:pointer; margin-top:.2rem;}
-.demanda-kanban{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; align-items:start;}
-.demanda-kanban-col{background:#FAF9F5; border:1px solid var(--line); border-radius:10px; padding:.7rem; min-height:100px;}
-.demanda-kanban-col-title{font-family:'Fraunces',serif; font-weight:600; font-size:.88rem; margin-bottom:.6rem; color:var(--ink-2);}
-.demanda-kanban-col-body{display:flex; flex-direction:column; gap:.6rem; min-height:60px; transition:background .15s;}
-.demanda-kanban-col-body.drag-over{background:#EFE9D8; border-radius:8px;}
-.demanda-kanban-card{
-  background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:.6rem .7rem; cursor:grab;
-}
-.demanda-kanban-card.overdue{border-color:#E3A0A0; background:var(--bad-bg);}
-.demanda-kanban-card.dragging{opacity:.4;}
-@media (max-width:800px){ .demanda-kanban{grid-template-columns:1fr;} }
 .demanda-card{border:1px solid var(--line); border-radius:10px; padding:.85rem 1rem; background:#FCFCFA;}
 .demanda-card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:.7rem; flex-wrap:wrap;}
 .demanda-card-title{font-weight:600; font-size:.9rem; margin-bottom:.2rem;}
@@ -782,10 +712,9 @@ let searchQuery = '';
 let now = new Date();
 let selectedMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 let selectedYear = String(now.getFullYear());
-let saveTimer = null;
+let lastSyncedAt = null; // marca o lastEditedAt já visto do servidor, usado para detectar gravação concorrente
 let envioItems = [];
 let envioSending = false;
-let envioShowHistory = false;
 let importItems = [];
 
 /* ---------- Firebase (login por pessoa + banco de dados em tempo real) ---------- */
@@ -941,16 +870,10 @@ function migrateState(){
   state.obligations = state.obligations || [];
   state.docTypes = state.docTypes || [];
   state.demandas = state.demandas || [];
-  state.demandas.forEach(d=>{
-    if(d.prioridade===undefined){ d.prioridade = 'normal'; changed = true; }
-    if(d.prazo===undefined){ d.prazo = null; changed = true; }
-  });
   state.users = state.users || [];
   state.deletedDefaultObligationIds = state.deletedDefaultObligationIds || [];
   state.deletedDefaultDocTypeIds = state.deletedDefaultDocTypeIds || [];
   if(!state.customCategories){ state.customCategories = []; changed = true; }
-  if(!state.silencedReminders){ state.silencedReminders = {}; changed = true; }
-  if(!state.sentDocuments){ state.sentDocuments = []; changed = true; }
   // Divide a categoria antiga "Presumido e Real" em duas categorias separadas: "Lucro Presumido"
   // e "Lucro Real". As obrigações que já existiam viram "Lucro Presumido" (mantendo o mesmo id,
   // pra não quebrar nada de quem já usa Presumido), e uma cópia de cada uma é criada em "Lucro
@@ -1052,21 +975,6 @@ function migrateState(){
     const dirf = state.obligations.find(o=>o.id==='anual__dirf');
     if(dirf && dirf.label==='DIRF'){ dirf.label = 'DIRF (descontinuada desde 2025 — substituída por eSocial/EFD-Reinf)'; changed = true; }
     state.federalDatesFixDone2 = true;
-    changed = true;
-  }
-  // 13º salário e adiantamento têm vencimento fixo por lei (20/12 e 30/11) — preenche pra quem
-  // já tinha essas duas cadastradas sem data.
-  if(!state.decimoTerceiroDatesFixDone){
-    const setIfBlank2 = (id, fields) => {
-      const o = state.obligations.find(x=>x.id===id);
-      if(o && !o.dueDay && (!o.dueDayRule || o.dueDayRule==='fixo')){
-        Object.assign(o, fields);
-        changed = true;
-      }
-    };
-    setIfBlank2('folha__adto13', {dueDayRule:'fixo', dueDay:30, weekendAdjust:'postergar'});
-    setIfBlank2('folha__sal13', {dueDayRule:'fixo', dueDay:20, weekendAdjust:'postergar'});
-    state.decimoTerceiroDatesFixDone = true;
     changed = true;
   }
   // Migração: cada obrigação por empresa/período era um simples true/false (feito ou não).
@@ -1274,9 +1182,11 @@ async function loadState(){
           }
         } else {
           state = snap.data() || {};
+          window.__debugState = state; // temporário: pra diagnosticar direto no console do navegador
           if(!fromCache){
+            lastSyncedAt = state.lastEditedAt || null;
             const changed = migrateState();
-            if(changed) persist();
+            if(changed) persist().catch(()=>{});
           }
           storageSet(STORAGE_KEY, JSON.stringify(state)); // cache local de apoio (não autoritativo)
         }
@@ -1306,20 +1216,39 @@ async function loadState(){
   });
 }
 
-function persist(){
-  clearTimeout(saveTimer);
-  return new Promise(resolve=>{
-    saveTimer = setTimeout(async ()=>{
-      state.lastEditedBy = currentUser ? currentUser.email : null;
-      state.lastEditedAt = new Date().toISOString();
-      try{
-        await firestoreDocRef().set(state);
-      }catch(e){
-        console.error('Erro ao salvar no Firestore', e);
+// Grava o documento inteiro (todo o app vive num único doc appData/main),
+// mas antes verifica, numa transação, se alguém já salvou uma versão mais
+// nova desde a última vez que sincronizamos — nesse caso recusa a gravação
+// em vez de sobrescrever silenciosamente o trabalho da outra pessoa.
+// Isso não faz merge campo-a-campo (o "state" é um blob único usado em
+// dezenas de lugares do app), mas evita o pior caso: perder dados de um
+// colega sem nenhum aviso. Lança (throw) se a gravação falhar ou houver
+// conflito, para quem chamou poder decidir o que fazer.
+async function persist(){
+  const ref = firestoreDocRef();
+  state.lastEditedBy = currentUser ? currentUser.email : null;
+  state.lastEditedAt = new Date().toISOString();
+  try{
+    await db.runTransaction(async (tx)=>{
+      const snap = await tx.get(ref);
+      const serverData = snap.exists ? (snap.data() || {}) : {};
+      if(lastSyncedAt && serverData.lastEditedAt && serverData.lastEditedAt !== lastSyncedAt){
+        const err = new Error('Outra pessoa salvou uma alteração enquanto você editava esta tela.');
+        err.isConflict = true;
+        throw err;
       }
-      resolve();
-    }, 250);
-  });
+      tx.set(ref, state);
+    });
+    lastSyncedAt = state.lastEditedAt;
+  }catch(e){
+    console.error('Erro ao salvar no Firestore', e);
+    if(e.isConflict){
+      alert(e.message + ' Para não sobrescrever o trabalho dela, recarregue a página (F5) e refaça sua alteração.');
+    } else {
+      alert('Não foi possível salvar: ' + (e.message || 'erro desconhecido') + '\n\nSua alteração pode NÃO ter sido gravada. Verifique sua conexão e tente novamente.');
+    }
+    throw e;
+  }
 }
 
 /* ---------- Conexão Google para envio de e-mail (Gmail) ---------- */
@@ -1892,8 +1821,8 @@ const DEFAULT_OBLIGATIONS = [
   {id:'folha__consignado', category:'folha', label:'Empréstimo Consignado'},
   {id:'folha__adto', category:'folha', label:'Adiantamento'},
   {id:'folha__fechamento', category:'folha', label:'Fechamento Fopag'},
-  {id:'folha__adto13', category:'folha', label:'Adiantamento 13º', seasonalMonth:11, dueDayRule:'fixo', dueDay:30, weekendAdjust:'postergar'},
-  {id:'folha__sal13', category:'folha', label:'13º Salário', seasonalMonth:12, dueDayRule:'fixo', dueDay:20, weekendAdjust:'postergar'},
+  {id:'folha__adto13', category:'folha', label:'Adiantamento 13º', seasonalMonth:11},
+  {id:'folha__sal13', category:'folha', label:'13º Salário', seasonalMonth:12},
   {id:'suframa__insc', category:'suframa', label:'Insc. Suframa'},
   {id:'suframa__venc', category:'suframa', label:'Vencimento Insc.'},
   {id:'suframa__gru', category:'suframa', label:'Gerar GRU'},
@@ -2051,7 +1980,7 @@ function moveObligationInCategory(id, direction){
   const tmp = state.obligations[idxA];
   state.obligations[idxA] = state.obligations[idxB];
   state.obligations[idxB] = tmp;
-  persist();
+  persist().catch(()=>{});
   return true;
 }
 function companyItemsForCategory(company, category, periodKey){
@@ -2190,22 +2119,10 @@ function getObligationEntry(period, companyId, itemKey){
   }
   return obj[companyId][itemKey];
 }
-// Igual à getObligationEntry, mas pra uma chave de período ESPECÍFICA (ex: "2026-01"), em vez do
-// mês/ano/trimestre atualmente selecionado na tela — usado quando a competência vem de outro lugar
-// (como a leitura de um PDF), não da navegação do usuário.
-function getObligationEntryForKey(period, pk, companyId, itemKey){
-  const store = period==='year' ? state.annual : (period==='quarter' ? state.quarterly : state.monthly);
-  if(!store[pk]) store[pk] = {};
-  if(!store[pk][companyId]) store[pk][companyId] = {};
-  if(!store[pk][companyId][itemKey]){
-    store[pk][companyId][itemKey] = {status:'nao_iniciada', responsavelId:null, detalhes:'', comprovante:''};
-  }
-  return store[pk][companyId][itemKey];
-}
 function setObligationField(period, companyId, itemKey, field, value){
   const entry = getObligationEntry(period, companyId, itemKey);
   entry[field] = value;
-  persist();
+  persist().catch(()=>{});
 }
 function isChecked(period, companyId, itemKey){
   const {obj} = periodBucket(period);
@@ -2221,9 +2138,9 @@ function buildWhatsAppLink(phone, message){
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
-function computeUpcomingReminders(diasAntesOverride){
+function computeUpcomingReminders(){
   const settings = state.reminderSettings || {diasAntes:3};
-  const diasAntes = diasAntesOverride!=null ? diasAntesOverride : (settings.diasAntes || 3);
+  const diasAntes = settings.diasAntes || 3;
   const today = new Date();
   today.setHours(0,0,0,0);
   const results = [];
@@ -2249,15 +2166,9 @@ function computeUpcomingReminders(diasAntesOverride){
         const bucket = state.monthly[compKey] && state.monthly[compKey][c.id] && state.monthly[compKey][c.id][ob.id];
         const done = !!(bucket && isResolvedStatus(bucket.status));
         if(done) return;
-        const silenceKey = `${c.id}::${ob.id}::${compKey}`;
-        if(state.silencedReminders && state.silencedReminders[silenceKey]) return; // marcado como "não enviar" pra essa competência
         results.push({
           company: c,
-          companyId: c.id,
-          obligationId: ob.id,
           obligationLabel: ob.label,
-          responsavelId: (bucket && bucket.responsavelId) || null,
-          compKey,
           due,
           diffDays,
           category: cat,
@@ -2279,7 +2190,7 @@ function toggleItem(period, companyId, itemKey){
   const {obj} = periodBucket(period);
   if(!obj[companyId]) obj[companyId] = {};
   obj[companyId][itemKey] = !obj[companyId][itemKey];
-  persist();
+  persist().catch(()=>{});
 }
 function companyProgress(tabId, company){
   const def = TAB_DEFS[tabId];
@@ -2337,7 +2248,7 @@ function renderStats(){
   el.querySelectorAll('[data-jump]').forEach(card=>{
     card.addEventListener('click', ()=>{
       activeTab = card.dataset.jump;
-      if(card.dataset.jumpCat){ obrigViewMode = 'month'; obrigFilterCategoria = card.dataset.jumpCat; }
+      if(card.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = card.dataset.jumpCat; }
       renderAll();
     });
   });
@@ -2371,24 +2282,9 @@ let catalogFilterCategoria = 'todas';
 let catalogFilterEsfera = 'todas';
 let catalogFilterArea = 'todas';
 let catalogFilterSearch = '';
-let categoryFilterSearch = '';
-let usersFilterSearch = '';
-let docTypesFilterSearch = '';
-let catalogSelectedIds = new Set();
 let obrigFilterEsfera = 'todas';
 let obrigFilterArea = 'todas';
 let obrigShowMoreFilters = false;
-let obrigSortColumn = 'vencimento';
-let obrigSortDirection = 'asc';
-let obrigSelectedKeys = new Set();
-let obrigPage = 1;
-const OBRIG_PAGE_SIZE = 60;
-let empFilterTrib = 'todas';
-let empFilterStatus = 'ativas';
-let empFilterFolha = 'todas';
-let empFilterSuframa = 'todas';
-let empSortColumn = 'nome';
-let empSortDirection = 'asc';
 const DEFAULT_ESFERA_OPTIONS = ['Federal', 'Estadual', 'Municipal', 'Trabalhista/Previdenciária'];
 const DEFAULT_AREA_OPTIONS = ['Fiscal', 'Contábil', 'Trabalhista', 'Previdenciária', 'Financeira'];
 const DEFAULT_ORGAO_OPTIONS = ['Receita Federal', 'SEFAZ/AM', 'SEMEF (Prefeitura de Manaus)', 'Caixa Econômica Federal', 'Junta Comercial', 'Ministério do Trabalho'];
@@ -2589,25 +2485,10 @@ function computeObrigacoesRows(){
     });
   });
   rows.sort((a,b)=>{
-    let cmp = 0;
-    if(obrigSortColumn==='empresa'){
-      cmp = a.company.nome.localeCompare(b.company.nome);
-    } else if(obrigSortColumn==='obrigacao'){
-      cmp = a.item.label.localeCompare(b.item.label);
-    } else if(obrigSortColumn==='status'){
-      cmp = a.entry.status.localeCompare(b.entry.status);
-    } else if(obrigSortColumn==='responsavel'){
-      const an = a.entry.responsavelId ? (state.users.find(u=>u.id===a.entry.responsavelId)||{}).nome||'' : '';
-      const bn = b.entry.responsavelId ? (state.users.find(u=>u.id===b.entry.responsavelId)||{}).nome||'' : '';
-      cmp = an.localeCompare(bn);
-    } else { // vencimento (padrão)
-      if(a.vencimento && b.vencimento) cmp = a.vencimento - b.vencimento;
-      else if(a.vencimento) cmp = -1;
-      else if(b.vencimento) cmp = 1;
-      else cmp = a.company.nome.localeCompare(b.company.nome);
-    }
-    if(cmp===0) cmp = a.company.nome.localeCompare(b.company.nome);
-    return obrigSortDirection==='desc' ? -cmp : cmp;
+    if(a.vencimento && b.vencimento) return a.vencimento - b.vencimento;
+    if(a.vencimento) return -1;
+    if(b.vencimento) return 1;
+    return a.company.nome.localeCompare(b.company.nome);
   });
   return rows;
 }
@@ -2621,9 +2502,7 @@ function obrigRowHtml(row){
   const responsavel = row.entry.responsavelId ? state.users.find(u=>u.id===row.entry.responsavelId) : null;
   const vencFmt = row.vencimento ? row.vencimento.toLocaleDateString('pt-BR') : '—';
   const overdue = row.vencimento && !isResolvedStatus(row.entry.status) && row.vencimento < new Date(new Date().setHours(0,0,0,0));
-  const checked = obrigSelectedKeys.has(key);
-  return `<tr class="obrig-tr ${overdue?'overdue':''} ${checked?'is-selected':''}" data-obrig-key="${key}">
-    <td><input type="checkbox" class="obrig-row-checkbox" data-obrig-select="${key}" ${checked?'checked':''}></td>
+  return `<tr class="obrig-tr ${overdue?'overdue':''}" data-obrig-key="${key}">
     <td class="obrig-td-empresa">${escapeHtml(row.company.nome)}</td>
     <td>${escapeHtml(row.item.label)}<div class="obrig-cat-tag">${CATEGORY_LABELS[row.category]}${row.ob&&row.ob.esfera?' · '+row.ob.esfera:''}${row.ob&&row.ob.area?' · '+row.ob.area:''}</div></td>
     <td class="mono">
@@ -2660,35 +2539,13 @@ function renderObrigacoes(){
   const rows = computeObrigacoesRows();
   const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(u=>`<option value="${u.id}" ${obrigFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
-  const today = new Date(new Date().setHours(0,0,0,0));
-  const totalCount = rows.length;
-  const overdueCount = rows.filter(r=>r.vencimento && !isResolvedStatus(r.entry.status) && r.vencimento < today).length;
-  const doneCount = rows.filter(r=>isResolvedStatus(r.entry.status)).length;
-  const pendingCount = totalCount - doneCount - overdueCount;
-  // Pagina a tabela — com muitas empresas, gerar/renderizar centenas de linhas de uma vez deixa a
-  // tela travada por vários segundos. Os cartões de resumo acima continuam contando TODAS as linhas
-  // filtradas, só a tabela em si é que mostra um pedaço de cada vez.
-  const totalPages = Math.max(1, Math.ceil(totalCount / OBRIG_PAGE_SIZE));
-  if(obrigPage > totalPages) obrigPage = totalPages;
-  if(obrigPage < 1) obrigPage = 1;
-  const pageRows = rows.slice((obrigPage-1)*OBRIG_PAGE_SIZE, obrigPage*OBRIG_PAGE_SIZE);
-  function sortArrow(col){ return obrigSortColumn===col ? (obrigSortDirection==='asc'?' ▲':' ▼') : ''; }
   container.innerHTML = `
     <div class="painel-header-row">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Obrigações</div>
         <div class="sheet-sub" style="margin-bottom:0;">Vencimento, responsável e status de cada obrigação por empresa. ${obrigPeriodDescription()}.</div>
       </div>
-      <div style="display:flex; gap:.5rem;">
-        <button type="button" class="btn ghost small" id="btnExportarObrigacoes">Exportar</button>
-        <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
-      </div>
-    </div>
-    <div class="obrig-summary">
-      <div class="obrig-summary-chip"><span class="num">${totalCount}</span> total</div>
-      <div class="obrig-summary-chip chip-pending"><span class="num">${pendingCount}</span> pendente${pendingCount===1?'':'s'}</div>
-      <div class="obrig-summary-chip chip-overdue"><span class="num">${overdueCount}</span> atrasada${overdueCount===1?'':'s'}</div>
-      <div class="obrig-summary-chip chip-done"><span class="num">${doneCount}</span> concluída${doneCount===1?'':'s'}</div>
+      <button type="button" class="btn accent small" id="btnNovaObrigacao">+ Nova obrigação</button>
     </div>
     <div class="obrig-filters">
       <div class="obrig-mode-toggle">
@@ -2719,54 +2576,33 @@ function renderObrigacoes(){
     <div class="obrig-filters" style="margin-top:-.6rem;">
       <select id="obrigFilterEsferaSelect">
         <option value="todas" ${obrigFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
-        ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${obrigFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+        ${state.esferaOptions.map(e=>`<option value="${escapeHtml(e)}" ${obrigFilterEsfera===e?'selected':''}>${escapeHtml(e)}</option>`).join('')}
       </select>
       <select id="obrigFilterAreaSelect">
         <option value="todas" ${obrigFilterArea==='todas'?'selected':''}>Todas as áreas</option>
-        ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${obrigFilterArea===a?'selected':''}>${a}</option>`).join('')}
+        ${state.areaOptions.map(a=>`<option value="${escapeHtml(a)}" ${obrigFilterArea===a?'selected':''}>${escapeHtml(a)}</option>`).join('')}
       </select>
     </div>` : ''}
-    <div id="obrigBulkBar" class="obrig-bulk-bar" style="display:none;">
-      <span id="obrigBulkCount"></span>
-      <select id="obrigBulkStatus">
-        <option value="">Mudar status para…</option>
-        ${statusOptionsHtml(null)}
-      </select>
-      <select id="obrigBulkResp">
-        <option value="">Mudar responsável para…</option>
-        <option value="__none__">— sem responsável —</option>
-        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
-      </select>
-      <button type="button" class="btn accent small" id="btnAplicarLote">Aplicar</button>
-      <button type="button" class="btn ghost small" id="btnLimparSelecao">Limpar seleção</button>
-    </div>
     <div style="overflow-x:auto;">
     <table class="obrig-table">
       <thead>
         <tr>
-          <th><input type="checkbox" id="obrigSelectAll"></th>
-          <th class="sortable" data-obrig-sort="empresa">Empresa${sortArrow('empresa')}</th>
-          <th class="sortable" data-obrig-sort="obrigacao">Obrigação${sortArrow('obrigacao')}</th>
-          <th class="sortable" data-obrig-sort="vencimento">Vencimento${sortArrow('vencimento')}</th>
-          <th class="sortable" data-obrig-sort="status">Status${sortArrow('status')}</th>
-          <th class="sortable" data-obrig-sort="responsavel">Responsável${sortArrow('responsavel')}</th>
+          <th>Empresa</th>
+          <th>Obrigação</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th>Responsável</th>
           <th>Detalhes</th>
           <th>Comprovante</th>
         </tr>
       </thead>
       <tbody id="obrigTbody">
-        ${pageRows.length? pageRows.map(obrigRowHtml).join('') : `<tr><td colspan="8"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
+        ${rows.length? rows.map(obrigRowHtml).join('') : `<tr><td colspan="7"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`}
       </tbody>
     </table>
     </div>
-    ${totalPages>1 ? `
-    <div class="obrig-pagination">
-      <button type="button" class="btn ghost small" id="btnObrigPrevPage" ${obrigPage<=1?'disabled':''}>← Anterior</button>
-      <span class="obrig-pagination-info">Página ${obrigPage} de ${totalPages} · ${totalCount} obrigações no total</span>
-      <button type="button" class="btn ghost small" id="btnObrigNextPage" ${obrigPage>=totalPages?'disabled':''}>Próxima →</button>
-    </div>` : ''}
   `;
-  wireObrigacoesHandlers(pageRows);
+  wireObrigacoesHandlers(rows);
 }
 
 function wireObrigacoesHandlers(rows){
@@ -2776,119 +2612,25 @@ function wireObrigacoesHandlers(rows){
     btn.addEventListener('click', ()=>{
       obrigViewMode = btn.dataset.obrigMode;
       obrigFilterCategoria = 'todas';
-      obrigPage = 1;
       renderPeriodControl();
       renderObrigacoes();
     });
   });
   const catSel = document.getElementById('obrigFilterCategoriaSelect');
   const companySel = document.getElementById('obrigFilterCompanySelect');
-  if(companySel) companySel.addEventListener('change', ()=>{ obrigFilterCompany = companySel.value; obrigPage=1; renderObrigacoes(); });
-  if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; obrigPage=1; renderObrigacoes(); });
+  if(companySel) companySel.addEventListener('change', ()=>{ obrigFilterCompany = companySel.value; renderObrigacoes(); });
+  if(catSel) catSel.addEventListener('change', ()=>{ obrigFilterCategoria = catSel.value; renderObrigacoes(); });
   const esferaSel = document.getElementById('obrigFilterEsferaSelect');
-  if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; obrigPage=1; renderObrigacoes(); });
+  if(esferaSel) esferaSel.addEventListener('change', ()=>{ obrigFilterEsfera = esferaSel.value; renderObrigacoes(); });
   const areaSel = document.getElementById('obrigFilterAreaSelect');
-  if(areaSel) areaSel.addEventListener('change', ()=>{ obrigFilterArea = areaSel.value; obrigPage=1; renderObrigacoes(); });
+  if(areaSel) areaSel.addEventListener('change', ()=>{ obrigFilterArea = areaSel.value; renderObrigacoes(); });
   const statusSel = document.getElementById('obrigFilterStatusSelect');
-  if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; obrigPage=1; renderObrigacoes(); });
+  if(statusSel) statusSel.addEventListener('change', ()=>{ obrigFilterStatus = statusSel.value; renderObrigacoes(); });
   const respSel = document.getElementById('obrigFilterResponsavelSelect');
-  if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; obrigPage=1; renderObrigacoes(); });
+  if(respSel) respSel.addEventListener('change', ()=>{ obrigFilterResponsavel = respSel.value; renderObrigacoes(); });
   document.getElementById('btnToggleMaisFiltros').addEventListener('click', ()=>{
     obrigShowMoreFilters = !obrigShowMoreFilters;
     renderObrigacoes();
-  });
-
-  // Ordenação por coluna: clicar alterna asc/desc; trocar de coluna começa em asc.
-  container.querySelectorAll('[data-obrig-sort]').forEach(th=>{
-    th.addEventListener('click', ()=>{
-      const col = th.dataset.obrigSort;
-      if(obrigSortColumn===col) obrigSortDirection = obrigSortDirection==='asc' ? 'desc' : 'asc';
-      else { obrigSortColumn = col; obrigSortDirection = 'asc'; }
-      renderObrigacoes();
-    });
-  });
-
-  // Seleção de linhas (pra ações em lote)
-  function updateBulkBar(){
-    const bar = document.getElementById('obrigBulkBar');
-    const count = obrigSelectedKeys.size;
-    bar.style.display = count>0 ? 'flex' : 'none';
-    document.getElementById('obrigBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
-  }
-  const selectAllChk = document.getElementById('obrigSelectAll');
-  selectAllChk.addEventListener('change', ()=>{
-    if(selectAllChk.checked){ rows.forEach(r=> obrigSelectedKeys.add(obrigRowKey(r))); }
-    else { rows.forEach(r=> obrigSelectedKeys.delete(obrigRowKey(r))); }
-    renderObrigacoes();
-  });
-  container.querySelectorAll('[data-obrig-select]').forEach(chk=>{
-    chk.addEventListener('change', ()=>{
-      const key = chk.dataset.obrigSelect;
-      if(chk.checked) obrigSelectedKeys.add(key); else obrigSelectedKeys.delete(key);
-      chk.closest('tr').classList.toggle('is-selected', chk.checked);
-      updateBulkBar();
-    });
-  });
-  document.getElementById('btnLimparSelecao').addEventListener('click', ()=>{
-    obrigSelectedKeys.clear();
-    renderObrigacoes();
-  });
-  document.getElementById('btnAplicarLote').addEventListener('click', async ()=>{
-    const newStatus = document.getElementById('obrigBulkStatus').value;
-    const newResp = document.getElementById('obrigBulkResp').value;
-    if(!newStatus && !newResp){
-      await showConfirm('Escolha um novo status e/ou um novo responsável antes de aplicar.', 'Ok');
-      return;
-    }
-    // Busca em TODAS as linhas filtradas (não só na página atual), já que a seleção pode abranger
-    // mais de uma página.
-    const allMatchingRows = computeObrigacoesRows();
-    const selectedRows = allMatchingRows.filter(r=> obrigSelectedKeys.has(obrigRowKey(r)));
-    selectedRows.forEach(r=>{
-      if(newStatus) setObligationField(r.period, r.company.id, r.item.id, 'status', newStatus);
-      if(newResp) setObligationField(r.period, r.company.id, r.item.id, 'responsavelId', newResp==='__none__' ? null : newResp);
-    });
-    obrigSelectedKeys.clear();
-    renderObrigacoes();
-    renderTabs();
-  });
-  updateBulkBar();
-
-  const prevPageBtn = document.getElementById('btnObrigPrevPage');
-  if(prevPageBtn) prevPageBtn.addEventListener('click', ()=>{ obrigPage--; renderObrigacoes(); });
-  const nextPageBtn = document.getElementById('btnObrigNextPage');
-  if(nextPageBtn) nextPageBtn.addEventListener('click', ()=>{ obrigPage++; renderObrigacoes(); });
-
-  // Exportar a lista filtrada/ordenada atual pra uma planilha .xlsx
-  document.getElementById('btnExportarObrigacoes').addEventListener('click', async ()=>{
-    const btn = document.getElementById('btnExportarObrigacoes');
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Gerando…';
-    try{
-      await ensureXlsx();
-      const data = computeObrigacoesRows().map(r=>({
-        'Empresa': r.company.nome,
-        'Obrigação': r.item.label,
-        'Tributação': CATEGORY_LABELS[r.category] || r.category,
-        'Vencimento': r.vencimento ? r.vencimento.toLocaleDateString('pt-BR') : '',
-        'Status': OBRIG_STATUS_LABELS[r.entry.status] || r.entry.status,
-        'Responsável': r.entry.responsavelId ? ((state.users.find(u=>u.id===r.entry.responsavelId)||{}).nome || '') : '',
-        'Detalhes': r.entry.detalhes || '',
-        'Comprovante': r.entry.comprovante || '',
-      }));
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Obrigações');
-      const periodoTxt = obrigPeriodDescription().replace(/[^a-zA-Z0-9]+/g,'_');
-      XLSX.writeFile(wb, `Obrigacoes_${periodoTxt}.xlsx`);
-    }catch(e){
-      console.error(e);
-      await showConfirm('Não foi possível gerar o arquivo. Verifique sua conexão e tente de novo.', 'Ok');
-    }finally{
-      btn.disabled = false;
-      btn.textContent = original;
-    }
   });
 
   function findRow(key){ return rows.find(r=>obrigRowKey(r)===key); }
@@ -3006,7 +2748,7 @@ function openVencimentoOverrideModal(row){
     const freshCompany = state.companies.find(c=>c.id===companyId);
     if(!freshCompany){ root.innerHTML=''; return; }
     if(freshCompany.obligationOverrides) delete freshCompany.obligationOverrides[ob.id];
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderObrigacoes();
   };
@@ -3046,7 +2788,7 @@ function openVencimentoOverrideModal(row){
     } else {
       freshCompany.obligationOverrides[ob.id] = newOverride;
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderObrigacoes();
   };
@@ -3113,81 +2855,11 @@ function openNovaObrigacaoModal(){
     entry.status = document.getElementById('novaObrigStatus').value;
     entry.responsavelId = document.getElementById('novaObrigResp').value || null;
     entry.detalhes = document.getElementById('novaObrigDetalhes').value;
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderObrigacoes();
     renderTabs();
   };
-}
-
-// Calcula o progresso (total/concluído) de obrigações mensais pra um mês específico, sem depender
-// do mês atualmente selecionado na tela — usado pra comparar mês atual x mês anterior no Painel.
-function computeMonthProgress(monthKey){
-  const companies = activeCompanies();
-  let total = 0, done = 0;
-  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
-    const def = TAB_DEFS[cat];
-    companies.filter(def.filter).forEach(c=>{
-      const items = def.items(c, monthKey);
-      items.forEach(it=>{
-        total++;
-        const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
-        if(bucket && isResolvedStatus(bucket.status)) done++;
-      });
-    });
-  });
-  return {total, done, pct: total? Math.round(done/total*100) : 0};
-}
-function previousMonthKey(monthKey){
-  let [y,m] = monthKey.split('-').map(Number);
-  m -= 1;
-  if(m < 1){ m = 12; y -= 1; }
-  return `${y}-${String(m).padStart(2,'0')}`;
-}
-
-// Progresso de obrigações mensais agrupado por responsável (quem está com cada tarefa),
-// incluindo um grupo "Sem responsável" pras que não foram atribuídas a ninguém.
-// Progresso (total/concluído) de UMA empresa específica, somando todas as categorias mensais que
-// se aplicam a ela — usado na coluna "Progresso" da tela Empresas.
-function companyMonthProgress(c, monthKey){
-  let total = 0, done = 0;
-  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
-    const def = TAB_DEFS[cat];
-    if(!def.filter(c)) return;
-    const items = def.items(c, monthKey);
-    items.forEach(it=>{
-      total++;
-      const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
-      if(bucket && isResolvedStatus(bucket.status)) done++;
-    });
-  });
-  return {total, done, pct: total? Math.round(done/total*100) : null};
-}
-
-function computeTeamProgress(monthKey){
-  const companies = activeCompanies();
-  const perUser = {};
-  CATEGORY_ORDER.filter(cat=>TAB_DEFS[cat].period==='month').forEach(cat=>{
-    const def = TAB_DEFS[cat];
-    companies.filter(def.filter).forEach(c=>{
-      const items = def.items(c, monthKey);
-      items.forEach(it=>{
-        const bucket = state.monthly[monthKey] && state.monthly[monthKey][c.id] && state.monthly[monthKey][c.id][it.id];
-        const respId = (bucket && bucket.responsavelId) || null;
-        const key = respId || '__none__';
-        if(!perUser[key]) perUser[key] = {responsavelId: respId, total:0, done:0};
-        perUser[key].total++;
-        if(bucket && isResolvedStatus(bucket.status)) perUser[key].done++;
-      });
-    });
-  });
-  return Object.values(perUser)
-    .map(x=>({...x, pct: x.total? Math.round(x.done/x.total*100) : 0, nome: x.responsavelId ? ((state.users.find(u=>u.id===x.responsavelId)||{}).nome || '—') : 'Sem responsável'}))
-    .sort((a,b)=>{
-      if(a.responsavelId===null) return 1; // "Sem responsável" sempre por último
-      if(b.responsavelId===null) return -1;
-      return b.total - a.total;
-    });
 }
 
 function renderPainel(){
@@ -3223,12 +2895,6 @@ function renderPainel(){
     .sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm))
     .slice(0,5);
 
-  const currentProgress = computeMonthProgress(selectedMonth);
-  const prevProgress = computeMonthProgress(previousMonthKey(selectedMonth));
-  const pctDiff = currentProgress.pct - prevProgress.pct;
-  const proximosVencimentos = computeUpcomingReminders(7).filter(r=>r.diffDays>=0).slice(0,6);
-  const teamProgress = computeTeamProgress(selectedMonth);
-
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="painel-header-row">
@@ -3238,55 +2904,11 @@ function renderPainel(){
       </div>
       <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="btn ghost small">💬 Abrir WhatsApp Web ↗</a>
     </div>
-
-    <div class="painel-shortcuts">
-      <button type="button" class="btn ghost small" id="shortcutNovaEmpresa">+ Nova empresa</button>
-      <button type="button" class="btn ghost small" id="shortcutNovaObrigacao">+ Nova obrigação</button>
-      <button type="button" class="btn ghost small" id="shortcutNovaDemanda">+ Nova demanda</button>
-      <button type="button" class="btn ghost small" id="shortcutEnviarDocumento">📎 Enviar documento</button>
-    </div>
-
-    <div class="painel-progress-card">
-      <div class="painel-progress-top">
-        <span class="painel-progress-label">Progresso do mês</span>
-        <span class="painel-progress-pct">${currentProgress.pct}%</span>
-        ${prevProgress.total>0 ? `<span class="painel-progress-diff ${pctDiff>=0?'up':'down'}">${pctDiff>=0?'▲':'▼'} ${Math.abs(pctDiff)}pp vs. mês anterior</span>` : ''}
-      </div>
-      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${currentProgress.pct}%;"></div></div>
-      <div class="painel-progress-sub">${currentProgress.done} de ${currentProgress.total} obrigações concluídas${prevProgress.total>0 ? ` · mês anterior: ${prevProgress.pct}% (${prevProgress.done}/${prevProgress.total})` : ''}</div>
-    </div>
-
-    ${teamProgress.length? `
-    <div class="sheet-title" style="font-size:1rem;">Progresso da equipe — ${fmtMonthLabel(selectedMonth)}</div>
-    <div class="painel-team-grid">
-      ${teamProgress.map(t=>`
-        <div class="painel-team-card ${t.responsavelId===null?'no-resp':''}">
-          <div class="painel-team-name">${escapeHtml(t.nome)}</div>
-          <div class="painel-progress-bar" style="height:7px;"><div class="painel-progress-fill" style="width:${t.pct}%;"></div></div>
-          <div class="painel-team-sub">${t.done}/${t.total} · ${t.pct}%</div>
-        </div>
-      `).join('')}
-    </div>
-    ` : ''}
-
     <div class="painel-grid">
       <div class="painel-card clickable" data-jump="empresas"><div class="num">${companies.length}</div><div class="lbl">Empresas ativas</div></div>
       <div class="painel-card clickable" data-scroll="pendingSection"><div class="num">${pendingList.length}</div><div class="lbl">Com pendências</div></div>
       <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="folha"><div class="num">${companies.filter(c=>c.folha).length}</div><div class="lbl">Com folha de pagamento</div></div>
       <div class="painel-card clickable" data-jump="obrigacoes" data-jump-cat="suframa"><div class="num">${companies.filter(c=>c.suframa).length}</div><div class="lbl">Com inscrição SUFRAMA</div></div>
-    </div>
-
-    <div class="sheet-title" style="font-size:1rem;">Próximos vencimentos (7 dias)</div>
-    <div class="pending-list" style="margin-bottom:1.4rem;">
-      ${proximosVencimentos.length? proximosVencimentos.map(r=>`
-        <div class="pending-row">
-          <div>
-            <div class="name">${escapeHtml(r.company.nome)}</div>
-            <div class="cnpj mono" style="font-size:.7rem;">${escapeHtml(r.obligationLabel)} · ${reminderStatusLabel(r.diffDays)}</div>
-          </div>
-          <span class="go" data-jump="lembretes">Ver →</span>
-        </div>
-      `).join('') : '<div class="empty-note">Nenhum vencimento nos próximos 7 dias.</div>'}
     </div>
 
     <div class="sheet-title" style="font-size:1rem;">Demandas</div>
@@ -3322,22 +2944,10 @@ function renderPainel(){
       `).join('') : '<div class="empty-note">Nenhuma pendência — tudo em dia! 🎉</div>'}
     </div>
   `;
-  document.getElementById('shortcutNovaEmpresa').addEventListener('click', ()=>{
-    activeTab = 'empresas'; renderAll(); openCompanyModal(null);
-  });
-  document.getElementById('shortcutNovaObrigacao').addEventListener('click', ()=>{
-    activeTab = 'obrigacoes'; renderAll(); openNovaObrigacaoModal();
-  });
-  document.getElementById('shortcutNovaDemanda').addEventListener('click', ()=>{
-    activeTab = 'demandas'; renderAll(); openDemandaModal(null);
-  });
-  document.getElementById('shortcutEnviarDocumento').addEventListener('click', ()=>{
-    activeTab = 'envio'; renderAll();
-  });
   container.querySelectorAll('[data-jump]').forEach(el=>{
     el.addEventListener('click', ()=>{
       activeTab = el.dataset.jump;
-      if(el.dataset.jumpCat){ obrigViewMode = 'month'; obrigFilterCategoria = el.dataset.jumpCat; }
+      if(el.dataset.jumpCat){ obrigViewMode = 'mensal'; obrigFilterCategoria = el.dataset.jumpCat; }
       if(el.dataset.jumpSearch){
         searchQuery = el.dataset.jumpSearch;
         const searchInput = document.getElementById('searchInput');
@@ -3388,78 +2998,31 @@ function showConfirm(message, confirmLabel){
 
 /* ---------- Empresas (CRUD) ---------- */
 function renderEmpresas(){
-  let companies = state.companies.filter(matchesSearch);
-  if(empFilterTrib!=='todas') companies = companies.filter(c=>c.trib===empFilterTrib);
-  if(empFilterStatus==='ativas') companies = companies.filter(c=>c.ativa!==false);
-  else if(empFilterStatus==='inativas') companies = companies.filter(c=>c.ativa===false);
-  if(empFilterFolha==='sim') companies = companies.filter(c=>!!c.folha);
-  else if(empFilterFolha==='nao') companies = companies.filter(c=>!c.folha);
-  if(empFilterSuframa==='sim') companies = companies.filter(c=>!!c.suframa);
-  else if(empFilterSuframa==='nao') companies = companies.filter(c=>!c.suframa);
-
-  const withProgress = companies.map(c=>({c, progress: companyMonthProgress(c, selectedMonth)}));
-  withProgress.sort((a,b)=>{
-    let cmp = 0;
-    if(empSortColumn==='nome') cmp = a.c.nome.localeCompare(b.c.nome);
-    else if(empSortColumn==='trib') cmp = (a.c.trib||'').localeCompare(b.c.trib||'');
-    else if(empSortColumn==='ativ') cmp = (a.c.ativ||'').localeCompare(b.c.ativ||'');
-    else if(empSortColumn==='progresso') cmp = (a.progress.pct==null?-1:a.progress.pct) - (b.progress.pct==null?-1:b.progress.pct);
-    if(cmp===0) cmp = a.c.nome.localeCompare(b.c.nome);
-    return empSortDirection==='desc' ? -cmp : cmp;
-  });
-
-  function sortArrow(col){ return empSortColumn===col ? (empSortDirection==='asc'?' ▲':' ▼') : ''; }
-
-  const totalCount = state.companies.filter(c=>c.ativa!==false).length;
+  const companies = state.companies.filter(matchesSearch).sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
     <div class="emp-toolbar">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Empresas</div>
-        <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists. ${totalCount} empresa${totalCount===1?'':'s'} ativa${totalCount===1?'':'s'} no total.</div>
+        <div class="sheet-sub" style="margin-bottom:0;">Cadastro e configuração usados para montar os checklists.</div>
       </div>
       <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-        <button class="btn ghost" id="btnExportarEmpresas">Exportar</button>
         <button class="btn ghost" id="btnImportCompanies">Importar planilha (Domínio)</button>
         <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
         <button class="btn accent" id="btnNewCompany">+ Nova empresa</button>
       </div>
     </div>
-    <div class="obrig-filters" style="margin-bottom:1rem;">
-      <select id="empFilterTribSelect">
-        <option value="todas" ${empFilterTrib==='todas'?'selected':''}>Todas as tributações</option>
-        <option value="SIMPLES" ${empFilterTrib==='SIMPLES'?'selected':''}>Simples Nacional</option>
-        <option value="SIMEI" ${empFilterTrib==='SIMEI'?'selected':''}>MEI</option>
-        <option value="PRESUMIDO" ${empFilterTrib==='PRESUMIDO'?'selected':''}>Lucro Presumido</option>
-        <option value="REAL" ${empFilterTrib==='REAL'?'selected':''}>Lucro Real</option>
-      </select>
-      <select id="empFilterStatusSelect">
-        <option value="ativas" ${empFilterStatus==='ativas'?'selected':''}>Só ativas</option>
-        <option value="inativas" ${empFilterStatus==='inativas'?'selected':''}>Só inativas</option>
-        <option value="todas" ${empFilterStatus==='todas'?'selected':''}>Ativas e inativas</option>
-      </select>
-      <select id="empFilterFolhaSelect">
-        <option value="todas" ${empFilterFolha==='todas'?'selected':''}>Folha: todas</option>
-        <option value="sim" ${empFilterFolha==='sim'?'selected':''}>Com folha</option>
-        <option value="nao" ${empFilterFolha==='nao'?'selected':''}>Sem folha</option>
-      </select>
-      <select id="empFilterSuframaSelect">
-        <option value="todas" ${empFilterSuframa==='todas'?'selected':''}>SUFRAMA: todas</option>
-        <option value="sim" ${empFilterSuframa==='sim'?'selected':''}>Com SUFRAMA</option>
-        <option value="nao" ${empFilterSuframa==='nao'?'selected':''}>Sem SUFRAMA</option>
-      </select>
-    </div>
     <div style="overflow-x:auto;">
     <table class="emp-table">
       <thead><tr>
-        <th class="sortable" data-emp-sort="nome">Empresa${sortArrow('nome')}</th><th>CNPJ / Inscrições</th><th>Contato</th><th class="sortable" data-emp-sort="trib">Tributação${sortArrow('trib')}</th><th class="sortable" data-emp-sort="ativ">Atividade${sortArrow('ativ')}</th><th>Folha</th><th>Contáb.</th><th>Suframa</th><th class="sortable" data-emp-sort="progresso">Progresso do mês${sortArrow('progresso')}</th><th>Status</th><th></th>
+        <th>Empresa</th><th>CNPJ / Inscrições</th><th>Contato</th><th>Tributação</th><th>Atividade</th><th>Folha</th><th>Contáb.</th><th>Suframa</th><th>Status</th><th></th>
       </tr></thead>
       <tbody>
-        ${withProgress.map(({c,progress})=>`
+        ${companies.map(c=>`
           <tr data-id="${c.id}">
             <td>${escapeHtml(c.nome)}</td>
             <td class="mono" style="font-size:.76rem;">
-              ${escapeHtml(c.cnpj||'')}
+              ${escapeHtml(c.cnpj)}
               ${(c.ie||c.im||c.inscSuframa) ? `<div style="color:var(--muted);font-size:.68rem;margin-top:.2rem;line-height:1.5;">
                 ${c.ie? `IE: ${escapeHtml(c.ie)}<br>`:''}${c.im? `IM: ${escapeHtml(c.im)}<br>`:''}${c.inscSuframa? `Suframa: ${escapeHtml(c.inscSuframa)}`:''}
               </div>` : ''}
@@ -3467,17 +3030,11 @@ function renderEmpresas(){
             <td style="font-size:.74rem;color:var(--muted);">
               ${c.email? `<div>${escapeHtml(c.email)}</div>`:''}${c.telefone? `<div>${escapeHtml(c.telefone)}</div>`:''}${(!c.email && !c.telefone)? '—':''}
             </td>
-            <td><span class="badge trib-${c.trib}">${c.trib}</span></td>
-            <td style="font-size:.78rem;color:var(--muted);">${escapeHtml(c.ativ||'')}</td>
+            <td><span class="badge trib-${escapeHtml(c.trib)}">${escapeHtml(c.trib)}</span></td>
+            <td style="font-size:.78rem;color:var(--muted);">${escapeHtml(c.ativ)}</td>
             <td><div class="flag-dot folha ${c.folha?'on':''}">F</div></td>
             <td><div class="flag-dot contab ${c.contab?'on':''}">C</div></td>
             <td><div class="flag-dot suframa ${c.suframa?'on':''}">S</div></td>
-            <td style="min-width:110px;">
-              ${progress.pct===null ? '<span style="color:var(--muted);font-size:.74rem;">—</span>' : `
-                <div class="painel-progress-bar" style="height:6px;margin-bottom:.2rem;"><div class="painel-progress-fill" style="width:${progress.pct}%;"></div></div>
-                <span style="font-size:.72rem;color:var(--muted);">${progress.done}/${progress.total} · ${progress.pct}%</span>
-              `}
-            </td>
             <td>${c.ativa!==false ? '<span style="color:var(--good);font-size:.76rem;font-weight:600;">Ativa</span>' : '<span style="color:var(--muted);font-size:.76rem;">Inativa</span>'}</td>
             <td style="white-space:nowrap;">
               <button class="btn ghost small" data-edit="${c.id}">Editar</button>
@@ -3488,7 +3045,7 @@ function renderEmpresas(){
       </tbody>
     </table>
     </div>
-    ${withProgress.length===0 ? '<div class="empty-note">Nenhuma empresa encontrada com esses filtros.</div>' : ''}
+    ${companies.length===0 ? '<div class="empty-note">Nenhuma empresa cadastrada.</div>' : ''}
   `;
   document.getElementById('btnNewCompany').addEventListener('click', ()=>openCompanyModal(null));
   container.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click', ()=>openCompanyModal(b.dataset.edit)));
@@ -3499,58 +3056,13 @@ function renderEmpresas(){
     if(importInput.files && importInput.files[0]) handleImportFile(importInput.files[0]);
     importInput.value = '';
   });
-  document.getElementById('empFilterTribSelect').addEventListener('change', (e)=>{ empFilterTrib = e.target.value; renderEmpresas(); });
-  document.getElementById('empFilterStatusSelect').addEventListener('change', (e)=>{ empFilterStatus = e.target.value; renderEmpresas(); });
-  document.getElementById('empFilterFolhaSelect').addEventListener('change', (e)=>{ empFilterFolha = e.target.value; renderEmpresas(); });
-  document.getElementById('empFilterSuframaSelect').addEventListener('change', (e)=>{ empFilterSuframa = e.target.value; renderEmpresas(); });
-  container.querySelectorAll('[data-emp-sort]').forEach(th=>{
-    th.addEventListener('click', ()=>{
-      const col = th.dataset.empSort;
-      if(empSortColumn===col) empSortDirection = empSortDirection==='asc' ? 'desc' : 'asc';
-      else { empSortColumn = col; empSortDirection = 'asc'; }
-      renderEmpresas();
-    });
-  });
-  document.getElementById('btnExportarEmpresas').addEventListener('click', async ()=>{
-    const btn = document.getElementById('btnExportarEmpresas');
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Gerando…';
-    try{
-      await ensureXlsx();
-      const data = withProgress.map(({c,progress})=>({
-        'Empresa': c.nome,
-        'CNPJ': c.cnpj||'',
-        'IE': c.ie||'',
-        'IM': c.im||'',
-        'Inscrição SUFRAMA': c.inscSuframa||'',
-        'E-mail': c.email||'',
-        'Telefone': c.telefone||'',
-        'Tributação': c.trib||'',
-        'Atividade': c.ativ||'',
-        'Folha': c.folha? 'Sim':'Não',
-        'Contábil': c.contab? 'Sim':'Não',
-        'SUFRAMA': c.suframa? 'Sim':'Não',
-        'Progresso do mês': progress.pct===null ? '' : `${progress.done}/${progress.total} (${progress.pct}%)`,
-        'Status': c.ativa!==false ? 'Ativa' : 'Inativa',
-      }));
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Empresas');
-      XLSX.writeFile(wb, `Empresas_${fmtMonthLabel(selectedMonth).replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
-    }catch(e){
-      console.error(e);
-      await showConfirm('Não foi possível gerar o arquivo. Verifique sua conexão e tente de novo.', 'Ok');
-    }finally{
-      btn.disabled = false;
-      btn.textContent = original;
-    }
-  });
 }
 
-function removeObligationFromCatalog(id){
+async function deleteObligationFromCatalog(id){
   const o = state.obligations.find(x=>x.id===id);
   if(!o) return false;
+  const ok = await showConfirm(`Excluir "${escapeHtml(o.label)}" do catálogo? Ela será removida de TODAS as empresas que a tinham marcada, e o histórico de check já feito para ela será apagado.`);
+  if(!ok) return false;
   state.obligations = state.obligations.filter(x=>x.id!==id);
   if(DEFAULT_OBLIGATIONS.some(d=>d.id===id) && !state.deletedDefaultObligationIds.includes(id)){
     state.deletedDefaultObligationIds.push(id); // marca como excluída de propósito, pra não voltar sozinha
@@ -3562,18 +3074,7 @@ function removeObligationFromCatalog(id){
   Object.values(state.annual).forEach(bucket=>{
     Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
   });
-  Object.values(state.quarterly||{}).forEach(bucket=>{
-    Object.values(bucket).forEach(companyBucket=>{ delete companyBucket[id]; });
-  });
-  return true;
-}
-async function deleteObligationFromCatalog(id){
-  const o = state.obligations.find(x=>x.id===id);
-  if(!o) return false;
-  const ok = await showConfirm(`Excluir "${o.label}" do catálogo? Ela será removida de TODAS as empresas que a tinham marcada, e o histórico de check já feito para ela será apagado.`);
-  if(!ok) return false;
-  removeObligationFromCatalog(id);
-  persist();
+  persist().catch(()=>{});
   return true;
 }
 
@@ -3625,7 +3126,7 @@ function mountManageCategoryBlock(containerEl, category, editingId){
     if(!label) return;
     const id = category + '__custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
     state.obligations.push({id, category, label});
-    persist();
+    persist().catch(()=>{});
     mountManageCategoryBlock(containerEl, category);
   }
   const addBtn = containerEl.querySelector('.oblig-add-btn');
@@ -3665,7 +3166,7 @@ function mountManageCategoryBlock(containerEl, category, editingId){
         const v = parseInt(dueDayInput.value, 10);
         o.dueDay = (v>=1 && v<=31) ? v : null;
       }
-      persist();
+      persist().catch(()=>{});
     }
     mountManageCategoryBlock(containerEl, category, null);
   }
@@ -3715,15 +3216,9 @@ function mountSelectCategoryBlock(containerEl, category, selectedSet){
 function renderEnvioDocumentos(){
   const container = document.getElementById('sheetContent');
   container.innerHTML = `
-    <div class="painel-header-row">
-      <div>
-        <div class="sheet-title" style="margin-bottom:0;">Envio de Documentos</div>
-        <div class="sheet-sub" style="margin-bottom:0;">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
-      </div>
-      <button type="button" class="btn ghost small" id="btnToggleHistorico">${envioShowHistory? 'Voltar ao envio' : `📜 Histórico (${(state.sentDocuments||[]).length})`}</button>
-    </div>
+    <div class="sheet-title">Envio de Documentos</div>
+    <div class="sheet-sub">Solte os PDFs aqui — o app lê o conteúdo, identifica o cliente pelo CNPJ/CPF e o tipo de documento, e você confere antes de enviar por e-mail.</div>
     ${driveStatus!=='connected' ? `<div class="envio-warn">Conecte o Gmail em <a href="#" id="envioGotoConfig">Configurações</a> antes de enviar (a leitura dos PDFs funciona sem conectar, só o envio precisa).</div>` : ''}
-    ${envioShowHistory ? `<div id="envioHistorico"></div>` : `
     <div class="envio-dropzone" id="envioDropzone">
       <input type="file" id="envioFileInput" multiple accept="application/pdf" style="display:none;">
       <div class="envio-dropzone-inner">
@@ -3731,48 +3226,9 @@ function renderEnvioDocumentos(){
       </div>
     </div>
     <div id="envioResults"></div>
-    `}
   `;
-  document.getElementById('btnToggleHistorico').addEventListener('click', ()=>{
-    envioShowHistory = !envioShowHistory;
-    renderEnvioDocumentos();
-  });
-  const gotoLink2 = document.getElementById('envioGotoConfig');
-  if(gotoLink2) gotoLink2.addEventListener('click', (e)=>{ e.preventDefault(); activeTab='config'; renderAll(); });
-  if(envioShowHistory){
-    renderEnvioHistorico();
-  } else {
-    wireEnvioDropzone();
-    renderEnvioResults();
-  }
-}
-
-function renderEnvioHistorico(){
-  const el = document.getElementById('envioHistorico');
-  if(!el) return;
-  const list = (state.sentDocuments||[]).filter(matchesSearch2);
-  function matchesSearch2(d){
-    if(!searchQuery) return true;
-    return (d.companyNome||'').toLowerCase().includes(searchQuery.toLowerCase());
-  }
-  el.innerHTML = `
-    <div class="obrig-table-wrap" style="overflow-x:auto;">
-    <table class="obrig-table">
-      <thead><tr><th>Empresa</th><th>Documento</th><th>Competência</th><th>Vencimento</th><th>Enviado em</th></tr></thead>
-      <tbody>
-        ${list.length? list.map(d=>`
-          <tr>
-            <td class="obrig-td-empresa">${escapeHtml(d.companyNome)}</td>
-            <td>${escapeHtml(d.docTypeName)}<div class="obrig-cat-tag">${escapeHtml(d.nome)}</div></td>
-            <td class="mono">${escapeHtml(d.competencia||'—')}</td>
-            <td class="mono">${escapeHtml(d.vencimento||'—')}</td>
-            <td class="mono">${new Date(d.sentAt).toLocaleString('pt-BR')}</td>
-          </tr>
-        `).join('') : `<tr><td colspan="5"><div class="empty-note">${(state.sentDocuments||[]).length===0 ? 'Nenhum documento enviado ainda.' : 'Nenhum documento encontrado com essa busca.'}</div></td></tr>`}
-      </tbody>
-    </table>
-    </div>
-  `;
+  wireEnvioDropzone();
+  renderEnvioResults();
 }
 
 function wireEnvioDropzone(){
@@ -3786,6 +3242,8 @@ function wireEnvioDropzone(){
     e.preventDefault(); dz.classList.remove('dragover');
     handleEnvioFiles(e.dataTransfer.files);
   });
+  const gotoLink = document.getElementById('envioGotoConfig');
+  if(gotoLink) gotoLink.addEventListener('click', (e)=>{ e.preventDefault(); activeTab='config'; renderAll(); });
 }
 
 async function handleEnvioFiles(fileList){
@@ -3843,7 +3301,7 @@ function envioRowHtml(item){
   if(item.status==='processing') statusBadge = `<span class="envio-badge envio-badge-processing">Lendo…</span>`;
   else if(item.status==='error') statusBadge = `<span class="envio-badge envio-badge-error">${item.error}</span>`;
   else if(item.status==='sent') statusBadge = `<span class="envio-badge envio-badge-sent">✓ Enviado</span>`;
-  else if(item.status==='send-error') statusBadge = `<span class="envio-badge envio-badge-error">${item.sendError}</span> <button type="button" class="btn ghost small" data-envio-retry="${item.id}" style="margin-left:.4rem;">Tentar novamente</button>`;
+  else if(item.status==='send-error') statusBadge = `<span class="envio-badge envio-badge-error">${item.sendError}</span>`;
   else if(!company) statusBadge = `<span class="envio-badge envio-badge-warn">Cliente não identificado</span>`;
   else if(!hasEmail) statusBadge = `<span class="envio-badge envio-badge-warn">Empresa sem e-mail cadastrado</span>`;
   else if(!docType) statusBadge = `<span class="envio-badge envio-badge-warn">Tipo não identificado</span>`;
@@ -3876,11 +3334,6 @@ function renderEnvioResults(){
   const readyCount = envioItems.filter(i=> i.include && i.status==='ready').length;
   el.innerHTML = `
     <div class="envio-list">${envioItems.map(envioRowHtml).join('')}</div>
-    ${envioSending ? `
-    <div class="envio-progress-wrap">
-      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${envioSendProgress.total? Math.round(envioSendProgress.current/envioSendProgress.total*100):0}%;"></div></div>
-      <div class="painel-progress-sub">Enviando ${envioSendProgress.current} de ${envioSendProgress.total}…</div>
-    </div>` : ''}
     <div class="envio-footer">
       <div class="envio-footer-info">${readyCount} documento(s) selecionado(s) para envio</div>
       <div style="display:flex; gap:.6rem;">
@@ -3953,76 +3406,10 @@ function wireEnvioResultHandlers(){
       renderEnvioResults();
     });
   });
-  el.querySelectorAll('[data-envio-retry]').forEach(btn=>{
-    btn.addEventListener('click', ()=> retryEnvioItem(btn.dataset.envioRetry));
-  });
   const clearBtn = document.getElementById('envioClearBtn');
   if(clearBtn) clearBtn.addEventListener('click', ()=>{ envioItems = []; renderEnvioResults(); });
   const sendBtn = document.getElementById('envioSendBtn');
   if(sendBtn) sendBtn.addEventListener('click', sendEnvioSelected);
-}
-
-// Tenta extrair a competência de um texto livre (ex: "01/2026", "2026-01") e devolve a chave de
-// mês "YYYY-MM"; se não conseguir reconhecer, usa o mês informado como reserva.
-function parseCompetenciaToMonthKey(competencia, fallbackMonthKey){
-  if(!competencia) return fallbackMonthKey;
-  let m = competencia.match(/(\d{1,2})[\/\-](\d{4})/);
-  if(m){
-    const mm = String(parseInt(m[1],10)).padStart(2,'0');
-    if(parseInt(m[1],10)>=1 && parseInt(m[1],10)<=12) return `${m[2]}-${mm}`;
-  }
-  m = competencia.match(/(\d{4})[\/\-](\d{1,2})/);
-  if(m){
-    const mm = String(parseInt(m[2],10)).padStart(2,'0');
-    if(parseInt(m[2],10)>=1 && parseInt(m[2],10)<=12) return `${m[1]}-${mm}`;
-  }
-  return fallbackMonthKey;
-}
-
-let envioSendProgress = {current:0, total:0};
-
-// Envia um único item (usado tanto no envio em lote quanto no "tentar novamente"). Se o tipo de
-// documento tiver uma obrigação vinculada, marca ela como "Enviada" pra essa empresa/competência.
-async function sendSingleEnvioItem(item){
-  const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
-  const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
-  if(!company || !company.email || !docType){
-    item.status = 'send-error';
-    item.sendError = 'Falta cliente, e-mail ou tipo de documento.';
-    return;
-  }
-  try{
-    const buffer = await item.file.arrayBuffer();
-    const base64 = arrayBufferToBase64(buffer);
-    const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
-    const subject = fillTemplate(docType.emailSubject, vars);
-    const body = fillTemplate(docType.emailBody, vars);
-    await sendGmailWithAttachment({ to: company.email, subject, body, attachmentName: item.name, attachmentBase64: base64 });
-    item.status = 'sent';
-    if(!state.sentDocuments) state.sentDocuments = [];
-    state.sentDocuments.unshift({
-      id: 'sent_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-      nome: item.name, companyId: company.id, companyNome: company.nome, docTypeName: docType.name,
-      competencia: item.competencia||'', vencimento: item.vencimento||'', sentAt: new Date().toISOString(), subject,
-    });
-    if(docType.linkedObligationId){
-      const ob = state.obligations.find(o=>o.id===docType.linkedObligationId);
-      if(ob){
-        const period = TAB_DEFS[ob.category] ? TAB_DEFS[ob.category].period : 'month';
-        let pk;
-        if(period==='year') pk = parseCompetenciaToMonthKey(item.competencia, selectedYear).slice(0,4);
-        else if(period==='quarter') pk = selectedQuarter; // trimestre não dá pra inferir do texto com segurança — usa o selecionado
-        else pk = parseCompetenciaToMonthKey(item.competencia, selectedMonth);
-        const entry = getObligationEntryForKey(period, pk, company.id, ob.id);
-        entry.status = 'enviada';
-        if(!entry.comprovante) entry.comprovante = `Enviado por e-mail em ${new Date().toLocaleDateString('pt-BR')}`;
-      }
-    }
-    persist();
-  }catch(e){
-    item.status = 'send-error';
-    item.sendError = e.message || 'Erro ao enviar.';
-  }
 }
 
 async function sendEnvioSelected(){
@@ -4032,175 +3419,87 @@ async function sendEnvioSelected(){
     return;
   }
   envioSending = true;
-  const toSend = envioItems.filter(i=> i.include && i.status==='ready');
-  envioSendProgress = {current:0, total:toSend.length};
   renderEnvioResults();
+  const toSend = envioItems.filter(i=> i.include && i.status==='ready');
   for(const item of toSend){
-    await sendSingleEnvioItem(item);
-    envioSendProgress.current++;
+    const company = item.companyId ? state.companies.find(c=>c.id===item.companyId) : null;
+    const docType = item.docTypeId ? state.docTypes.find(d=>d.id===item.docTypeId) : null;
+    if(!company || !company.email || !docType){
+      item.status = 'send-error';
+      item.sendError = 'Falta cliente, e-mail ou tipo de documento.';
+      continue;
+    }
+    try{
+      const buffer = await item.file.arrayBuffer();
+      const base64 = arrayBufferToBase64(buffer);
+      const vars = {empresa: company.nome, competencia: item.competencia||'', vencimento: item.vencimento||''};
+      const subject = fillTemplate(docType.emailSubject, vars);
+      const body = fillTemplate(docType.emailBody, vars);
+      await sendGmailWithAttachment({ to: company.email, subject, body, attachmentName: item.name, attachmentBase64: base64 });
+      item.status = 'sent';
+    }catch(e){
+      item.status = 'send-error';
+      item.sendError = e.message || 'Erro ao enviar.';
+    }
     renderEnvioResults();
   }
   envioSending = false;
-  renderTabs(); // atualiza contadores caso alguma obrigação tenha sido marcada como enviada
-  renderEnvioResults();
-}
-
-async function retryEnvioItem(itemId){
-  const item = envioItems.find(i=>i.id===itemId);
-  if(!item) return;
-  if(driveStatus!=='connected'){
-    const ok = await showConfirm('Você precisa conectar o Gmail primeiro, em Configurações. Ir para lá agora?', 'Ir para Configurações');
-    if(ok){ activeTab='config'; renderAll(); }
-    return;
-  }
-  item.status = 'ready';
-  item.sendError = null;
-  renderEnvioResults();
-  await sendSingleEnvioItem(item);
-  renderTabs();
   renderEnvioResults();
 }
 
 /* ---- Demandas tab ---- */
 let demandaFilter = 'todas'; // todas | aberta | andamento | concluida
 let demandaResponsavelFilter = 'todos'; // todos | 'none' | userId
-let demandaViewMode = 'lista'; // lista | quadro
-let demandaSelectedIds = new Set();
 
 function escapeHtml(str){
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str==null ? '' : str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 /* ---------- Lembretes tab ---------- */
-let lembreteFilterResponsavel = 'todos';
-
 function renderLembretes(){
   const container = document.getElementById('sheetContent');
-  const allReminders = computeUpcomingReminders();
+  const reminders = computeUpcomingReminders();
   const settings = state.reminderSettings || {diasAntes:3};
-  const reminders = lembreteFilterResponsavel==='todos' ? allReminders
-    : lembreteFilterResponsavel==='none' ? allReminders.filter(r=>!r.responsavelId)
-    : allReminders.filter(r=>r.responsavelId===lembreteFilterResponsavel);
-  const userOptions = state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
-    .map(u=>`<option value="${u.id}" ${lembreteFilterResponsavel===u.id?'selected':''}>${escapeHtml(u.nome)}</option>`).join('');
   container.innerHTML = `
     <div class="painel-header-row">
       <div>
         <div class="sheet-title" style="margin-bottom:0;">Lembretes</div>
         <div class="sheet-sub" style="margin-bottom:0;">Obrigações do mês atual que ainda não foram concluídas, vencendo nos próximos ${settings.diasAntes||3} dia(s) (ou já vencidas). Os modelos de mensagem são configuráveis em Configurações.</div>
       </div>
-      <button type="button" class="btn accent small" id="btnLembreteEnviarTodos" ${reminders.filter(r=>r.company.email).length===0?'disabled':''}>📧 Enviar e-mail pra todos (${reminders.filter(r=>r.company.email).length})</button>
     </div>
-    <div class="obrig-filters" style="margin-bottom:1rem;">
-      <select id="lembreteFilterRespSelect">
-        <option value="todos" ${lembreteFilterResponsavel==='todos'?'selected':''}>Todos os responsáveis</option>
-        <option value="none" ${lembreteFilterResponsavel==='none'?'selected':''}>Sem responsável</option>
-        ${userOptions}
-      </select>
-    </div>
-    <div id="lembreteProgressWrap"></div>
     <div id="lembretesList"></div>
   `;
-  document.getElementById('lembreteFilterRespSelect').addEventListener('change', (e)=>{
-    lembreteFilterResponsavel = e.target.value;
-    renderLembretes();
-  });
-  document.getElementById('btnLembreteEnviarTodos').addEventListener('click', ()=> sendAllLembreteEmails(reminders));
   const listEl = document.getElementById('lembretesList');
   if(reminders.length===0){
     listEl.innerHTML = `<div class="empty-note">Nenhum lembrete pendente — tudo em dia! 🎉</div>`;
     return;
   }
-  // Agrupa por empresa, mantendo a ordem por urgência (o grupo com o lembrete mais urgente vem primeiro)
-  const groups = [];
-  const groupByCompany = {};
-  reminders.forEach(r=>{
-    if(!groupByCompany[r.companyId]){
-      const g = {company:r.company, items:[]};
-      groupByCompany[r.companyId] = g;
-      groups.push(g);
-    }
-    groupByCompany[r.companyId].items.push(r);
-  });
-  listEl.innerHTML = groups.map(g=>`
-    <div class="lembrete-group">
-      <div class="lembrete-group-title">${escapeHtml(g.company.nome)} <span class="lembrete-group-count">(${g.items.length})</span></div>
-      <div class="lembrete-list">${g.items.map(r=>lembreteRowHtml(r, reminders.indexOf(r))).join('')}</div>
-    </div>
-  `).join('');
+  listEl.innerHTML = `<div class="lembrete-list">${reminders.map((r,idx)=>lembreteRowHtml(r,idx)).join('')}</div>`;
   wireLembreteHandlers(reminders);
 }
 
 function lembreteRowHtml(r, idx){
   const overdue = r.diffDays < 0;
   const dueFmt = r.due.toLocaleDateString('pt-BR');
-  const responsavel = r.responsavelId ? state.users.find(u=>u.id===r.responsavelId) : null;
   return `<div class="lembrete-row ${overdue?'overdue':''}" data-lembrete-idx="${idx}">
     <div class="lembrete-info">
-      <div class="name">${escapeHtml(r.obligationLabel)}</div>
-      <div class="meta">vencimento ${dueFmt} · <strong>${reminderStatusLabel(r.diffDays)}</strong>${responsavel ? ` · ${escapeHtml(responsavel.nome)}` : ''}</div>
+      <div class="name">${escapeHtml(r.company.nome)}</div>
+      <div class="meta">${escapeHtml(r.obligationLabel)} · vencimento ${dueFmt} · <strong>${reminderStatusLabel(r.diffDays)}</strong></div>
     </div>
     <div class="lembrete-actions">
-      <button type="button" class="btn ghost small" data-lembrete-concluir="${idx}" title="Marca essa obrigação como concluída">✓ Concluir</button>
       <button type="button" class="btn ghost small" data-lembrete-whatsapp="${idx}" ${r.company.telefone? '' : 'disabled title="Empresa sem telefone cadastrado"'}>WhatsApp</button>
       <button type="button" class="btn ghost small" data-lembrete-email="${idx}" ${r.company.email? '' : 'disabled title="Empresa sem e-mail cadastrado"'}>E-mail</button>
-      <button type="button" class="btn ghost small" data-lembrete-silenciar="${idx}" title="Esconde esse lembrete específico da lista, sem marcar a tarefa como concluída">Não enviar</button>
     </div>
   </div>`;
 }
 
-async function sendLembreteEmailFor(r){
-  const settings = state.reminderSettings || {};
-  const vars = {empresa: r.company.nome, obrigacao: r.obligationLabel, vencimento: r.due.toLocaleDateString('pt-BR')};
-  const subject = fillTemplate(settings.emailSubjectTemplate || 'Lembrete', vars);
-  const body = fillTemplate(settings.emailBodyTemplate || '', vars);
-  await sendGmailPlain({to: r.company.email, subject, body});
-}
-
-async function sendAllLembreteEmails(reminders){
-  if(driveStatus!=='connected'){
-    const ok = await showConfirm('Você precisa conectar o Gmail primeiro, em Configurações. Ir para lá agora?', 'Ir para Configurações');
-    if(ok){ activeTab='config'; renderAll(); }
-    return;
-  }
-  const toSend = reminders.filter(r=>r.company.email);
-  if(toSend.length===0) return;
-  const ok = await showConfirm(`Enviar o lembrete por e-mail pra ${toSend.length} obrigação(ões)? Cada empresa pode receber mais de um e-mail se tiver mais de uma obrigação pendente.`, 'Enviar todos');
-  if(!ok) return;
-  const progressWrap = document.getElementById('lembreteProgressWrap');
-  const btn = document.getElementById('btnLembreteEnviarTodos');
-  btn.disabled = true;
-  let sent = 0, failed = 0;
-  for(let i=0;i<toSend.length;i++){
-    progressWrap.innerHTML = `
-      <div class="painel-progress-bar"><div class="painel-progress-fill" style="width:${Math.round((i/toSend.length)*100)}%;"></div></div>
-      <div class="painel-progress-sub">Enviando ${i+1} de ${toSend.length}…</div>
-    `;
-    try{
-      await sendLembreteEmailFor(toSend[i]);
-      sent++;
-    }catch(e){
-      console.error(e);
-      failed++;
-    }
-  }
-  progressWrap.innerHTML = '';
-  await showConfirm(`Envio concluído: ${sent} enviado(s)${failed? `, ${failed} com erro` : ''}.`, 'Ok');
-  btn.disabled = false;
-}
-
 function wireLembreteHandlers(reminders){
   const listEl = document.getElementById('lembretesList');
-  listEl.querySelectorAll('[data-lembrete-concluir]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const r = reminders[parseInt(btn.dataset.lembreteConcluir,10)];
-      const entry = getObligationEntryForKey('month', r.compKey, r.companyId, r.obligationId);
-      entry.status = 'transmitida';
-      persist();
-      renderTabs();
-      renderLembretes();
-    });
-  });
   listEl.querySelectorAll('[data-lembrete-whatsapp]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const r = reminders[parseInt(btn.dataset.lembreteWhatsapp,10)];
@@ -4219,11 +3518,15 @@ function wireLembreteHandlers(reminders){
         if(ok){ activeTab='config'; renderAll(); }
         return;
       }
+      const settings = state.reminderSettings || {};
+      const vars = {empresa: r.company.nome, obrigacao: r.obligationLabel, vencimento: r.due.toLocaleDateString('pt-BR')};
+      const subject = fillTemplate(settings.emailSubjectTemplate || 'Lembrete', vars);
+      const body = fillTemplate(settings.emailBodyTemplate || '', vars);
       const originalText = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try{
-        await sendLembreteEmailFor(r);
+        await sendGmailPlain({to: r.company.email, subject, body});
         btn.textContent = '✓ Enviado';
       }catch(e){
         console.error(e);
@@ -4231,17 +3534,6 @@ function wireLembreteHandlers(reminders){
         btn.title = e.message || 'Erro ao enviar';
         setTimeout(()=>{ btn.disabled=false; btn.textContent=originalText; }, 2500);
       }
-    });
-  });
-  listEl.querySelectorAll('[data-lembrete-silenciar]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const r = reminders[parseInt(btn.dataset.lembreteSilenciar,10)];
-      if(!state.silencedReminders) state.silencedReminders = {};
-      const silenceKey = `${r.companyId}::${r.obligationId}::${r.compKey}`;
-      state.silencedReminders[silenceKey] = true;
-      persist();
-      renderLembretes();
-      renderTabs();
     });
   });
 }
@@ -4255,74 +3547,16 @@ function renderDemandas(){
         <div class="sheet-title" style="margin-bottom:0;">Demandas</div>
         <div class="sheet-sub" style="margin-bottom:0;">Cole a mensagem do cliente (WhatsApp, e-mail, etc.) e transforme em uma demanda a resolver.</div>
       </div>
-      <div style="display:flex; gap:.5rem; align-items:center;">
-        <div class="obrig-mode-toggle">
-          <button type="button" class="obrig-mode-btn ${demandaViewMode==='lista'?'active':''}" data-demanda-view="lista">Lista</button>
-          <button type="button" class="obrig-mode-btn ${demandaViewMode==='quadro'?'active':''}" data-demanda-view="quadro">Quadro</button>
-        </div>
-        <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
-      </div>
+      <button class="btn accent" id="btnNewDemanda" type="button">+ Nova Demanda</button>
     </div>
     <div class="demanda-filters" id="demandaFilters"></div>
     <div class="demanda-filters" id="demandaRespFilterWrap" style="margin-top:-.5rem;"></div>
-    <div id="demandaBulkBar" class="obrig-bulk-bar" style="display:none;">
-      <span id="demandaBulkCount"></span>
-      <select id="demandaBulkStatus">
-        <option value="">Mudar status para…</option>
-        <option value="aberta">Aberta</option>
-        <option value="andamento">Em andamento</option>
-        <option value="concluida">Concluída</option>
-      </select>
-      <select id="demandaBulkResp">
-        <option value="">Mudar responsável para…</option>
-        <option value="__none__">— sem responsável —</option>
-        ${state.users.filter(u=>u.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
-      </select>
-      <button type="button" class="btn accent small" id="btnDemandaAplicarLote">Aplicar</button>
-      <button type="button" class="btn ghost small" id="btnDemandaLimparSelecao">Limpar seleção</button>
-    </div>
     <div id="demandaList"></div>
   `;
   document.getElementById('btnNewDemanda').addEventListener('click', ()=>openDemandaModal(null));
-  container.querySelectorAll('[data-demanda-view]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      demandaViewMode = btn.dataset.demandaView;
-      renderDemandas();
-    });
-  });
-  document.getElementById('btnDemandaLimparSelecao').addEventListener('click', ()=>{
-    demandaSelectedIds.clear();
-    renderDemandaList();
-  });
-  document.getElementById('btnDemandaAplicarLote').addEventListener('click', async ()=>{
-    const newStatus = document.getElementById('demandaBulkStatus').value;
-    const newResp = document.getElementById('demandaBulkResp').value;
-    if(!newStatus && !newResp){
-      await showConfirm('Escolha um novo status e/ou um novo responsável antes de aplicar.', 'Ok');
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    state.demandas.filter(d=>demandaSelectedIds.has(d.id)).forEach(d=>{
-      if(newStatus) d.status = newStatus;
-      if(newResp) d.responsavelId = newResp==='__none__' ? null : newResp;
-      d.atualizadoEm = nowIso;
-    });
-    persist();
-    demandaSelectedIds.clear();
-    renderDemandaFilters();
-    renderDemandaList();
-  });
   renderDemandaFilters();
   renderDemandaResponsavelFilter();
   renderDemandaList();
-}
-
-function updateDemandaBulkBar(){
-  const bar = document.getElementById('demandaBulkBar');
-  if(!bar) return;
-  const count = demandaSelectedIds.size;
-  bar.style.display = count>0 ? 'flex' : 'none';
-  document.getElementById('demandaBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
 }
 
 function renderDemandaResponsavelFilter(){
@@ -4369,21 +3603,11 @@ function demandaCardHtml(d){
   const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
   const dt = new Date(d.criadoEm);
   const dataFmt = isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
-  const today = new Date(new Date().setHours(0,0,0,0));
-  const prazoDate = d.prazo ? new Date(d.prazo+'T00:00:00') : null;
-  const overdue = prazoDate && d.status!=='concluida' && prazoDate < today;
-  const prazoFmt = prazoDate ? prazoDate.toLocaleDateString('pt-BR') : null;
-  const prioridade = d.prioridade || 'normal';
-  const prioridadeLabels = {baixa:'Baixa', normal:'Normal', urgente:'Urgente'};
-  const checked = demandaSelectedIds.has(d.id);
-  return `<div class="demanda-card ${overdue?'overdue':''} ${checked?'is-selected':''}" data-demanda-id="${d.id}">
+  return `<div class="demanda-card" data-demanda-id="${d.id}">
     <div class="demanda-card-top">
-      <div style="display:flex; gap:.5rem; align-items:flex-start;">
-        <input type="checkbox" class="demanda-select-checkbox" data-demanda-select="${d.id}" ${checked?'checked':''}>
-        <div>
-          <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'} <span class="demanda-priority-badge prio-${prioridade}">${prioridadeLabels[prioridade]}</span></div>
-          <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}${prazoFmt ? ` · <span class="${overdue?'demanda-prazo-overdue':''}">Prazo: ${prazoFmt}${overdue?' (atrasada)':''}</span>` : ''}</div>
-        </div>
+      <div>
+        <div class="demanda-card-title">${escapeHtml(d.titulo) || '(sem título)'}</div>
+        <div class="demanda-card-meta">${company ? escapeHtml(company.nome) : 'Cliente não vinculado'} · ${dataFmt}${responsavel ? ` · Responsável: ${escapeHtml(responsavel.nome)}` : ' · <span style="color:var(--muted);">Sem responsável</span>'}</div>
       </div>
       <select class="demanda-status-select status-${d.status}" data-demanda-status="${d.id}">
         <option value="aberta" ${d.status==='aberta'?'selected':''}>Aberta</option>
@@ -4422,94 +3646,17 @@ function renderDemandaList(){
   list.sort((a,b)=> new Date(b.criadoEm) - new Date(a.criadoEm));
   if(list.length===0){
     el.innerHTML = `<div class="empty-note">Nenhuma demanda encontrada.</div>`;
-    updateDemandaBulkBar();
     return;
   }
-  if(demandaViewMode==='quadro'){
-    const cols = [
-      {status:'aberta', label:'Aberta'},
-      {status:'andamento', label:'Em andamento'},
-      {status:'concluida', label:'Concluída'},
-    ];
-    el.innerHTML = `<div class="demanda-kanban">${cols.map(col=>{
-      const items = list.filter(d=>d.status===col.status);
-      return `<div class="demanda-kanban-col" data-kanban-col="${col.status}">
-        <div class="demanda-kanban-col-title">${col.label} (${items.length})</div>
-        <div class="demanda-kanban-col-body" data-kanban-drop="${col.status}">
-          ${items.map(d=>demandaKanbanCardHtml(d)).join('') || '<div class="empty-note" style="font-size:.76rem;">Vazio</div>'}
-        </div>
-      </div>`;
-    }).join('')}</div>`;
-    wireDemandaKanbanHandlers();
-  } else {
-    el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
-    wireDemandaCardHandlers(el);
-  }
-  updateDemandaBulkBar();
-}
-
-function demandaKanbanCardHtml(d){
-  const company = d.companyId ? state.companies.find(c=>c.id===d.companyId) : null;
-  const responsavel = d.responsavelId ? state.users.find(u=>u.id===d.responsavelId) : null;
-  const today = new Date(new Date().setHours(0,0,0,0));
-  const prazoDate = d.prazo ? new Date(d.prazo+'T00:00:00') : null;
-  const overdue = prazoDate && d.status!=='concluida' && prazoDate < today;
-  const prioridade = d.prioridade || 'normal';
-  const prioridadeLabels = {baixa:'Baixa', normal:'Normal', urgente:'Urgente'};
-  return `<div class="demanda-kanban-card ${overdue?'overdue':''}" draggable="true" data-kanban-card="${d.id}">
-    <div class="demanda-priority-badge prio-${prioridade}" style="margin-bottom:.3rem;display:inline-block;">${prioridadeLabels[prioridade]}</div>
-    <div class="demanda-card-title" style="font-size:.83rem;">${escapeHtml(d.titulo) || '(sem título)'}</div>
-    <div class="demanda-card-meta" style="font-size:.7rem;">${company ? escapeHtml(company.nome) : 'Sem cliente'}${responsavel ? ' · '+escapeHtml(responsavel.nome) : ''}</div>
-    ${prazoDate ? `<div class="${overdue?'demanda-prazo-overdue':''}" style="font-size:.7rem; margin-top:.2rem;">Prazo: ${prazoDate.toLocaleDateString('pt-BR')}${overdue?' (atrasada)':''}</div>` : ''}
-    <div style="display:flex; gap:.2rem; margin-top:.4rem; justify-content:flex-end;">
-      <button type="button" class="oblig-icon-btn" data-edit-demanda="${d.id}" title="Editar">✎</button>
-    </div>
-  </div>`;
-}
-
-function wireDemandaKanbanHandlers(){
-  const el = document.getElementById('demandaList');
-  el.querySelectorAll('[data-edit-demanda]').forEach(btn=>{
-    btn.addEventListener('click', ()=> openDemandaModal(btn.dataset.editDemanda));
-  });
-  let draggedId = null;
-  el.querySelectorAll('[data-kanban-card]').forEach(card=>{
-    card.addEventListener('dragstart', ()=>{ draggedId = card.dataset.kanbanCard; card.classList.add('dragging'); });
-    card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); });
-  });
-  el.querySelectorAll('[data-kanban-drop]').forEach(dropzone=>{
-    dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('drag-over'); });
-    dropzone.addEventListener('dragleave', ()=>{ dropzone.classList.remove('drag-over'); });
-    dropzone.addEventListener('drop', (e)=>{
-      e.preventDefault();
-      dropzone.classList.remove('drag-over');
-      if(!draggedId) return;
-      const d = state.demandas.find(x=>x.id===draggedId);
-      if(d){
-        d.status = dropzone.dataset.kanbanDrop;
-        d.atualizadoEm = new Date().toISOString();
-        persist();
-      }
-      draggedId = null;
-      renderDemandaFilters();
-      renderDemandaList();
-    });
-  });
+  el.innerHTML = `<div class="demanda-list-wrap">${list.map(demandaCardHtml).join('')}</div>`;
+  wireDemandaCardHandlers(el);
 }
 
 function wireDemandaCardHandlers(container){
-  container.querySelectorAll('[data-demanda-select]').forEach(chk=>{
-    chk.addEventListener('change', ()=>{
-      const id = chk.dataset.demandaSelect;
-      if(chk.checked) demandaSelectedIds.add(id); else demandaSelectedIds.delete(id);
-      chk.closest('.demanda-card').classList.toggle('is-selected', chk.checked);
-      updateDemandaBulkBar();
-    });
-  });
   container.querySelectorAll('[data-demanda-status]').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const d = state.demandas.find(x=>x.id===sel.dataset.demandaStatus);
-      if(d){ d.status = sel.value; d.atualizadoEm = new Date().toISOString(); persist(); }
+      if(d){ d.status = sel.value; d.atualizadoEm = new Date().toISOString(); persist().catch(()=>{}); }
       sel.className = 'demanda-status-select status-' + sel.value;
       renderDemandaFilters();
     });
@@ -4517,7 +3664,7 @@ function wireDemandaCardHandlers(container){
   container.querySelectorAll('[data-demanda-responsavel]').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const d = state.demandas.find(x=>x.id===sel.dataset.demandaResponsavel);
-      if(d){ d.responsavelId = sel.value || null; d.atualizadoEm = new Date().toISOString(); persist(); }
+      if(d){ d.responsavelId = sel.value || null; d.atualizadoEm = new Date().toISOString(); persist().catch(()=>{}); }
       renderDemandaList();
     });
   });
@@ -4528,10 +3675,10 @@ function wireDemandaCardHandlers(container){
     btn.addEventListener('click', async ()=>{
       const d = state.demandas.find(x=>x.id===btn.dataset.delDemanda);
       if(!d) return;
-      const ok = await showConfirm(`Excluir a demanda "${d.titulo||'sem título'}"? Essa ação não pode ser desfeita.`);
+      const ok = await showConfirm(`Excluir a demanda "${escapeHtml(d.titulo||'sem título')}"? Essa ação não pode ser desfeita.`);
       if(!ok) return;
       state.demandas = state.demandas.filter(x=>x.id!==d.id);
-      persist();
+      persist().catch(()=>{});
       renderDemandaFilters();
       renderDemandaList();
     });
@@ -4540,7 +3687,7 @@ function wireDemandaCardHandlers(container){
 
 function openDemandaModal(demandaId){
   const editing = !!demandaId;
-  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:'', prazo:'', prioridade:'normal'};
+  const d = editing ? state.demandas.find(x=>x.id===demandaId) : {companyId:'', titulo:'', mensagem:'', status:'aberta', responsavelId:''};
   const root = document.getElementById('modalRoot');
   const companyOptions = state.companies.filter(c=>c.ativa!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
     .map(c=>`<option value="${c.id}" ${c.id===d.companyId?'selected':''}>${c.nome}</option>`).join('');
@@ -4571,16 +3718,6 @@ function openDemandaModal(demandaId){
               </select>
             </div>
           </div>
-          <div class="form-cols">
-            <div class="form-row"><label>Prazo (opcional)</label><input id="demPrazo" type="date" value="${d.prazo||''}"></div>
-            <div class="form-row"><label>Prioridade</label>
-              <select id="demPrioridade">
-                <option value="baixa" ${d.prioridade==='baixa'?'selected':''}>Baixa</option>
-                <option value="normal" ${(!d.prioridade||d.prioridade==='normal')?'selected':''}>Normal</option>
-                <option value="urgente" ${d.prioridade==='urgente'?'selected':''}>Urgente</option>
-              </select>
-            </div>
-          </div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -4603,21 +3740,19 @@ function openDemandaModal(demandaId){
     if(!titulo) titulo = mensagem.split('\n')[0].slice(0,60);
     const status = document.getElementById('demStatus').value;
     const responsavelId = document.getElementById('demResponsavel').value || null;
-    const prazo = document.getElementById('demPrazo').value || null;
-    const prioridade = document.getElementById('demPrioridade').value;
     const nowIso = new Date().toISOString();
     if(editing){
       const freshD = state.demandas.find(x=>x.id===demandaId);
       if(!freshD){ root.innerHTML=''; return; }
-      Object.assign(freshD, {companyId, titulo, mensagem, status, responsavelId, prazo, prioridade, atualizadoEm: nowIso});
+      Object.assign(freshD, {companyId, titulo, mensagem, status, responsavelId, atualizadoEm: nowIso});
     } else {
       state.demandas.push({
         id: 'demanda_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        companyId, titulo, mensagem, status, responsavelId, prazo, prioridade,
+        companyId, titulo, mensagem, status, responsavelId,
         criadoEm: nowIso, atualizadoEm: nowIso,
       });
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderDemandaFilters();
     renderDemandaList();
@@ -4696,9 +3831,6 @@ function renderConfiguracoes(){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Categorias</div>
       <div class="sheet-sub">Organizam as obrigações e a aba Obrigações. As categorias padrão do sistema não podem ser editadas ou excluídas; crie novas conforme precisar.</div>
-      <div class="obrig-filters" style="margin-bottom:.6rem;">
-        <input type="text" id="categoryFilterSearch" placeholder="Buscar por nome…" value="${categoryFilterSearch.replace(/"/g,'&quot;')}">
-      </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="categoriesTable">
         <thead><tr><th>Nome</th><th>Tipo de período</th><th></th><th></th></tr></thead>
@@ -4746,40 +3878,24 @@ function renderConfiguracoes(){
         </select>
         <select id="catalogFilterEsferaSelect">
           <option value="todas" ${catalogFilterEsfera==='todas'?'selected':''}>Todas as esferas</option>
-          ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${catalogFilterEsfera===e?'selected':''}>${e}</option>`).join('')}
+          ${state.esferaOptions.map(e=>`<option value="${escapeHtml(e)}" ${catalogFilterEsfera===e?'selected':''}>${escapeHtml(e)}</option>`).join('')}
         </select>
         <select id="catalogFilterAreaSelect">
           <option value="todas" ${catalogFilterArea==='todas'?'selected':''}>Todas as áreas</option>
-          ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${catalogFilterArea===a?'selected':''}>${a}</option>`).join('')}
+          ${state.areaOptions.map(a=>`<option value="${escapeHtml(a)}" ${catalogFilterArea===a?'selected':''}>${escapeHtml(a)}</option>`).join('')}
         </select>
         <input type="text" id="catalogFilterSearch" placeholder="Buscar por nome…" value="${catalogFilterSearch.replace(/"/g,'&quot;')}">
       </div>
-      <div id="catalogBulkBar" class="obrig-bulk-bar" style="display:none;">
-        <span id="catalogBulkCount"></span>
-        <select id="catalogBulkTrib">
-          <option value="">Mudar tributação para…</option>
-          ${CATEGORY_ORDER.map(c=>`<option value="${c}">${CATEGORY_LABELS[c]}</option>`).join('')}
-        </select>
-        <button type="button" class="btn accent small" id="btnCatalogAplicarLote">Aplicar</button>
-        <button type="button" class="btn danger small" id="btnCatalogExcluirLote">Excluir selecionadas</button>
-        <button type="button" class="btn ghost small" id="btnCatalogLimparSelecao">Limpar seleção</button>
-      </div>
       <div style="overflow-x:auto; margin-bottom:.8rem;">
       <table class="obrig-table" id="obligCatalogTable">
-        <thead><tr><th><input type="checkbox" id="catalogSelectAll"></th><th>Nome</th><th>Tributação</th><th>Periodicidade</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Tributação</th><th>Periodicidade</th><th>Esfera</th><th>Área</th><th>Órgão</th><th>Vencimento</th><th>Meta</th><th>Se cair em fim de semana/feriado</th><th></th></tr></thead>
         <tbody id="obligCatalogBody"></tbody>
       </table>
       </div>
-      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-        <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
-        <button class="btn ghost small" id="btnExportCatalogo" type="button">Exportar catálogo (backup)</button>
-        <button class="btn ghost small" id="btnImportCatalogo" type="button">Importar catálogo</button>
-        <input type="file" id="importCatalogoInput" accept="application/json" style="display:none;">
-      </div>
+      <button class="btn ghost small" id="btnNewObligCatalog" type="button">+ Nova obrigação</button>
     `;
     renderCategoriesList();
     document.getElementById('btnNewCategory').addEventListener('click', ()=> openCategoryModal(null));
-    document.getElementById('categoryFilterSearch').addEventListener('input', (e)=>{ categoryFilterSearch = e.target.value; renderCategoriesList(); });
     renderEsferaAreaLists();
     document.getElementById('btnAddEsfera').addEventListener('click', ()=> addTagOption('esferaOptions','novaEsferaInput','esferaTagList'));
     document.getElementById('btnAddArea').addEventListener('click', ()=> addTagOption('areaOptions','novaAreaInput','areaTagList'));
@@ -4791,127 +3907,28 @@ function renderConfiguracoes(){
     document.getElementById('catalogFilterEsferaSelect').addEventListener('change', (e)=>{ catalogFilterEsfera = e.target.value; renderObligationCatalogList(); });
     document.getElementById('catalogFilterAreaSelect').addEventListener('change', (e)=>{ catalogFilterArea = e.target.value; renderObligationCatalogList(); });
     document.getElementById('catalogFilterSearch').addEventListener('input', (e)=>{ catalogFilterSearch = e.target.value; renderObligationCatalogList(); });
-    document.getElementById('catalogSelectAll').addEventListener('change', (e)=>{
-      const visibleIds = [...document.querySelectorAll('[data-catalog-select]')].map(chk=>chk.dataset.catalogSelect);
-      if(e.target.checked) visibleIds.forEach(id=>catalogSelectedIds.add(id));
-      else visibleIds.forEach(id=>catalogSelectedIds.delete(id));
-      renderObligationCatalogList();
-    });
-    document.getElementById('btnCatalogLimparSelecao').addEventListener('click', ()=>{
-      catalogSelectedIds.clear();
-      renderObligationCatalogList();
-    });
-    document.getElementById('btnCatalogAplicarLote').addEventListener('click', ()=>{
-      const newTrib = document.getElementById('catalogBulkTrib').value;
-      if(!newTrib) return;
-      state.obligations.forEach(o=>{ if(catalogSelectedIds.has(o.id)) o.category = newTrib; });
-      persist();
-      catalogSelectedIds.clear();
-      renderObligationCatalogList();
-    });
-    document.getElementById('btnCatalogExcluirLote').addEventListener('click', async ()=>{
-      const ids = [...catalogSelectedIds];
-      if(ids.length===0) return;
-      const ok = await showConfirm(`Excluir ${ids.length} obrigação(ões) do catálogo? Elas serão removidas de todas as empresas que as tinham marcadas, e o histórico de check já feito será apagado.`);
-      if(!ok) return;
-      ids.forEach(id=> removeObligationFromCatalog(id));
-      persist();
-      catalogSelectedIds.clear();
-      renderObligationCatalogList();
-    });
-    document.getElementById('btnExportCatalogo').addEventListener('click', ()=>{
-      const backup = {
-        tipo: 'agenda-fiscal-catalogo-backup',
-        exportadoEm: new Date().toISOString(),
-        obligations: state.obligations,
-        customCategories: state.customCategories||[],
-        esferaOptions: state.esferaOptions||[],
-        areaOptions: state.areaOptions||[],
-        orgaoOptions: state.orgaoOptions||[],
-        referenciaLegalOptions: state.referenciaLegalOptions||[],
-      };
-      const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `catalogo_obrigacoes_${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-    const importInput2 = document.getElementById('importCatalogoInput');
-    document.getElementById('btnImportCatalogo').addEventListener('click', ()=> importInput2.click());
-    importInput2.addEventListener('change', async ()=>{
-      const file = importInput2.files && importInput2.files[0];
-      importInput2.value = '';
-      if(!file) return;
-      try{
-        const text = await file.text();
-        const backup = JSON.parse(text);
-        if(!backup || !Array.isArray(backup.obligations)){
-          await showConfirm('Esse arquivo não parece ser um backup de catálogo válido.', 'Ok');
-          return;
-        }
-        // Restaura categorias personalizadas que ainda não existem
-        if(!state.customCategories) state.customCategories = [];
-        (backup.customCategories||[]).forEach(cat=>{
-          if(!state.customCategories.find(c=>c.id===cat.id)){
-            state.customCategories.push(cat);
-            registerCategoryRuntime(cat);
-          }
-        });
-        // Restaura obrigações que ainda não existem (por id) — não sobrescreve as que já tem
-        let added = 0;
-        backup.obligations.forEach(o=>{
-          if(!state.obligations.find(x=>x.id===o.id)){
-            state.obligations.push(o);
-            added++;
-          }
-        });
-        // Junta esferas/áreas/órgãos/referências (sem duplicar)
-        ['esferaOptions','areaOptions','orgaoOptions','referenciaLegalOptions'].forEach(key=>{
-          (backup[key]||[]).forEach(val=>{
-            if(!state[key]) state[key] = [];
-            if(!state[key].includes(val)) state[key].push(val);
-          });
-        });
-        persist();
-        renderConfiguracoes();
-        await showConfirm(`Importação concluída: ${added} obrigação(ões) nova(s) adicionada(s). Itens que já existiam (mesmo id) não foram alterados.`, 'Ok');
-      }catch(e){
-        console.error(e);
-        await showConfirm('Não foi possível ler esse arquivo. Confira se é um backup exportado por aqui mesmo.', 'Ok');
-      }
-    });
   }
 
   else if(configSubTab==='equipe'){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Responsáveis</div>
       <div class="sheet-sub">Pessoas da equipe que podem ser designadas como responsáveis por uma demanda ou obrigação.</div>
-      <div class="obrig-filters" style="margin-bottom:.6rem;">
-        <input type="text" id="usersFilterSearch" placeholder="Buscar por nome…" value="${usersFilterSearch.replace(/"/g,'&quot;')}">
-      </div>
       <div id="usersList"></div>
       <button class="btn ghost small" id="btnNewUser" type="button">+ Novo responsável</button>
     `;
     renderUsersList();
     document.getElementById('btnNewUser').addEventListener('click', ()=> openUserModal(null));
-    document.getElementById('usersFilterSearch').addEventListener('input', (e)=>{ usersFilterSearch = e.target.value; renderUsersList(); });
   }
 
   else if(configSubTab==='documentos'){
     content.innerHTML = `
       <div class="sheet-title" style="font-size:1.05rem;">Tipos de documento (envio automático)</div>
       <div class="sheet-sub">Regras usadas na aba "Envio de Documentos" para reconhecer o tipo de PDF pelo conteúdo, e o texto de e-mail que acompanha cada tipo. Use {empresa}, {competencia} e {vencimento} no texto para preencher automaticamente com os dados lidos do documento.</div>
-      <div class="obrig-filters" style="margin-bottom:.6rem;">
-        <input type="text" id="docTypesFilterSearch" placeholder="Buscar por nome…" value="${docTypesFilterSearch.replace(/"/g,'&quot;')}">
-      </div>
       <div id="docTypesList"></div>
       <button class="btn ghost small" id="btnNewDocType" type="button">+ Novo tipo de documento</button>
     `;
     renderDocTypesList();
     document.getElementById('btnNewDocType').addEventListener('click', ()=> openDocTypeModal(null));
-    document.getElementById('docTypesFilterSearch').addEventListener('input', (e)=>{ docTypesFilterSearch = e.target.value; renderDocTypesList(); });
   }
 
   else if(configSubTab==='lembretes'){
@@ -4921,7 +3938,7 @@ function renderConfiguracoes(){
       <div class="form-grid" style="max-width:520px;">
         <div class="form-row"><label>Avisar com quantos dias de antecedência</label><input id="remDiasAntes" type="number" min="0" max="30" value="${(state.reminderSettings&&state.reminderSettings.diasAntes)||3}"></div>
         <div class="form-row"><label>Modelo de mensagem — WhatsApp</label><textarea id="remWhatsapp" rows="3" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.whatsappTemplate)||'')}</textarea></div>
-        <div class="form-row"><label>Modelo de assunto — E-mail</label><input id="remEmailSubject" type="text" value="${((state.reminderSettings&&state.reminderSettings.emailSubjectTemplate)||'').replace(/"/g,'&quot;')}"></div>
+        <div class="form-row"><label>Modelo de assunto — E-mail</label><input id="remEmailSubject" type="text" value="${escapeHtml((state.reminderSettings&&state.reminderSettings.emailSubjectTemplate)||'')}"></div>
         <div class="form-row"><label>Modelo de corpo — E-mail</label><textarea id="remEmailBody" rows="5" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml((state.reminderSettings&&state.reminderSettings.emailBodyTemplate)||'')}</textarea></div>
         <div><button class="btn accent small" id="btnSaveReminders" type="button">Salvar lembretes</button></div>
       </div>
@@ -4933,7 +3950,7 @@ function renderConfiguracoes(){
         emailSubjectTemplate: document.getElementById('remEmailSubject').value,
         emailBodyTemplate: document.getElementById('remEmailBody').value,
       };
-      persist();
+      persist().catch(()=>{});
     });
   }
 
@@ -4954,13 +3971,11 @@ function renderConfiguracoes(){
 function renderUsersList(){
   const el = document.getElementById('usersList');
   if(!el) return;
-  const search = usersFilterSearch.trim().toLowerCase();
-  const filtered = state.users.filter(u=> !search || u.nome.toLowerCase().includes(search));
-  if(filtered.length===0){
-    el.innerHTML = `<div class="empty-note">${state.users.length===0 ? 'Nenhum responsável cadastrado ainda.' : 'Nenhum responsável encontrado com esse nome.'}</div>`;
+  if(state.users.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhum responsável cadastrado ainda.</div>`;
     return;
   }
-  el.innerHTML = `<div class="doctype-list">${filtered.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
+  el.innerHTML = `<div class="doctype-list">${state.users.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
     <div class="doctype-card">
       <div class="doctype-card-top">
         <div class="doctype-card-name">${escapeHtml(u.nome)} ${u.ativo===false? '<span style="color:var(--muted);font-weight:500;font-size:.76rem;">(inativo)</span>':''}</div>
@@ -4979,11 +3994,11 @@ function renderUsersList(){
     btn.addEventListener('click', async ()=>{
       const u = state.users.find(x=>x.id===btn.dataset.delUser);
       if(!u) return;
-      const ok = await showConfirm(`Excluir o responsável "${u.nome}"? As demandas já atribuídas a ${u.nome} ficarão sem responsável.`);
+      const ok = await showConfirm(`Excluir o responsável "${escapeHtml(u.nome)}"? As demandas já atribuídas a ${escapeHtml(u.nome)} ficarão sem responsável.`);
       if(!ok) return;
       state.users = state.users.filter(x=>x.id!==u.id);
       state.demandas.forEach(d=>{ if(d.responsavelId===u.id) d.responsavelId = null; });
-      persist();
+      persist().catch(()=>{});
       renderUsersList();
     });
   });
@@ -5033,7 +4048,7 @@ function openUserModal(userId){
     } else {
       state.users.push({id:'user_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderUsersList();
   };
@@ -5152,13 +4167,7 @@ const BUILT_IN_CATEGORY_IDS = ['simples','mei','lucro_presumido','lucro_real','f
 function renderCategoriesList(){
   const el = document.getElementById('categoriesBody');
   if(!el) return;
-  const search = categoryFilterSearch.trim().toLowerCase();
-  const filteredIds = CATEGORY_ORDER.filter(id => !search || (CATEGORY_LABELS[id]||id).toLowerCase().includes(search));
-  if(filteredIds.length===0){
-    el.innerHTML = `<tr><td colspan="4"><div class="empty-note">Nenhuma categoria encontrada.</div></td></tr>`;
-    return;
-  }
-  el.innerHTML = filteredIds.map(id=>{
+  el.innerHTML = CATEGORY_ORDER.map(id=>{
     const isCustom = !BUILT_IN_CATEGORY_IDS.includes(id);
     const period = TAB_DEFS[id] ? TAB_DEFS[id].period : 'month';
     return `<tr>
@@ -5186,9 +4195,9 @@ function renderCategoriesList(){
       }
       const ok = await showConfirm(`Excluir a categoria "${CATEGORY_LABELS[catId]}"?`);
       if(!ok) return;
-      state.customCategories = (state.customCategories||[]).filter(c=>c.id!==catId);
+      state.customCategories = state.customCategories.filter(c=>c.id!==catId);
       unregisterCategoryRuntime(catId);
-      persist();
+      persist().catch(()=>{});
       renderCategoriesList();
     });
   });
@@ -5230,17 +4239,16 @@ function openCategoryModal(catId){
     }
     if(editing){
       CATEGORY_LABELS[catId] = label;
-      const entry = (state.customCategories||[]).find(c=>c.id===catId);
+      const entry = state.customCategories.find(c=>c.id===catId);
       if(entry) entry.label = label;
     } else {
       const period = document.getElementById('categoryPeriod').value;
       const id = 'custom_' + Date.now();
       const cat = {id, label, period};
-      if(!state.customCategories) state.customCategories = [];
       state.customCategories.push(cat);
       registerCategoryRuntime(cat);
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderCategoriesList();
   };
@@ -5265,10 +4273,10 @@ function renderTagList(stateKey, containerId){
   el.querySelectorAll('[data-del-tag]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const tag = btn.dataset.delTag;
-      const ok = await showConfirm(`Remover "${tag}" da lista? Obrigações que já usam esse valor continuam com ele; só deixa de aparecer como opção pra novas.`);
+      const ok = await showConfirm(`Remover "${escapeHtml(tag)}" da lista? Obrigações que já usam esse valor continuam com ele; só deixa de aparecer como opção pra novas.`);
       if(!ok) return;
       state[stateKey] = state[stateKey].filter(t=>t!==tag);
-      persist();
+      persist().catch(()=>{});
       renderTagList(stateKey, containerId);
     });
   });
@@ -5281,7 +4289,7 @@ function addTagOption(stateKey, inputId, containerId){
   state[stateKey] = state[stateKey] || [];
   if(!state[stateKey].includes(val)){
     state[stateKey].push(val);
-    persist();
+    persist().catch(()=>{});
   }
   input.value = '';
   renderTagList(stateKey, containerId);
@@ -5301,7 +4309,7 @@ function renderObligationCatalogList(){
       return ci !== 0 ? ci : a.label.localeCompare(b.label);
     });
   if(sorted.length===0){
-    el.innerHTML = `<tr><td colspan="11"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
+    el.innerHTML = `<tr><td colspan="10"><div class="empty-note">Nenhuma obrigação encontrada com esses filtros.</div></td></tr>`;
     return;
   }
   const PERIODICIDADE_LABELS = {month:'Mensal', quarter:'Trimestral', year:'Anual'};
@@ -5314,10 +4322,8 @@ function renderObligationCatalogList(){
     if(rule==='nesimo_dia_util' && o.nthBusinessDay) vencTxt = `${o.nthBusinessDay}º dia útil`;
     if(isAnnualCat && o.dueMonth) vencTxt += ' de ' + MONTH_NAMES[o.dueMonth-1];
     if(period==='month' && o.monthDueOffset) vencTxt += ` (${o.monthDueOffset} ${o.monthDueOffset===1?'mês':'meses'} depois da competência)`;
-    const checked = catalogSelectedIds.has(o.id);
     return `
-    <tr class="${checked?'is-selected':''}">
-      <td><input type="checkbox" class="obrig-row-checkbox" data-catalog-select="${o.id}" ${checked?'checked':''}></td>
+    <tr>
       <td>${escapeHtml(o.label)}${o.seasonalMonth? ` <span style="color:var(--muted);font-size:.72rem;">(só em ${MONTH_NAMES[o.seasonalMonth-1]})</span>`:''}</td>
       <td>${CATEGORY_LABELS[o.category]||o.category}</td>
       <td>${PERIODICIDADE_LABELS[period]||'—'}</td>
@@ -5330,7 +4336,6 @@ function renderObligationCatalogList(){
       <td>
         <div class="oblig-row-actions">
           <button type="button" class="oblig-icon-btn" data-edit-obligcat="${o.id}" title="Editar">✎</button>
-          <button type="button" class="oblig-icon-btn" data-dup-obligcat="${o.id}" title="Duplicar">⧉</button>
           <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-obligcat="${o.id}" title="Excluir">×</button>
         </div>
       </td>
@@ -5339,41 +4344,12 @@ function renderObligationCatalogList(){
   el.querySelectorAll('[data-edit-obligcat]').forEach(btn=>{
     btn.addEventListener('click', ()=> openObligationCatalogModal(btn.dataset.editObligcat));
   });
-  el.querySelectorAll('[data-dup-obligcat]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const original = state.obligations.find(o=>o.id===btn.dataset.dupObligcat);
-      if(!original) return;
-      const prefix = original.category.slice(0,4);
-      const copy = {...original, id:`${prefix}__custom_${Date.now()}`, label: original.label + ' (cópia)'};
-      state.obligations.push(copy);
-      persist();
-      renderObligationCatalogList();
-      openObligationCatalogModal(copy.id); // já abre pra editar/renomear
-    });
-  });
   el.querySelectorAll('[data-del-obligcat]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const ok = await deleteObligationFromCatalog(btn.dataset.delObligcat);
       if(ok) renderObligationCatalogList();
     });
   });
-  el.querySelectorAll('[data-catalog-select]').forEach(chk=>{
-    chk.addEventListener('change', ()=>{
-      const id = chk.dataset.catalogSelect;
-      if(chk.checked) catalogSelectedIds.add(id); else catalogSelectedIds.delete(id);
-      chk.closest('tr').classList.toggle('is-selected', chk.checked);
-      updateCatalogBulkBar();
-    });
-  });
-  updateCatalogBulkBar();
-}
-
-function updateCatalogBulkBar(){
-  const bar = document.getElementById('catalogBulkBar');
-  if(!bar) return;
-  const count = catalogSelectedIds.size;
-  bar.style.display = count>0 ? 'flex' : 'none';
-  document.getElementById('catalogBulkCount').textContent = `${count} selecionada${count===1?'':'s'}`;
 }
 
 function openObligationCatalogModal(obligId){
@@ -5396,13 +4372,13 @@ function openObligationCatalogModal(obligId){
             <div class="form-row"><label>Esfera (opcional)</label>
               <select id="obligCatEsfera">
                 <option value="">— não informado —</option>
-                ${(state.esferaOptions||[]).map(e=>`<option value="${e}" ${o.esfera===e?'selected':''}>${e}</option>`).join('')}
+                ${state.esferaOptions.map(e=>`<option value="${escapeHtml(e)}" ${o.esfera===e?'selected':''}>${escapeHtml(e)}</option>`).join('')}
               </select>
             </div>
             <div class="form-row"><label>Área (opcional)</label>
               <select id="obligCatArea">
                 <option value="">— não informado —</option>
-                ${(state.areaOptions||[]).map(a=>`<option value="${a}" ${o.area===a?'selected':''}>${a}</option>`).join('')}
+                ${state.areaOptions.map(a=>`<option value="${escapeHtml(a)}" ${o.area===a?'selected':''}>${escapeHtml(a)}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -5410,15 +4386,15 @@ function openObligationCatalogModal(obligId){
             <div class="form-row"><label>Órgão responsável (opcional)</label>
               <select id="obligCatOrgao">
                 <option value="">— não informado —</option>
-                ${(o.orgao && !(state.orgaoOptions||[]).includes(o.orgao)) ? `<option value="${o.orgao}" selected>${escapeHtml(o.orgao)} (não está na lista — cadastre em Configurações se quiser reaproveitar)</option>` : ''}
-                ${(state.orgaoOptions||[]).map(o2=>`<option value="${o2}" ${o.orgao===o2?'selected':''}>${o2}</option>`).join('')}
+                ${(o.orgao && !state.orgaoOptions.includes(o.orgao)) ? `<option value="${escapeHtml(o.orgao)}" selected>${escapeHtml(o.orgao)} (não está na lista — cadastre em Configurações se quiser reaproveitar)</option>` : ''}
+                ${state.orgaoOptions.map(o2=>`<option value="${escapeHtml(o2)}" ${o.orgao===o2?'selected':''}>${escapeHtml(o2)}</option>`).join('')}
               </select>
             </div>
             <div class="form-row"><label>Referência legal (opcional)</label>
               <select id="obligCatReferenciaLegal">
                 <option value="">— não informado —</option>
-                ${(o.referenciaLegal && !(state.referenciaLegalOptions||[]).includes(o.referenciaLegal)) ? `<option value="${o.referenciaLegal}" selected>${escapeHtml(o.referenciaLegal)} (não está na lista)</option>` : ''}
-                ${(state.referenciaLegalOptions||[]).map(r=>`<option value="${r}" ${o.referenciaLegal===r?'selected':''}>${r}</option>`).join('')}
+                ${(o.referenciaLegal && !state.referenciaLegalOptions.includes(o.referenciaLegal)) ? `<option value="${escapeHtml(o.referenciaLegal)}" selected>${escapeHtml(o.referenciaLegal)} (não está na lista)</option>` : ''}
+                ${state.referenciaLegalOptions.map(r=>`<option value="${escapeHtml(r)}" ${o.referenciaLegal===r?'selected':''}>${escapeHtml(r)}</option>`).join('')}
               </select>
             </div>
           </div>
@@ -5585,7 +4561,7 @@ function openObligationCatalogModal(obligId){
         referenciaLegal,
       });
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderObligationCatalogList();
   };
@@ -5594,24 +4570,22 @@ function openObligationCatalogModal(obligId){
 function renderDocTypesList(){
   const el = document.getElementById('docTypesList');
   if(!el) return;
-  const search = docTypesFilterSearch.trim().toLowerCase();
-  const filtered = state.docTypes.filter(dt=> !search || dt.name.toLowerCase().includes(search));
-  if(filtered.length===0){
-    el.innerHTML = `<div class="empty-note">${state.docTypes.length===0 ? 'Nenhum tipo de documento cadastrado ainda.' : 'Nenhum tipo de documento encontrado com esse nome.'}</div>`;
+  if(state.docTypes.length===0){
+    el.innerHTML = `<div class="empty-note">Nenhum tipo de documento cadastrado ainda.</div>`;
     return;
   }
-  el.innerHTML = `<div class="doctype-list">${filtered.map(dt=>`
+  el.innerHTML = `<div class="doctype-list">${state.docTypes.map(dt=>`
     <div class="doctype-card">
       <div class="doctype-card-top">
-        <div class="doctype-card-name">${dt.name}</div>
+        <div class="doctype-card-name">${escapeHtml(dt.name)}</div>
         <div class="oblig-row-actions">
           <button type="button" class="oblig-icon-btn" data-edit-doctype="${dt.id}" title="Editar">✎</button>
           <button type="button" class="oblig-icon-btn oblig-del-btn" data-del-doctype="${dt.id}" title="Excluir">×</button>
         </div>
       </div>
-      <div class="doctype-card-kw"><strong>Precisa conter:</strong> ${(dt.keywords||[]).join(', ') || '—'}</div>
-      ${(dt.excludeKeywords||[]).length ? `<div class="doctype-card-kw"><strong>Não pode conter:</strong> ${dt.excludeKeywords.join(', ')}</div>` : ''}
-      <div class="doctype-card-subject"><strong>Assunto:</strong> ${dt.emailSubject}</div>
+      <div class="doctype-card-kw"><strong>Precisa conter:</strong> ${escapeHtml((dt.keywords||[]).join(', ')) || '—'}</div>
+      ${(dt.excludeKeywords||[]).length ? `<div class="doctype-card-kw"><strong>Não pode conter:</strong> ${escapeHtml(dt.excludeKeywords.join(', '))}</div>` : ''}
+      <div class="doctype-card-subject"><strong>Assunto:</strong> ${escapeHtml(dt.emailSubject)}</div>
     </div>
   `).join('')}</div>`;
   el.querySelectorAll('[data-edit-doctype]').forEach(btn=>{
@@ -5621,13 +4595,13 @@ function renderDocTypesList(){
     btn.addEventListener('click', async ()=>{
       const dt = state.docTypes.find(d=>d.id===btn.dataset.delDoctype);
       if(!dt) return;
-      const ok = await showConfirm(`Excluir o tipo de documento "${dt.name}"? Isso não afeta e-mails já enviados.`);
+      const ok = await showConfirm(`Excluir o tipo de documento "${escapeHtml(dt.name)}"? Isso não afeta e-mails já enviados.`);
       if(!ok) return;
       state.docTypes = state.docTypes.filter(d=>d.id!==dt.id);
       if(DEFAULT_DOC_TYPES.some(d=>d.id===dt.id) && !state.deletedDefaultDocTypeIds.includes(dt.id)){
         state.deletedDefaultDocTypeIds.push(dt.id); // marca como excluído de propósito, pra não voltar sozinho
       }
-      persist();
+      persist().catch(()=>{});
       renderDocTypesList();
     });
   });
@@ -5636,7 +4610,7 @@ function renderDocTypesList(){
 function openDocTypeModal(docTypeId){
   const editing = !!docTypeId;
   const dt = editing ? state.docTypes.find(d=>d.id===docTypeId) : {
-    name:'', keywords:[], excludeKeywords:[], linkedObligationId:'',
+    name:'', keywords:[], excludeKeywords:[],
     emailSubject:'Documento - {empresa}',
     emailBody:'Olá,\n\nSegue em anexo o documento referente a {empresa}, competência {competencia}, com vencimento em {vencimento}.\n\nAtenciosamente,\nEquipe Contábil',
   };
@@ -5646,21 +4620,11 @@ function openDocTypeModal(docTypeId){
       <div class="modal">
         <h3>${editing? 'Editar tipo de documento' : 'Novo tipo de documento'}</h3>
         <div class="form-grid">
-          <div class="form-row"><label>Nome do tipo</label><input id="dtName" type="text" value="${dt.name.replace(/"/g,'&quot;')}" placeholder="Ex: DAS - Simples Nacional"></div>
-          <div class="form-row"><label>O PDF precisa conter estes textos (separe por vírgula)</label><input id="dtKeywords" type="text" value="${(dt.keywords||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="Ex: Documento de Arrecadação, Simples Nacional"></div>
-          <div class="form-row"><label>O PDF NÃO pode conter (opcional, separe por vírgula)</label><input id="dtExclude" type="text" value="${(dt.excludeKeywords||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="Ex: PARCSN, Parcelamento"></div>
-          <div class="form-row"><label>Assunto do e-mail</label><input id="dtSubject" type="text" value="${dt.emailSubject.replace(/"/g,'&quot;')}"></div>
-          <div class="form-row"><label>Corpo do e-mail</label><textarea id="dtBody" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${dt.emailBody}</textarea></div>
-          <div class="form-row"><label>Ao enviar, marcar esta obrigação como enviada (opcional)</label>
-            <select id="dtLinkedObligation">
-              <option value="">— nenhuma —</option>
-              ${state.obligations.slice().sort((a,b)=>{
-                const ci = CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category);
-                return ci!==0 ? ci : a.label.localeCompare(b.label);
-              }).map(o=>`<option value="${o.id}" ${dt.linkedObligationId===o.id?'selected':''}>${CATEGORY_LABELS[o.category]} — ${escapeHtml(o.label)}</option>`).join('')}
-            </select>
-            <div style="color:var(--muted); font-size:.72rem; margin-top:.25rem;">Ao enviar um PDF desse tipo pra uma empresa, o status dessa obrigação vira "Enviada" automaticamente pra ela, na competência lida do documento (ou no mês atual, se não conseguir ler).</div>
-          </div>
+          <div class="form-row"><label>Nome do tipo</label><input id="dtName" type="text" value="${escapeHtml(dt.name)}" placeholder="Ex: DAS - Simples Nacional"></div>
+          <div class="form-row"><label>O PDF precisa conter estes textos (separe por vírgula)</label><input id="dtKeywords" type="text" value="${escapeHtml((dt.keywords||[]).join(', '))}" placeholder="Ex: Documento de Arrecadação, Simples Nacional"></div>
+          <div class="form-row"><label>O PDF NÃO pode conter (opcional, separe por vírgula)</label><input id="dtExclude" type="text" value="${escapeHtml((dt.excludeKeywords||[]).join(', '))}" placeholder="Ex: PARCSN, Parcelamento"></div>
+          <div class="form-row"><label>Assunto do e-mail</label><input id="dtSubject" type="text" value="${escapeHtml(dt.emailSubject)}"></div>
+          <div class="form-row"><label>Corpo do e-mail</label><textarea id="dtBody" rows="6" style="padding:.5rem .6rem;border:1px solid var(--line-strong);border-radius:7px;font-size:.85rem;font-family:'Public Sans',sans-serif;">${escapeHtml(dt.emailBody)}</textarea></div>
         </div>
         <div class="modal-actions">
           <button class="btn ghost" id="btnCancel">Cancelar</button>
@@ -5678,15 +4642,14 @@ function openDocTypeModal(docTypeId){
     const excludeKeywords = document.getElementById('dtExclude').value.split(',').map(s=>s.trim()).filter(Boolean);
     const emailSubject = document.getElementById('dtSubject').value.trim() || 'Documento - {empresa}';
     const emailBody = document.getElementById('dtBody').value;
-    const linkedObligationId = document.getElementById('dtLinkedObligation').value || null;
     if(editing){
       const freshDt = state.docTypes.find(d=>d.id===docTypeId);
       if(!freshDt){ root.innerHTML=''; return; }
-      Object.assign(freshDt, {name, keywords, excludeKeywords, emailSubject, emailBody, linkedObligationId});
+      Object.assign(freshDt, {name, keywords, excludeKeywords, emailSubject, emailBody});
     } else {
-      state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody, linkedObligationId });
+      state.docTypes.push({ id:'doctype__custom_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name, keywords, excludeKeywords, emailSubject, emailBody });
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderDocTypesList();
   };
@@ -5887,7 +4850,7 @@ function openCompanyModal(companyId){
     } else {
       state.companies.push({id:'c'+Date.now()+'_'+Math.random().toString(36).slice(2,7), ...data});
     }
-    persist();
+    persist().catch(()=>{});
     root.innerHTML = '';
     renderAll();
   };
@@ -5896,12 +4859,12 @@ function openCompanyModal(companyId){
 async function deleteCompany(id){
   const c = state.companies.find(x=>x.id===id);
   if(!c) return;
-  const ok = await showConfirm(`Excluir "${c.nome}"? Isso também removerá o histórico de checklist dessa empresa.`);
+  const ok = await showConfirm(`Excluir "${escapeHtml(c.nome)}"? Isso também removerá o histórico de checklist dessa empresa.`);
   if(!ok) return;
   state.companies = state.companies.filter(x=>x.id!==id);
   Object.values(state.monthly).forEach(bucket=>{ delete bucket[id]; });
   Object.values(state.annual).forEach(bucket=>{ delete bucket[id]; });
-  persist();
+  persist().catch(()=>{});
   renderAll();
 }
 
@@ -6258,7 +5221,7 @@ async function confirmImport(){
     }
     // action === 'skip' -> nada a fazer
   });
-  persist();
+  persist().catch(()=>{});
   importItems = [];
   document.getElementById('modalRoot').innerHTML = '';
   renderAll();
@@ -6270,7 +5233,6 @@ function renderAll(){
   renderStats();
   renderTabs();
   renderPeriodControl();
-  document.querySelector('main').classList.toggle('config-wide', activeTab==='config');
   if(activeTab==='painel') renderPainel();
   else if(activeTab==='empresas') renderEmpresas();
   else if(activeTab==='obrigacoes') renderObrigacoes();
